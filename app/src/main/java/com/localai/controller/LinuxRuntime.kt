@@ -1,6 +1,8 @@
 package com.localai.controller
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.File
@@ -55,7 +57,24 @@ class LinuxRuntime(private val context: Context) {
             dns.parentFile?.mkdirs()
             dns.writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
         }
+        refreshPackageDns()
         return "Alpine $version repositories: main + community"
+    }
+
+    /** Use Android's active network DNS instead of hard-coded public resolvers
+     * (which may be blocked by phone networks, VPNs and captive Wi-Fi).
+     */
+    private fun refreshPackageDns() {
+        val manager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = manager.activeNetwork ?: return
+        val addresses = manager.getLinkProperties(network)?.dnsServers.orEmpty()
+            .filter { !it.isAnyLocalAddress && !it.isLoopbackAddress }
+            .mapNotNull { it.hostAddress?.substringBefore('%') }
+            .distinct()
+        if (addresses.isEmpty()) return
+        val file = File(rootfs, "etc/resolv.conf")
+        file.parentFile?.mkdirs()
+        file.writeText(addresses.joinToString("\n") { "nameserver $it" } + "\n")
     }
 
 
