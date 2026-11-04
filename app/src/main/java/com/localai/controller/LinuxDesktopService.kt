@@ -165,7 +165,9 @@ class LinuxDesktopService : Service() {
                     require(password.matches(Regex("[A-Za-z0-9]{8,16}"))) {
                         "VNC password must have 8–16 English letters or digits"
                     }
-                    val ip = privateIp() ?: error("Connect phone to a trusted private Wi-Fi or VPN first")
+                    // The desktop must work locally on the phone even without Wi-Fi.
+                    // LAN relay is optional and exists only on private networks.
+                    val ip = privateIp()
                     startDesktop(linux, password, ip)
                 }
             } catch (e: Exception) {
@@ -180,7 +182,7 @@ class LinuxDesktopService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startDesktop(linux: LinuxRuntime, password: String, ip: String) {
+    private fun startDesktop(linux: LinuxRuntime, password: String, ip: String?) {
         // VncAuth only uses first 8 ASCII chars; never expose the password in logs.
         val auth = "mkdir -p /root/.vnc && umask 077 && printf '%s\\n' '" +
             password.take(8) + "' | /usr/bin/vncpasswd -f > /root/.vnc/passwd && chmod 600 /root/.vnc/passwd"
@@ -220,19 +222,21 @@ class LinuxDesktopService : Service() {
                 if (exe.endsWith("openbox")) throw e
             }
         }
-        relay = DesktopTcpRelay(ip, VNC_PORT, LOCAL_VNC_PORT).also { it.start() }
         desktopViewer = DesktopWebServer(this).also { it.start() }
-        if (AppStore(this).hasPassword()) {
+        if (ip != null) {
+            relay = DesktopTcpRelay(ip, VNC_PORT, LOCAL_VNC_PORT).also { it.start() }
+        }
+        if (ip != null && AppStore(this).hasPassword()) {
             val store = AppStore(this)
             val db = ChatDatabase(this)
             val imports = ImportRepository(this, store, db)
             lanWeb = LocalHttpServer(this, store, db, NativeAgent(this, store, db, imports),
                 bindIp = ip, listenPort = WEB_PORT).also { it.start() }
         }
-        ipAddress = ip
+        ipAddress = ip.orEmpty()
         running = true
-        message = "Linux Desktop ready · $ip:$VNC_PORT"
-        notifyStatus(message)
+        updateStatus(if (ip == null) "✓ หน้าจอ Linux พร้อมใช้บนมือถือ" else
+            "✓ หน้าจอ Linux พร้อมใช้ · $ip:$VNC_PORT")
     }
 
     private fun notifyStatus(info: String) {
