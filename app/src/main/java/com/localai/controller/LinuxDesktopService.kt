@@ -104,7 +104,7 @@ class LinuxDesktopService : Service() {
                     notifyStatus(if (isBrowser) "Installing Chromium browser for Linux…" else
                         "Installing Linux graphical desktop packages…")
                     val packages = if (isBrowser) "chromium xdotool" else
-                        "tigervnc openbox xterm pcmanfm tint2 font-dejavu"
+                        "tigervnc openbox xterm pcmanfm tint2 font-dejavu xdotool"
                     val setup = "apk update && apk add --no-cache $packages"
                     var lastNoticeAt = 0L
                     val result = linux.command(setup, timeoutSeconds = 1200) { line ->
