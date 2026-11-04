@@ -271,7 +271,7 @@ class MainActivity : Activity() {
         }
         mainColumn.addView(nav)
         workspaceTab = actionButton("✦  แชท AI") { showTab("workspace") }
-        controlsTab = actionButton("⚙  ตั้งค่าและ Linux") { showTab("control") }
+        controlsTab = actionButton("⚙  ตั้งค่า") { showTab("control") }
         nav.addView(workspaceTab, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         nav.addView(controlsTab, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
         screenHost = FrameLayout(this).apply { setBackgroundColor(bg) }
@@ -430,6 +430,16 @@ class MainActivity : Activity() {
             addView(label("ทำแล้ว " + completed + " จาก 4 ขั้นตอน • แตะรายการที่ยังไม่ทำเพื่อไปตั้งค่า",
                 12f, false, sub))
             spacer(this, 10)
+            val progressBar = android.widget.ProgressBar(this@MainActivity, null,
+                android.R.attr.progressBarStyleHorizontal).apply {
+                max = 4
+                progress = completed
+                progressTintList = android.content.res.ColorStateList.valueOf(linuxGreen)
+                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(line)
+                contentDescription = "ตั้งค่าไปแล้ว " + completed + " จาก 4 ขั้นตอน"
+            }
+            addView(progressBar, LinearLayout.LayoutParams(-1, dp(7)))
+            spacer(this, 9)
             addSetupCheck(this, "1. ตั้งรหัสผ่าน",
                 "ปกป้องหน้าเว็บและแชท AI", store.hasPassword(), privacyBlue, "privacy")
             addSetupCheck(this, "2. ติดตั้ง Linux",
@@ -847,6 +857,13 @@ class MainActivity : Activity() {
         }
         }
         spacer(content, 26)
+        if (settingsCategory != "start") {
+            scroll.post {
+                if (content.childCount >= 3 && currentTab == "control") {
+                    scroll.scrollTo(0, content.getChildAt(2).top)
+                }
+            }
+        }
     }
 
     private fun startModelDownload(id: String, progressLabel: TextView) {
