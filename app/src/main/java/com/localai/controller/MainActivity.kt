@@ -396,113 +396,97 @@ class MainActivity : Activity() {
         screenHost.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(content)
-        cardBlock(content, 5) {
-            background = gradient(23)
-            addView(label("เริ่มต้นใช้งาน", 12f, true, Color.WHITE))
-            spacer(this, 8)
-            addView(label("ตั้งค่าง่าย ๆ ทีละขั้น", 23f, true))
-            spacer(this, 6)
-            addView(label("เลือกสิ่งที่อยากทำ แล้วแอปจะพาไปยังเมนูที่เกี่ยวข้อง ไม่ต้องใช้ Termux และไม่ควบคุม Android", 13f, false, Color.WHITE))
-            spacer(this, 13)
-            if (AiForegroundService.running) {
-                addView(label("✓  AI กำลังทำงาน", 13f, true, Color.WHITE))
-                spacer(this, 8)
-                addButton(this, "✦  ไปคุยกับ AI") { showTab("workspace") }
-            } else {
-                addView(label("○  AI ยังไม่ได้เริ่ม", 13f, true, Color.WHITE))
-                spacer(this, 8)
-                addButton(this, "▶  เปิด AI") {
-                    if (imports.modelFile() == null) {
-                        settingsCategory = "ai"
-                        showTab("control")
-                        notifyUser("ต้องดาวน์โหลดโมเดล AI ก่อน")
-                    } else if (!store.hasPassword()) {
-                        settingsCategory = "privacy"
-                        showTab("control")
-                        notifyUser("กรุณาตั้งรหัสผ่านก่อน")
-                    } else startAi()
-                }
-            }
-        }
         val modelFile = imports.modelFile()
         val alpineReady = LinuxRuntime(this).installed()
         val desktopReady = LinuxDesktopService.installed(this)
-        cardBlock(content, 10) {
-            background = panel(mixColor(card, privacyBlue, 0.07f), 20,
-                mixColor(line, privacyBlue, 0.3f))
-            val completed = listOf(store.hasPassword(), alpineReady, modelFile != null,
-                desktopReady).count { it }
-            addView(label("เช็กลิสต์การเริ่มใช้งาน", 18f, true))
-            spacer(this, 5)
-            addView(label("ทำแล้ว " + completed + " จาก 4 ขั้นตอน • แตะรายการที่ยังไม่ทำเพื่อไปตั้งค่า",
-                12f, false, sub))
-            spacer(this, 10)
-            val progressBar = android.widget.ProgressBar(this@MainActivity, null,
-                android.R.attr.progressBarStyleHorizontal).apply {
-                max = 4
-                progress = completed
-                progressTintList = android.content.res.ColorStateList.valueOf(linuxGreen)
-                progressBackgroundTintList = android.content.res.ColorStateList.valueOf(line)
-                contentDescription = "ตั้งค่าไปแล้ว " + completed + " จาก 4 ขั้นตอน"
-            }
-            addView(progressBar, LinearLayout.LayoutParams(-1, dp(7)))
-            spacer(this, 9)
-            addSetupCheck(this, "1. ตั้งรหัสผ่าน",
-                "ปกป้องหน้าเว็บและแชท AI", store.hasPassword(), privacyBlue, "privacy")
-            addSetupCheck(this, "2. ติดตั้ง Linux",
-                "ติดตั้งระบบ Linux จากในแอป ไม่ต้องใช้อินเทอร์เน็ต", alpineReady, linuxGreen, "linux")
-            addSetupCheck(this, "3. ดาวน์โหลดสมอง AI",
-                "เลือกโมเดลที่ต้องการ แล้วใช้งานออฟไลน์", modelFile != null, aiPurple, "ai")
-            addSetupCheck(this, "4. ติดตั้งหน้าจอ Linux",
-                "เปิดโปรแกรม Linux และเชื่อมต่อจากคอม", desktopReady, desktopOrange, "desktop")
-            spacer(this, 14)
-            addView(label("เลือกหมวดการตั้งค่า", 17f, true))
-            spacer(this, 4)
-            addView(label("แยกสีให้จำง่าย เมนูที่เกี่ยวข้องอยู่ด้วยกัน", 11.5f, false, sub))
-            addCategoryMenu(this)
-        }
+        val completed = listOf(store.hasPassword(), alpineReady,
+            modelFile != null, desktopReady).count { it }
         if (settingsCategory == "start") {
-            cardBlock(content) {
-                addView(label("ควรทำอะไรต่อ?", 17f, true, privacyBlue))
-                spacer(this, 8)
-                val next = when {
-                    !store.hasPassword() -> "ตั้งรหัสผ่านก่อน เพื่อเปิด AI และป้องกันคนอื่นเข้าใช้งาน"
-                    !alpineReady -> "ติดตั้ง Linux ที่อยู่ในแอป ใช้งานได้โดยไม่ต้องใช้ Termux"
-                    modelFile == null -> "ดาวน์โหลดสมอง AI หากอยากแชทหรือสั่ง AI ให้ช่วยงาน"
-                    !desktopReady -> "ติดตั้งหน้าจอ Linux เพื่อเปิดโปรแกรมและรีโมทจากคอม"
-                    else -> "ตั้งค่าพื้นฐานแล้ว เลือกหน้าจอ Linux เพื่อเริ่มใช้งาน"
+            cardBlock(content, 5) {
+                setPadding(dp(11), dp(10), dp(11), dp(10))
+                background = panel(mixColor(card, accent, 0.10f), 15,
+                    mixColor(line, accent, 0.38f))
+                val quick = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
                 }
-                addView(label(next, 13f, false, sub))
-                spacer(this, 11)
-                val target = when {
-                    !store.hasPassword() -> "privacy"
-                    !alpineReady -> "linux"
-                    modelFile == null -> "ai"
-                    else -> "desktop"
+                addView(quick)
+                val status = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(label("ตั้งค่าและเริ่มใช้งาน", 15f, true))
+                    addView(label("พร้อมแล้ว $completed/4 ขั้นตอน", 11f, false, sub))
                 }
-                addButton(this, "ไปทำขั้นตอนถัดไป  →", true) {
-                    settingsCategory = target
-                    showTab("control")
+                quick.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
+                val action = actionButton(
+                    if (AiForegroundService.running) "เปิดแชท ›" else "เริ่ม AI ›",
+                    true) {
+                    if (AiForegroundService.running) showTab("workspace")
+                    else if (modelFile == null) {
+                        settingsCategory = "ai"; showTab("control")
+                    } else if (!store.hasPassword()) {
+                        settingsCategory = "privacy"; showTab("control")
+                    } else startAi()
+                }.apply {
+                    minHeight = dp(42)
+                    setPadding(dp(10), dp(7), dp(10), dp(7))
+                    textSize = 12f
                 }
+                quick.addView(action, LinearLayout.LayoutParams(-2, -2))
+            }
+            cardBlock(content, 7) {
+                setPadding(dp(10), dp(11), dp(10), dp(11))
+                addView(label("เช็กลิสต์", 14f, true))
+                spacer(this, 7)
+                val bar = android.widget.ProgressBar(this@MainActivity, null,
+                    android.R.attr.progressBarStyleHorizontal).apply {
+                    max = 4
+                    progress = completed
+                    progressTintList = android.content.res.ColorStateList.valueOf(linuxGreen)
+                    progressBackgroundTintList = android.content.res.ColorStateList.valueOf(line)
+                    contentDescription = "พร้อม $completed จาก 4 ขั้นตอน"
+                }
+                addView(bar, LinearLayout.LayoutParams(-1, dp(5)))
+                spacer(this, 5)
+                addSetupCheck(this, "รหัสผ่าน", "ตั้งรหัสผ่านเข้า AI",
+                    store.hasPassword(), privacyBlue, "privacy")
+                addSetupCheck(this, "Linux", "ติดตั้ง Alpine Linux",
+                    alpineReady, linuxGreen, "linux")
+                addSetupCheck(this, "สมอง AI", "ดาวน์โหลดโมเดล AI",
+                    modelFile != null, aiPurple, "ai")
+                addSetupCheck(this, "หน้าจอ Linux", "ติดตั้ง Linux Desktop",
+                    desktopReady, desktopOrange, "desktop")
+            }
+            cardBlock(content, 7) {
+                setPadding(dp(10), dp(11), dp(10), dp(11))
+                addView(label("เมนูตั้งค่า", 14f, true))
+                addCategoryMenu(this)
             }
         } else {
-            cardBlock(content) {
-                val section = when (settingsCategory) {
-                    "linux" -> "🐧  Linux พื้นฐาน" to linuxGreen
-                    "ai" -> "✦  AI ของฉัน" to aiPurple
-                    "desktop" -> "▣  หน้าจอ Linux และรีโมท" to desktopOrange
-                    "privacy" -> "🔐  ความปลอดภัย" to privacyBlue
-                    else -> "⬇  ข้อมูลและการอัปเดต" to dataPink
+            val section = when (settingsCategory) {
+                "linux" -> "🐧 Linux" to linuxGreen
+                "ai" -> "✦ AI" to aiPurple
+                "desktop" -> "▣ หน้าจอ Linux" to desktopOrange
+                "privacy" -> "🔐 ความปลอดภัย" to privacyBlue
+                else -> "⬇ ข้อมูลและอัปเดต" to dataPink
+            }
+            cardBlock(content, 5) {
+                setPadding(dp(11), dp(8), dp(11), dp(8))
+                val sectionRow = LinearLayout(this@MainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
                 }
-                addView(label(section.first, 19f, true, section.second))
-                spacer(this, 5)
-                addView(label("แสดงเฉพาะเมนูในหมวดนี้ เพื่อลดความสับสน",
-                    12f, false, sub))
-                spacer(this, 9)
-                addButton(this, "←  กลับไปดูเช็กลิสต์") {
+                addView(sectionRow)
+                sectionRow.addView(label(section.first, 16f, true, section.second),
+                    LinearLayout.LayoutParams(0, -2, 1f))
+                val back = actionButton("‹ เมนู", false) {
                     settingsCategory = "start"
                     showTab("control")
+                }.apply {
+                    minHeight = dp(39)
+                    textSize = 12f
+                    setPadding(dp(10), dp(5), dp(10), dp(5))
                 }
+                sectionRow.addView(back, LinearLayout.LayoutParams(-2, -2))
             }
         }
         if (settingsCategory == "ai") {
@@ -903,13 +887,7 @@ class MainActivity : Activity() {
         }
         }
         spacer(content, 26)
-        if (settingsCategory != "start") {
-            scroll.post {
-                if (content.childCount >= 3 && currentTab == "control") {
-                    scroll.scrollTo(0, content.getChildAt(2).top)
-                }
-            }
-        }
+
     }
 
     private fun startModelDownload(id: String, progressLabel: TextView) {
