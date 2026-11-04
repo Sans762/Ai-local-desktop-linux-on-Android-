@@ -55,14 +55,26 @@ class LinuxAgent(
         val freeMb = memoryInfo.availMem / 1048576L
         if (freeMb < 1250L) return@withLock JSONObject().put("ok", false).put("error", "LOW_RAM_FOR_MODEL")
 
+        // Use actual X11 focus and pointer data before generating GUI actions.
+        // This is not vision: no screenshot pixels are available to this model.
+        val observedWindow = if (LinuxDesktopService.running) try {
+            withContext(Dispatchers.IO) {
+                linux.command(
+                    "DISPLAY=:1 xdotool getactivewindow getwindowname 2>/dev/null; " +
+                        "DISPLAY=:1 xdotool getmouselocation --shell 2>/dev/null",
+                    timeoutSeconds = 8
+                ).take(500)
+            }
+        } catch (_: Exception) { "window state unavailable" } else ""
+        val past = db.recall(task, 3).joinToString(" | ").take(550)
         val desktopHint = if (LinuxDesktopService.running) {
-            "A Linux X11 desktop is running on DISPLAY=:1. You may propose " +
-                "DISPLAY=:1 xdotool key/type/mousemove/click commands only after " +
-                "explicit user approval. You CANNOT observe a screenshot, " +
-                "so do not invent visual verification."
-        } else {
-            "Linux Desktop is not running; use command-line actions only."
-        }
+            "The Linux X11 desktop IS running on DISPLAY=:1. " +
+                "Propose real DISPLAY=:1 xdotool mousemove, click, key or type " +
+                "commands to operate Linux windows only after user approval. " +
+                "Observed focus and mouse coordinates: " + observedWindow + ". " +
+                "You CANNOT see screenshots, so do not invent GUI button positions " +
+                "or pretend to have visually verified an action."
+        } else "Linux Desktop is not running. Do not propose GUI actions yet."
         val system = """
             You are a local Alpine Linux ARM64 assistant, not an Android controller.
             The user asks for a Linux task. Return one JSON object only:
@@ -75,7 +87,11 @@ class LinuxAgent(
             Only use network tools that are installed inside Alpine for web tasks.
             Never claim a website was read without actual command output.
             Do not include markdown fences, surrounding prose, or extra fields.
-        """.trimIndent() + "\n" + desktopHint
+        """.trimIndent() + "\n" + desktopHint +
+            "\nPrior verified local experience: " + past +
+            "\nRespond in Thai or English to match the user; Chinese characters are forbidden. " +
+            "Verify window focus with xdotool before typing. If the button location " +
+            "is unknown, explain the missing information instead of guessing."
         val draft = try {
             withContext(Dispatchers.IO) {
                 val handle = Llama.loadModel(model.absolutePath, LlamaConfig(contextSize = 2048, threads = 4))
@@ -134,11 +150,26 @@ class LinuxAgent(
                 break
             }
         }
+        if (completed) db.rememberLinuxSuccess(plan.summary)
+        // A successful shell exit proves command completion, not visual success.
+        val observedAfter = if (LinuxDesktopService.running) try {
+            withContext(Dispatchers.IO) {
+                linux.command(
+                    "DISPLAY=:1 xdotool getactivewindow getwindowname 2>/dev/null; " +
+                        "DISPLAY=:1 xdotool getmouselocation --shell 2>/dev/null",
+                    timeoutSeconds = 8
+                ).take(380)
+            }
+        } catch (_: Exception) { "" } else ""
         db.addMessage("user", "Linux: " + plan.task)
-        db.addMessage("assistant", results.toString().take(10000), "Alpine Linux Agent")
+        db.addMessage("assistant",
+            plan.summary + if (completed) "\nคำสั่ง Linux รันครบแล้ว (ยังไม่ยืนยันผลจากภาพ)" else
+                "\nคำสั่งบางส่วนล้มเหลว", "Alpine Linux Agent")
         JSONObject().put("ok", true).put("completed", completed)
             .put("executed", results.length()).put("total", plan.commands.size)
             .put("results", results).put("summary", plan.summary)
+            .put("desktopObservation", observedAfter)
+            .put("guiVerified", false)
     }
 
     suspend fun command(value: String): JSONObject = guard.withLock {
