@@ -799,37 +799,76 @@ class MainActivity : Activity() {
             spacer(this, 9)
             addView(label("เวอร์ชันแอป: " + AppUpdateManager(this@MainActivity).currentVersion(), 13f, true))
             spacer(this, 9)
-            val updateStatus = label("ตรวจสอบรุ่นใหม่ได้จาก GitHub Releases", 12f, false, sub)
+            val updateStatus = label(
+                if (packageName.endsWith(".test"))
+                    "รุ่น TEST ยังอัปเดตทับกันไม่ได้ จนกว่าจะมีลายเซ็นถาวรที่ตรงกัน"
+                else AppUpdateDownloadService.progress, 12f, false, sub
+            )
             addView(updateStatus)
             spacer(this, 8)
-            addButton(this, "↻  ตรวจหาอัปเดตแอป", true) {
-                updateStatus.text = "กำลังตรวจสอบอัปเดตผ่าน GitHub…"
+            addButton(this, "↻  ตรวจหาอัปเดตในแอป", true) {
+                updateStatus.text = "กำลังตรวจหารุ่นใหม่…"
                 Thread({
                     try {
                         val release = AppUpdateManager(this@MainActivity).checkLatest()
                         runOnUiThread {
-                            if (release.newer) {
-                                updateStatus.text = "พบเวอร์ชันใหม่: " + release.version
-                                android.app.AlertDialog.Builder(this@MainActivity)
-                                    .setTitle("มีอัปเดต Local AI Linux Desktop")
-                                    .setMessage("รุ่นใหม่ " + release.version +
-                                        "\\nไฟล์ APK จะเปิดจาก GitHub โดยตรง Android จะถามยืนยันก่อนติดตั้ง" +
-                                        "\\n\\nหมายเหตุ: APK รุ่น Debug เดิมอาจมีลายเซ็นต่างกันและติดตั้งทับไม่ได้")
-                                    .setNegativeButton("ภายหลัง", null)
-                                    .setPositiveButton("ดาวน์โหลดอัปเดต") { _, _ ->
-                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.downloadUrl)))
-                                    }.show()
-                            } else {
-                                updateStatus.text = "คุณใช้รุ่นล่าสุดอยู่แล้ว (" + release.version + ")"
+                            when {
+                                !release.newer -> updateStatus.text =
+                                    "คุณใช้แอปรุ่นล่าสุดที่รองรับแล้ว"
+                                packageName.endsWith(".test") -> {
+                                    updateStatus.text = "พบรุ่น " + release.version +
+                                        " แต่แอป TEST ไม่สามารถติดตั้งทับแอปหลักได้"
+                                    android.app.AlertDialog.Builder(this@MainActivity)
+                                        .setTitle("รุ่น TEST ยังอัปเดตทับไม่ได้")
+                                        .setMessage("รุ่นทดสอบใช้ลายเซ็น Debug ที่เปลี่ยนตาม Build " +
+                                            "ระบบไม่สามารถติดตั้ง APK ที่เซ็นไม่ตรงกันทับแอปนี้ได้ " +
+                                            "และจะไม่ลบไฟล์ Linux หรือโมเดลของคุณ")
+                                        .setPositiveButton("เข้าใจแล้ว", null).show()
+                                }
+                                else -> {
+                                    updateStatus.text = "มีเวอร์ชันใหม่ " + release.version +
+                                        " · ขนาดประมาณ " + (release.sizeBytes / 1048576) + " MB"
+                                    android.app.AlertDialog.Builder(this@MainActivity)
+                                        .setTitle("พบอัปเดต " + release.version)
+                                        .setMessage("แอปจะดาวน์โหลด APK จาก GitHub โดยตรง " +
+                                            "ตรวจ SHA-256 และลายเซ็นก่อนให้ Android ถามติดตั้ง\n\n" +
+                                            "ข้อมูล Linux/AI ของคุณจะไม่ถูกลบด้วยตัวดาวน์โหลดนี้")
+                                        .setNegativeButton("ภายหลัง", null)
+                                        .setPositiveButton("ดาวน์โหลดในแอป") { _, _ ->
+                                            if (AppUpdateDownloadService.downloading) {
+                                                notifyUser("กำลังดาวน์โหลดอัปเดตอยู่แล้ว")
+                                            } else {
+                                                startForegroundService(
+                                                    Intent(this@MainActivity, AppUpdateDownloadService::class.java)
+                                                        .setAction(AppUpdateDownloadService.ACTION_DOWNLOAD)
+                                                        .putExtra(AppUpdateDownloadService.EXTRA_URL, release.downloadUrl)
+                                                        .putExtra(AppUpdateDownloadService.EXTRA_SHA, release.sha256)
+                                                        .putExtra(AppUpdateDownloadService.EXTRA_SIZE, release.sizeBytes)
+                                                        .putExtra(AppUpdateDownloadService.EXTRA_VERSION, release.version)
+                                                )
+                                                updateStatus.text = "กำลังดาวน์โหลด ตรวจได้ในแถบแจ้งเตือน"
+                                            }
+                                        }.show()
+                                }
                             }
                         }
                     } catch (e: Exception) {
-                        runOnUiThread { updateStatus.text = "ตรวจอัปเดตไม่ได้: " + (e.message ?: "ไม่ทราบสาเหตุ") }
+                        runOnUiThread {
+                            updateStatus.text = "ตรวจไม่ได้: " + (e.message ?: "ไม่มีอินเทอร์เน็ตหรือไม่มีรุ่นอัปเดตที่เซ็นถูกต้อง")
+                        }
                     }
-                }, "native-update-check").start()
+                }, "local-ai-check-updates").start()
             }
             spacer(this, 9)
-            addView(label("อัปเดตผ่านระบบติดตั้งของ Android เท่านั้น • ไม่สามารถติดตั้งเงียบ ๆ ได้ • ถ้าระบบแจ้งลายเซ็นต่างกัน อย่าเพิ่งถอนแอปเดิม เพราะข้อมูล Linux จะหาย", 11.5f, false, sub))
+            addButton(this, "◉  ดูความคืบหน้าการอัปเดต") {
+                updateStatus.text = AppUpdateDownloadService.progress +
+                    if (AppUpdateDownloadService.lastError.isBlank()) ""
+                    else "\n" + AppUpdateDownloadService.lastError
+            }
+            spacer(this, 9)
+            addView(label("หลังดาวน์โหลดเสร็จ ให้แตะการแจ้งเตือนเพื่อเปิดตัวติดตั้ง Android แล้วกดยืนยัน " +
+                "แอปไม่สามารถแอบติดตั้งเองได้ • ถ้าลายเซ็นไม่ตรง ระบบจะหยุดก่อนติดตั้งและไม่ลบข้อมูลเก่า",
+                11.5f, false, sub))
             spacer(this, 11)
             addView(label("สำรอง Linux + AI ก่อนเปลี่ยน APK", 14f, true, mint))
             spacer(this, 7)
