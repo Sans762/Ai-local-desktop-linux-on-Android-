@@ -6,7 +6,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Checks GitHub Releases only. No auto-install, no remote code execution.
+ * Checks for a signed update from GitHub Releases. Never offers ephemeral debug APKs as updates.\n * No auto-install and no remote code execution.
  * The user always decides whether to download and install the update.
  */
 class AppUpdateManager(private val context: Context) {
@@ -71,7 +71,7 @@ class AppUpdateManager(private val context: Context) {
             val latest = version(tag, versionPattern)
                 ?: error("Latest release is not a compatible Linux Desktop update")
             val title = latest.joinToString(".")
-            val expectedName = "LocalAI-LinuxDesktop-v${latest[0]}.${latest[1]}-ARM64.apk"
+            val expectedName = "LocalAI-LinuxDesktop-v${latest[0]}.${latest[1]}-signed-ARM64.apk"
             val assets = release.optJSONArray("assets") ?: error("No APK assets in release")
             var url: String? = null
             for (i in 0 until assets.length()) {
@@ -84,7 +84,7 @@ class AppUpdateManager(private val context: Context) {
                     break
                 }
             }
-            val verifiedUrl = url ?: error("Could not verify an official APK asset")
+            val verifiedUrl = url ?: error("ยังไม่มีไฟล์อัปเดตที่เซ็นด้วยคีย์ถาวรสำหรับติดตั้งทับแอปเดิม")
             val page = release.optString("html_url")
             require(page == "https://github.com/$repo/releases/tag/$tag") {
                 "Unexpected release page URL"
