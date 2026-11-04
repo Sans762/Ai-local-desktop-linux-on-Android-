@@ -329,75 +329,24 @@ class MainActivity : Activity() {
             addView(label("เว็บรับการเชื่อมต่อเฉพาะ 127.0.0.1 ไม่เปิดพอร์ตสาธารณะ", 12f, false, sub))
         }
         cardBlock(content) {
-            addView(label("04  /  ควบคุมหน้าจอ Android", 12f, true, mint))
+            addView(label("04  /  Linux AI Agent", 12f, true, mint))
             spacer(this, 9)
-            val control = CheckBox(this@MainActivity).apply {
-                text = "อนุญาตให้ AI ส่งคำสั่งแตะ/พิมพ์/ย้อนกลับ"
-                textSize = 13f
-                setTextColor(this@MainActivity.text)
-                buttonTintList = android.content.res.ColorStateList.valueOf(accent)
-                isChecked = store.allowUiControl()
-                setOnCheckedChangeListener { _, checked ->
-                    store.setAllowUiControl(checked)
-                    notifyUser(if (checked) "เปิดการอนุญาตในแอป • ต้องเปิด Accessibility ด้วย" else "ปิดการควบคุมแล้ว")
-                }
-            }
-            addView(control)
+            addView(label("ให้ AI วางแผน รันคำสั่ง ติดตั้งแพ็กเกจ และจัดการไฟล์ภายใน Alpine Linux เท่านั้น", 14f, true))
             spacer(this, 8)
-            addView(label(if (AutomationAccessibilityService.current != null) "● Accessibility เชื่อมต่อแล้ว" else "● Accessibility ยังไม่เปิด", 12f, true, if (AutomationAccessibilityService.current != null) mint else sub))
+            addView(label("คำสั่ง AI จะแสดงให้ตรวจสอบก่อน แล้วต้องกดอนุมัติจึงจะรันจริง • ไม่แตะหน้าจอหรือข้อมูล Android", 12f, false, sub))
             spacer(this, 11)
-            addButton(this, "ไปที่การตั้งค่า Accessibility") {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            addButton(this, "✦  เปิด Linux Workspace", true) {
+                if (!AiForegroundService.running) {
+                    notifyUser("เริ่มบริการ AI ก่อนเปิด Linux Workspace")
+                } else showTab("workspace")
             }
-            spacer(this, 7)
-            addView(label("คำสั่งจริงต้องได้รับสิทธิ์ทั้งสองจุด • ไม่รองรับการควบคุมทั้งเครื่องโดยอัตโนมัติ", 12f, false, sub))
         }
         cardBlock(content) {
-            addView(label("05  /  Remote Desktop", 12f, true, mint))
-            spacer(this, 9)
-            addView(label("ดูหน้าจอ Android สดผ่านเว็บจากอุปกรณ์ใน LAN หรือ VPN ส่วนตัว", 13f, false, sub))
-            spacer(this, 9)
-            if (ScreenShareService.running) {
-                addView(label("●  กำลังแชร์หน้าจอ", 14.5f, true, mint))
-                spacer(this, 7)
-                addView(label("รหัสจับคู่ 8 หลัก: ${RemoteSession.pin}", 20f, true))
-                spacer(this, 8)
-                val urls = RemoteSession.localUrls(ScreenShareService.PORT)
-                addView(label(if (urls.isEmpty()) "ไม่พบ IP เครือข่ายส่วนตัว" else urls.joinToString("\n"), 13f, false, sub))
-                spacer(this, 12)
-                val remoteInput = CheckBox(this@MainActivity).apply {
-                    text = "อนุญาตให้รีโมทกดหน้าจอ/พิมพ์ได้ในเซสชันนี้"
-                    textSize = 13f
-                    setTextColor(this@MainActivity.text)
-                    buttonTintList = android.content.res.ColorStateList.valueOf(accent)
-                    isChecked = RemoteSession.allowInput
-                    setOnCheckedChangeListener { _, checked ->
-                        RemoteSession.allowInput = checked
-                        notifyUser(if (checked) "อนุญาตรีโมทแล้ว • ต้องเปิด Accessibility ด้วย" else "ปิดคำสั่งรีโมทแล้ว")
-                    }
-                }
-                addView(remoteInput)
-                spacer(this, 10)
-                addButton(this, "■  หยุดแชร์หน้าจอ") {
-                    RemoteSession.allowInput = false
-                    stopService(Intent(this@MainActivity, ScreenShareService::class.java))
-                    ui.postDelayed({ showTab("control") }, 400)
-                }
-            } else {
-                addView(label("●  ยังไม่ได้แชร์หน้าจอ", 13f, true, sub))
-                spacer(this, 11)
-                addButton(this, "▣  เริ่มแชร์หน้าจอ (ต้องอนุญาต)", true) {
-                    if (!store.hasPassword()) { notifyUser("ตั้งรหัสผ่านในแอปก่อนเริ่มใช้ Remote Desktop"); return@addButton }
-                    val manager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                    startActivityForResult(manager.createScreenCaptureIntent(), 77)
-                }
-            }
-            if (ScreenShareService.lastError.isNotBlank()) {
-                spacer(this, 9)
-                addView(label(ScreenShareService.lastError, 12f, false, Color.rgb(255, 177, 183)))
-            }
-            spacer(this, 12)
-            addView(label("เพื่อความปลอดภัย: เปิดเฉพาะเมื่อใช้จริง • จับคู่ด้วย PIN • ค่าเริ่มต้นดูได้อย่างเดียว • HTTP LAN ไม่เข้ารหัส จึงห้ามเปิดพอร์ตสู่อินเทอร์เน็ต", 12f, false, sub))
+            addView(label("05  /  Linux Environment", 12f, true, mint))
+            spacer(this, 8)
+            addView(label("Alpine Linux ARM64 + PRoot ทำงานบน kernel ของ Android โดยไม่ใช้ Termux หรือ Root", 13f, false, sub))
+            spacer(this, 8)
+            addView(label("รุ่นนี้ไม่มี Accessibility, ไม่มี MediaProjection และไม่มีการควบคุม Android ผ่านรีโมท • ระบบ GUI Linux/VNC ยังไม่ได้ติดตั้ง", 12f, false, sub))
         }
         cardBlock(content) {
             addView(label("06  /  Linux built-in · Alpine ARM64", 12f, true, mint))
@@ -454,7 +403,7 @@ class MainActivity : Activity() {
                 startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:18788")))
             }
             spacer(this, 9)
-            addView(label("จอสด Android ใช้ MediaProjection โดยต้องยืนยันทุกเซสชัน • Windows Remote, โทรเรียลไทม์ และการเชื่อมตรงกับ ChatGPT ยังไม่รองรับ • Android อาจหยุดบริการเมื่อ RAM ต่ำ", 12f, false, sub))
+            addView(label("Linux AI Agent จำกัดการสั่งงานอยู่ใน Alpine userland และขออนุมัติก่อนรันทุกแผน • Linux GUI/VNC และการเชื่อมตรงกับ ChatGPT ยังไม่รองรับ • PRoot ไม่ใช่ security sandbox", 12f, false, sub))
         }
         spacer(content, 26)
     }
@@ -507,19 +456,6 @@ class MainActivity : Activity() {
     @Deprecated("Uses Android Storage Access Framework")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 77) {
-            if (resultCode == RESULT_OK && data != null) {
-                try {
-                    startForegroundService(Intent(this, ScreenShareService::class.java).apply {
-                        putExtra(ScreenShareService.EXTRA_RESULT, resultCode)
-                        putExtra(ScreenShareService.EXTRA_INTENT, data)
-                    })
-                    notifyUser("กำลังเริ่ม Remote Desktop ตามสิทธิ์ที่อนุญาต…")
-                    ui.postDelayed({ showTab("control") }, 800)
-                } catch (e: Exception) { notifyUser("เริ่มแชร์หน้าจอไม่ได้: ${e.message}") }
-            } else notifyUser("ยกเลิกการแชร์หน้าจอแล้ว")
-            return
-        }
         if (resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         notifyUser("กำลังนำเข้าไฟล์…")
