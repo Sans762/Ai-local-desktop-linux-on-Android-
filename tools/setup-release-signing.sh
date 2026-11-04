@@ -10,6 +10,13 @@ KEYSTORE="${KEY_HOME}/localai-release.p12"
 CREDENTIALS="${KEY_HOME}/signing-credentials.env"
 KEY_ALIAS="localai-release"
 
+if ! command -v keytool >/dev/null; then
+  if command -v apt-get >/dev/null && command -v sudo >/dev/null; then
+    echo "Installing Java keytool in your Codespace (one time)..."
+    sudo apt-get update -qq
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openjdk-17-jdk-headless
+  fi
+fi
 for cmd in gh keytool openssl base64; do
   if ! command -v "$cmd" >/dev/null; then
     echo "Missing $cmd. Install the command before running setup."
@@ -21,6 +28,20 @@ if ! gh auth status >/dev/null 2>&1; then
   exit 1
 fi
 mkdir -p "$KEY_HOME"
+
+# Prevent accidental certificate rotation when a new Codespace is opened.
+# Android would then reject all future updates to the installed app.
+if [[ ! -f "$KEYSTORE" ]]; then
+  EXISTING_SECRETS="$(gh secret list -R "$REPO" 2>/dev/null)" || {
+    echo "Cannot inspect repository signing configuration. Check GitHub permissions."
+    exit 1
+  }
+  if printf '%s\n' "$EXISTING_SECRETS" | awk '{print $1}' | grep -Fxq RELEASE_KEYSTORE_BASE64; then
+    echo "STOP: A permanent signing key is ALREADY registered in GitHub."
+    echo "Do not create a new key. Restore your original signing backup first."
+    exit 1
+  fi
+fi
 
 if [[ -f "$KEYSTORE" && ! -f "$CREDENTIALS" || ! -f "$KEYSTORE" && -f "$CREDENTIALS" ]]; then
   echo "Partial signing setup detected. Do not create another key or future APK updates will fail."
