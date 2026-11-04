@@ -615,9 +615,13 @@ class MainActivity : Activity() {
         val completed = listOf(store.hasPassword(), alpineReady,
             modelFile != null, desktopReady).count { it }
         if (settingsCategory == "start") {
+            // Guide first-time users through every required component, not just AI chat.
+            // The older flow skipped Alpine and the desktop despite showing "4 steps".
             val nextCategory = when {
                 !store.hasPassword() -> "privacy"
+                !alpineReady -> "linux"
                 modelFile == null -> "ai"
+                !desktopReady -> "desktop"
                 else -> "workspace"
             }
             val nextAction = when (nextCategory) {
