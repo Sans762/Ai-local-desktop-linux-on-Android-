@@ -20,6 +20,7 @@ class LinuxDesktopService : Service() {
         const val ACTION_INSTALL = "com.localai.controller.DESKTOP_INSTALL"
         const val ACTION_INSTALL_BROWSER = "com.localai.controller.BROWSER_INSTALL"
         const val ACTION_INSTALL_FULL = "com.localai.controller.DESKTOP_XFCE_INSTALL"
+        const val ACTION_INSTALL_VISION = "com.localai.controller.DESKTOP_OCR_INSTALL"
         const val ACTION_START = "com.localai.controller.DESKTOP_START"
         const val ACTION_STOP = "com.localai.controller.DESKTOP_STOP"
         const val EXTRA_PASSWORD = "desktop_password"
@@ -43,6 +44,14 @@ class LinuxDesktopService : Service() {
             if (lastError.isNotBlank()) lastError else
                 context.getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
                     .getString("error", "").orEmpty()
+
+        fun visionInstalled(context: Context): Boolean {
+            val root = File(context.filesDir, "embedded_linux/alpine-rootfs")
+            return File(root, "usr/bin/scrot").isFile &&
+                File(root, "usr/bin/tesseract").isFile &&
+                File(root, "usr/share/tessdata/eng.traineddata").isFile &&
+                File(root, "usr/share/tessdata/tha.traineddata").isFile
+        }
 
         fun browserInstalled(context: Context): Boolean =
             File(context.filesDir, "embedded_linux/alpine-rootfs/usr/bin/chromium").isFile
@@ -120,11 +129,11 @@ class LinuxDesktopService : Service() {
             return START_NOT_STICKY
         }
         val action = intent?.action ?: run { stopSelf(); return START_NOT_STICKY }
-        if (action !in setOf(ACTION_START, ACTION_INSTALL, ACTION_INSTALL_BROWSER, ACTION_INSTALL_FULL)) { stopSelf(); return START_NOT_STICKY }
+        if (action !in setOf(ACTION_START, ACTION_INSTALL, ACTION_INSTALL_BROWSER, ACTION_INSTALL_FULL, ACTION_INSTALL_VISION)) { stopSelf(); return START_NOT_STICKY }
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Linux Desktop and VNC", NotificationManager.IMPORTANCE_LOW))
         val actionInstalling = action == ACTION_INSTALL || action == ACTION_INSTALL_BROWSER ||
-            action == ACTION_INSTALL_FULL
+            action == ACTION_INSTALL_FULL || action == ACTION_INSTALL_VISION
         if (actionInstalling) installing = true
         lastError = ""
         updateStatus(if (actionInstalling) "กำลังเตรียมติดตั้ง…" else "กำลังเปิด Linux Desktop…")
@@ -150,12 +159,17 @@ class LinuxDesktopService : Service() {
                     require(filesDir.usableSpace > when (action) {
                         ACTION_INSTALL_BROWSER -> 1_600_000_000L
                         ACTION_INSTALL_FULL -> 1_000_000_000L
+                        ACTION_INSTALL_VISION -> 600_000_000L
                         else -> 600_000_000L
                     }) {
                         "Not enough free storage for Linux packages"
                     }
                     val isBrowser = action == ACTION_INSTALL_BROWSER
                     val isFull = action == ACTION_INSTALL_FULL
+                    val isVision = action == ACTION_INSTALL_VISION
+                    if (isVision) require(installed(this)) {
+                        "ติดตั้ง Linux Desktop ก่อนเพิ่มการอ่านหน้าจอ"
+                    }
                     if (isFull) require(installed(this)) {
                         "ติดตั้งหน้าจอ Linux พื้นฐานก่อน"
                     }
@@ -167,11 +181,13 @@ class LinuxDesktopService : Service() {
                     val packages = when {
                         isBrowser -> "chromium xdotool"
                         isFull -> "xfce4 xfce4-terminal dbus adwaita-icon-theme"
+                        isVision -> "scrot tesseract-ocr tesseract-ocr-data-eng tesseract-ocr-data-tha"
                         else -> "tigervnc openbox xterm pcmanfm tint2 font-dejavu xdotool"
                     }
                     updateStatus(when {
                         isBrowser -> "กำลังดาวน์โหลด Chromium…"
                         isFull -> "กำลังติดตั้ง XFCE Desktop แบบเต็ม…"
+                        isVision -> "กำลังเพิ่มระบบอ่านตัวอักษรบนจอ Linux…"
                         else -> "กำลังดาวน์โหลดหน้าจอ Linux…"
                     })
                     // No separate apk update: --no-cache resolves package metadata.
@@ -209,11 +225,13 @@ class LinuxDesktopService : Service() {
                     when {
                         isBrowser -> require(browserInstalled(this)) { "ติดตั้ง Chromium ไม่ครบ" }
                         isFull -> require(fullInstalled(this)) { "ติดตั้ง XFCE ไม่ครบ" }
+                        isVision -> require(visionInstalled(this)) { "ติดตั้งเครื่องมือ OCR ไม่ครบ" }
                         else -> require(installed(this)) { "ติดตั้ง Xvnc/Openbox ไม่ครบ" }
                     }
                     updateStatus(when {
                         isBrowser -> "✓ ติดตั้ง Chromium สำเร็จ"
                         isFull -> "✓ ติดตั้ง XFCE สำเร็จ · เปิดหน้าจอ Linux ใหม่"
+                        isVision -> "✓ เพิ่มระบบอ่านตัวอักษรบนหน้าจอ Linux แล้ว"
                         else -> "✓ ติดตั้งหน้าจอ Linux สำเร็จ · พร้อมเปิด"
                     })
                     if (!closing) completionNotification(true)

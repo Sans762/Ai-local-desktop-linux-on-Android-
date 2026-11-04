@@ -1306,6 +1306,23 @@ class MainActivity : Activity() {
                 }
                 if (desktopAdvancedVisible) {
                     spacer(this, 10)
+                    if (desktopReady && !LinuxDesktopService.visionInstalled(this@MainActivity)) {
+                        addButton(this, "↓  เพิ่มการอ่านตัวอักษรบนจอให้ AI (OCR)") {
+                            if (LinuxDesktopService.running) {
+                                notifyUser("ปิด Linux Desktop ก่อนติดตั้ง OCR")
+                            } else {
+                                startForegroundService(Intent(this@MainActivity,
+                                    LinuxDesktopService::class.java)
+                                    .setAction(LinuxDesktopService.ACTION_INSTALL_VISION))
+                                notifyUser("กำลังติดตั้ง OCR ภาษาไทยและอังกฤษ")
+                                showTab("control")
+                            }
+                        }
+                        spacer(this, 8)
+                    } else if (LinuxDesktopService.visionInstalled(this@MainActivity)) {
+                        addView(label("✓ AI อ่านตัวอักษรบนหน้าจอ Linux ได้", 12f, true, linuxGreen))
+                        spacer(this, 8)
+                    }
                     if (runningNow && LinuxDesktopService.ipAddress.isNotBlank()) {
                         val ip = LinuxDesktopService.ipAddress
                         addView(label("คอมเชื่อม VNC: $ip:5902", 12f, true, mint)
