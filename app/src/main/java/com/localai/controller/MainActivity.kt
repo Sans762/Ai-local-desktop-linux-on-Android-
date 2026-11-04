@@ -241,6 +241,15 @@ class MainActivity : Activity() {
         androidx.core.view.ViewCompat.requestApplyInsets(mainColumn)
         buildShell()
         showTab(if (store.hasPassword() && AiForegroundService.running) "workspace" else "control")
+        AutoUpdateScheduler.sync(this)
+        if (AutoUpdateScheduler.enabled(this) && Build.VERSION.SDK_INT >= 33 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            val prefs = getSharedPreferences("localai_signed_updates", MODE_PRIVATE)
+            if (!prefs.getBoolean("notification_asked", false)) {
+                prefs.edit().putBoolean("notification_asked", true).apply()
+                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 92)
+            }
+        }
     }
 
     private fun buildShell() {
@@ -949,6 +958,28 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         if (::serviceChip.isInitialized) refreshChip()
+        if (!AutoUpdateScheduler.enabled(this)) return
+        AutoUpdateScheduler.sync(this)
+        val apk = AutoUpdateScheduler.readyFile(this)
+        val version = AutoUpdateScheduler.pendingVersion(this)
+        if (apk != null && version.isNotBlank()) {
+            val prefs = getSharedPreferences("localai_signed_updates", MODE_PRIVATE)
+            if (prefs.getString("prompted_version", "") != version) {
+                prefs.edit().putString("prompted_version", version).apply()
+                android.app.AlertDialog.Builder(this)
+                    .setTitle("อัปเดตดาวน์โหลดเสร็จแล้ว")
+                    .setMessage("พร้อมติดตั้งเวอร์ชัน " + version +
+                        "\nLinux และโมเดลเดิมยังอยู่เมื่ออัปเดตด้วยลายเซ็นเดียวกัน")
+                    .setNegativeButton("ภายหลัง", null)
+                    .setPositiveButton("ติดตั้ง") { _, _ ->
+                        try {
+                            startActivity(VerifiedApkUpdate.installIntent(this, apk))
+                        } catch (e: Exception) {
+                            notifyUser("ติดตั้งไม่ได้: " + (e.message ?: "unknown"))
+                        }
+                    }.show()
+            }
+        }
     }
 
     @Deprecated("Back behavior for native tab navigation")
