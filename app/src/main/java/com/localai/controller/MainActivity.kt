@@ -1138,6 +1138,31 @@ class MainActivity : Activity() {
                     12f, false, sub))
             }
             spacer(this, 12)
+            addButton(this, "⇄  ย้ายข้อมูลจากแอปเก่า", true) {
+                if (LinuxDesktopService.running || LinuxDesktopService.installing ||
+                    LinuxInstallService.running || AiForegroundService.running ||
+                    ModelDownloadService.running || BackupService.running ||
+                    RestoreService.running) {
+                    notifyUser("ปิด AI และหน้าจอ Linux ก่อนย้ายข้อมูล")
+                } else {
+                    android.app.AlertDialog.Builder(this@MainActivity)
+                        .setTitle("นำข้อมูลเดิมกลับมา")
+                        .setMessage("เลือกไฟล์สำรอง .tar.gz จากแอปเก่า " +
+                            "ระบบจะกู้คืน Linux และโมเดลที่ยังไม่มี " +
+                            "รวมประวัติแชทโดยไม่เขียนทับข้อมูลที่มีอยู่\n\n" +
+                            "ไม่ต้องถอนการติดตั้งแอปเดิม")
+                        .setNegativeButton("ยกเลิก", null)
+                        .setPositiveButton("เลือกไฟล์สำรอง") { _, _ ->
+                            startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "*/*"
+                            }, 45)
+                        }.show()
+                }
+            }
+            spacer(this, 5)
+            addView(label(RestoreService.progress.take(90), 11f, false, sub))
+            spacer(this, 12)
             addButton(this, if (dataAdvancedExpanded)
                 "−  ซ่อนตัวเลือกเพิ่มเติม" else "＋  สำรองข้อมูลและตัวเลือกอื่น") {
                 dataAdvancedExpanded = !dataAdvancedExpanded
@@ -1148,14 +1173,16 @@ class MainActivity : Activity() {
                 addView(label("สำรองข้อมูลของคุณ", 14f, true, linuxGreen))
                 spacer(this, 6)
                 addView(label("รวมไฟล์ Linux, AI และประวัติแชทเป็นไฟล์เดียว " +
-                    "ไฟล์สำรองยังไม่เข้ารหัสและไม่มีระบบกู้คืนอัตโนมัติ",
+                    "ไฟล์สำรองยังไม่เข้ารหัส เก็บไว้ในที่ปลอดภัย " +
+                    "และนำกลับได้ด้วยปุ่มย้ายข้อมูลจากแอปเก่า",
                     11.5f, false, sub))
                 spacer(this, 8)
                 addView(label(BackupService.progress.take(120), 11f, false, sub))
                 spacer(this, 8)
                 addButton(this, "⬇  สำรองข้อมูล") {
                     if (LinuxDesktopService.running || LinuxDesktopService.installing ||
-                        AiForegroundService.running || ModelDownloadService.running || BackupService.running) {
+                        AiForegroundService.running || ModelDownloadService.running ||
+                        BackupService.running || RestoreService.running) {
                         notifyUser("ปิด AI และหน้าจอ Linux ก่อนสำรองข้อมูล")
                     } else {
                         startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
@@ -1233,6 +1260,16 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK) return
         val uri = data?.data ?: return
+        if (requestCode == 45) {
+            try {
+                startForegroundService(Intent(this, RestoreService::class.java)
+                    .putExtra(RestoreService.EXTRA_SOURCE, uri))
+                notifyUser("กำลังกู้คืนข้อมูลเดิม ดูความคืบหน้าในแถบแจ้งเตือน")
+            } catch (e: Exception) {
+                notifyUser("เริ่มกู้คืนไม่ได้: " + (e.message ?: "unknown"))
+            }
+            return
+        }
         if (requestCode == 44) {
             try {
                 startForegroundService(Intent(this, BackupService::class.java)
