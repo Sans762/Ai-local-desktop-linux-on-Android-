@@ -41,6 +41,7 @@ class LinuxAgent(
         .put("ready", linux.available())
         .put("model", imports.modelFile()?.name ?: "")
         .put("scope", "ALPINE_LINUX_ONLY")
+        .put("desktopRunning", LinuxDesktopService.running)
         .put("androidControl", false)
         .put("approvalRequired", true)
 
@@ -54,6 +55,14 @@ class LinuxAgent(
         val freeMb = memoryInfo.availMem / 1048576L
         if (freeMb < 1250L) return@withLock JSONObject().put("ok", false).put("error", "LOW_RAM_FOR_MODEL")
 
+        val desktopHint = if (LinuxDesktopService.running) {
+            "A Linux X11 desktop is running on DISPLAY=:1. You may propose " +
+                "DISPLAY=:1 xdotool key/type/mousemove/click commands only after " +
+                "explicit user approval. You CANNOT observe a screenshot, " +
+                "so do not invent visual verification."
+        } else {
+            "Linux Desktop is not running; use command-line actions only."
+        }
         val system = """
             You are a local Alpine Linux ARM64 assistant, not an Android controller.
             The user asks for a Linux task. Return one JSON object only:
@@ -63,8 +72,10 @@ class LinuxAgent(
             Installed packages use apk, not apt. Files stay in the Linux rootfs.
             Never claim execution or success: you only PREPARE commands for review.
             Explain limitations instead of inventing successful results.
+            Only use network tools that are installed inside Alpine for web tasks.
+            Never claim a website was read without actual command output.
             Do not include markdown fences, surrounding prose, or extra fields.
-        """.trimIndent()
+        """.trimIndent() + "\n" + desktopHint
         val draft = try {
             withContext(Dispatchers.IO) {
                 val handle = Llama.loadModel(model.absolutePath, LlamaConfig(contextSize = 2048, threads = 4))
