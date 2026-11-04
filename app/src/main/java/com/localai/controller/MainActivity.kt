@@ -437,7 +437,7 @@ class MainActivity : Activity() {
                 setPadding(dp(10), dp(11), dp(10), dp(11))
                 addView(label("เช็กลิสต์", 14f, true))
                 spacer(this, 7)
-                val bar = android.widget.ProgressBar(this@MainActivity, null,
+                val progressBar = android.widget.ProgressBar(this@MainActivity, null,
                     android.R.attr.progressBarStyleHorizontal).apply {
                     max = 4
                     progress = completed
@@ -445,7 +445,7 @@ class MainActivity : Activity() {
                     progressBackgroundTintList = android.content.res.ColorStateList.valueOf(line)
                     contentDescription = "พร้อม $completed จาก 4 ขั้นตอน"
                 }
-                addView(bar, LinearLayout.LayoutParams(-1, dp(5)))
+                addView(progressBar, LinearLayout.LayoutParams(-1, dp(5)))
                 spacer(this, 5)
                 addSetupCheck(this, "รหัสผ่าน", "ตั้งรหัสผ่านเข้า AI",
                     store.hasPassword(), privacyBlue, "privacy")
