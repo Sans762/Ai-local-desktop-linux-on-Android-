@@ -4,6 +4,27 @@ let csrf = '';
 let busy = false;
 const intro = $('messages').innerHTML;
 
+/**
+ * Android WebView may not shrink 100dvh when the soft keyboard opens.
+ * Follow the visible viewport instead so the composer stays on-screen.
+ */
+function syncAppViewport() {
+  const viewport = window.visualViewport;
+  const height = Math.floor(
+    viewport && viewport.scale === 1 ? viewport.height : window.innerHeight
+  );
+  if (Number.isFinite(height) && height > 160) {
+    document.documentElement.style.setProperty('--app-height', height + 'px');
+  }
+}
+syncAppViewport();
+window.addEventListener('resize', syncAppViewport);
+window.addEventListener('orientationchange', syncAppViewport);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', syncAppViewport);
+}
+
+
 function show(which) {
   $('login').hidden = which !== 'login';
   $('dashboard').hidden = which !== 'dashboard';
@@ -105,6 +126,10 @@ async function chat() {
   }
 }
 function changeTab(name) {
+  if (document.activeElement && typeof document.activeElement.blur === 'function') {
+    document.activeElement.blur();
+  }
+  syncAppViewport();
   for (const button of document.querySelectorAll('[data-tab]')) {
     const selected = button.dataset.tab === name;
     button.classList.toggle('active', selected);
