@@ -97,13 +97,13 @@ jobs:
           if [[ "$AI_APK_KIND" == release ]]; then
             "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop'"
           else
-            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test.v011'"
+            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test.v012'"
           fi
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAI-LinuxDesktop-v0.11-APK
+          name: LocalAI-LinuxDesktop-v0.12-APK
           path: ${{ env.AI_APK }}
           if-no-files-found: error
 
@@ -119,14 +119,14 @@ jobs:
             echo "Stale workflow commit; do not publish an older APK over the latest build."
             exit 0
           fi
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.11-signed-ARM64.apk
-          if gh release view v0.11-linux-desktop >/dev/null 2>&1; then
-            gh release upload v0.11-linux-desktop LocalAI-LinuxDesktop-v0.11-signed-ARM64.apk --clobber
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.12-signed-ARM64.apk
+          if gh release view v0.12-linux-desktop >/dev/null 2>&1; then
+            gh release upload v0.12-linux-desktop LocalAI-LinuxDesktop-v0.12-signed-ARM64.apk --clobber
           else
-            gh release create v0.11-linux-desktop LocalAI-LinuxDesktop-v0.11-signed-ARM64.apk \
+            gh release create v0.12-linux-desktop LocalAI-LinuxDesktop-v0.12-signed-ARM64.apk \
               --target "$GITHUB_SHA" \
-              --title "Local AI Linux Desktop v0.11 - ARM64" \
-              --notes "Linux Desktop v0.11: persistent owner-controlled release signature, same Android package as v0.6, update checker, Openbox, PC VNC and AI web. Existing debug builds signed with a different key cannot be updated in place. Back up app data before migration; no Android device test has been completed."
+              --title "Local AI Linux Desktop v0.12 - ARM64" \
+              --notes "Linux Desktop v0.12: persistent owner-controlled release signature, same Android package as v0.6, update checker, Openbox, PC VNC and AI web. Existing debug builds signed with a different key cannot be updated in place. Back up app data before migration; no Android device test has been completed."
           fi
       - name: Publish debug test APK as GitHub prerelease (not an in-place upgrade)
         if: github.ref == 'refs/heads/main' && env.AI_APK_KIND == 'debug'
@@ -140,18 +140,18 @@ jobs:
             echo "Stale workflow commit; do not publish an older APK over the latest build."
             exit 0
           fi
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.11-Verified-TEST-ARM64.apk
-          if gh release view v0.11-verified-test >/dev/null 2>&1; then
-            gh release upload v0.11-verified-test LocalAI-LinuxDesktop-v0.11-Verified-TEST-ARM64.apk --clobber
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.12-Verified-TEST-ARM64.apk
+          if gh release view v0.12-verified-test >/dev/null 2>&1; then
+            gh release upload v0.12-verified-test LocalAI-LinuxDesktop-v0.12-Verified-TEST-ARM64.apk --clobber
           else
-            gh release create v0.11-verified-test LocalAI-LinuxDesktop-v0.11-Verified-TEST-ARM64.apk \
+            gh release create v0.12-verified-test LocalAI-LinuxDesktop-v0.12-Verified-TEST-ARM64.apk \
               --prerelease --target "$GITHUB_SHA" \
-              --title "Local AI Linux Desktop v0.11 MONITOR + UPDATER TEST - ARM64" \
-              --notes "TEST APK with in-chat live four-panel CPU/GPU/RAM/network monitor and embedded noVNC Linux desktop, and in-app signed update downloader with SHA-256, certificate, app ID and version verification plus Android installer prompt. GPU displays unavailable when Android does not expose data. No Android UI control; X11 agent mouse typing still requires user approval. Test app is debug signed, so automatic in-place updates remain unavailable without persistent signing. Never uninstall an app with important Linux data. No Android device E2E verification yet."
+              --title "Local AI Linux Desktop v0.12 COMPACT UI TEST - ARM64" \
+              --notes "Compact UI TEST APK: fixed Android 17 edge-to-edge status bar overlap, replaced oversized welcome screen with compact status, single-line four-step checklist and five color-coded category buttons. Selected settings category shows only its relevant controls. Includes local AI, Linux desktop, noVNC, monitor and signed in-app update checker. Installs separately as TEST v0.12 to preserve previous app data. Android device E2E verification and persistent signing are still incomplete."
           fi
           EXPECTED="sha256:$(sha256sum "$AI_APK" | awk '{print $1}')"
-          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.11-verified-test" \
-            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.11-Verified-TEST-ARM64.apk") | .digest')"
+          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.12-verified-test" \
+            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.12-Verified-TEST-ARM64.apk") | .digest')"
           if [[ "$ACTUAL" != "$EXPECTED" ]]; then
             echo "::error::Published APK SHA-256 mismatch: expected $EXPECTED, got $ACTUAL"
             exit 1
