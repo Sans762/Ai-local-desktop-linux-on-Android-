@@ -100,6 +100,57 @@ async function history() {
     for (const m of data.messages) addMessage(m.role, m.content || '');
   } catch (e) { setText('chatHint', e.message); }
 }
+/**
+ * Commands start from the chat box, not a second embedded Linux control panel.
+ * A command proposal is NEVER executed without a per-task approval.
+ */
+function isLinuxAction(message) {
+  const input = message.trim();
+  return /^(?:ช่วย(?:ฉัน|ผม)?\s*)?(?:เปิด(?:โปรแกรม|แอป|เว็บ|เบราว์เซอร์|เทอร์มินัล|ไฟล์|โฟลเดอร์|หน้าต่าง)|คลิก|กด(?:ปุ่ม|ที่)|ขยับเมาส์|พิมพ์(?:ข้อความ|ใน|ลง)|สร้าง(?:โฟลเดอร์|ไฟล์)|ติดตั้ง(?:โปรแกรม|แพ็กเกจ)|สลับหน้าต่าง|ปิด(?:หน้าต่าง|โปรแกรม)|สั่ง(?:งาน)?\s*Linux|ควบคุม\s*Linux)\b?/iu.test(input)
+    || /^(?:please\s+)?(?:open|launch|click|move(?:\s+the)?\s+mouse|type|install(?:\s+a)?\s+package|create(?:\s+a)?\s+(?:file|folder)|close(?:\s+the)?\s+window)\b/i.test(input);
+}
+async function planChatLinuxTask(task, indicator) {
+  const data = await request('/api/linux/plan', {task});
+  indicator.remove();
+  const text = [
+    data.summary || 'AI เตรียมคำสั่ง Linux แล้ว',
+    ...((data.commands || []).map((command, i) => (i + 1) + '. ' + command)),
+    'ตรวจคำสั่งก่อนอนุมัติ · ยังไม่มีการรัน'
+  ].join('\n');
+  const bubble = addMessage('assistant', text);
+  const actions = document.createElement('div');
+  actions.className = 'approval-actions';
+  const approve = document.createElement('button');
+  approve.textContent = 'อนุมัติให้ทำ';
+  approve.type = 'button';
+  const cancel = document.createElement('button');
+  cancel.textContent = 'ยกเลิก';
+  cancel.type = 'button';
+  actions.append(approve, cancel);
+  bubble.appendChild(actions);
+  cancel.addEventListener('click', () => {
+    actions.remove();
+    addMessage('assistant', 'ยกเลิกแล้ว ไม่มีการรันคำสั่ง');
+  });
+  approve.addEventListener('click', async () => {
+    approve.disabled = true;
+    cancel.disabled = true;
+    approve.textContent = 'กำลังทำงาน…';
+    try {
+      const result = await request('/api/linux/execute', {planId:data.planId});
+      actions.remove();
+      addMessage('assistant', (result.summary || 'งาน Linux') +
+        (result.completed ?
+          '\n✓ รันคำสั่งครบแล้ว (ยังไม่ยืนยันผลจากภาพหน้าจอ)' :
+          '\n⚠ บางขั้นตอนไม่สำเร็จ') +
+        (result.desktopObservation ? '\nหน้าต่างที่ตรวจพบ: ' + result.desktopObservation.slice(0,180) : ''));
+    } catch (e) {
+      actions.remove();
+      addMessage('assistant', 'ยังทำงานไม่ได้: ' + e.message);
+    }
+  });
+}
+
 async function chat() {
   if (busy) return;
   const textarea = $('message');
@@ -112,12 +163,19 @@ async function chat() {
   const indicator = addMessage('assistant', 'กำลังคิดและประมวลผลในเครื่อง…', true);
   setText('chatHint', 'กำลังทำงาน • โมเดลอาจใช้เวลาตามขนาดและ RAM');
   try {
-    const data = await request('/api/chat', { message: content });
-    indicator.remove();
-    addMessage('assistant', data.reply || '(ไม่มีคำตอบ)');
+    if (isLinuxAction(content)) {
+      await planChatLinuxTask(content, indicator);
+    } else {
+      const data = await request('/api/chat', { message: content });
+      indicator.remove();
+      addMessage('assistant', data.reply || '(ไม่มีคำตอบ)');
+    }
   } catch (e) {
     indicator.remove();
-    addMessage('assistant', 'ส่งไม่สำเร็จ: ' + e.message + ' · ลองกดส่งอีกครั้ง');
+    const reason = e.message === 'INSTALL_QWEN_GGUF_FIRST'
+      ? 'ยังไม่ได้ติดตั้งโมเดล GGUF · ไปที่ตั้งค่าเพื่อเพิ่มโมเดล'
+      : e.message;
+    addMessage('assistant', 'ส่งไม่สำเร็จ: ' + reason + ' · ลองอีกครั้ง');
     // Do not lose a failed message; also do not overwrite a new draft.
     if (!textarea.value.trim()) textarea.value = content;
   } finally {
