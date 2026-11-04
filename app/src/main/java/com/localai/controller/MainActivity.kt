@@ -800,7 +800,7 @@ class MainActivity : Activity() {
             addView(label("เวอร์ชันแอป: " + AppUpdateManager(this@MainActivity).currentVersion(), 13f, true))
             spacer(this, 9)
             val updateStatus = label(
-                if (packageName.endsWith(".test"))
+                if (packageName.contains(".test"))
                     "รุ่น TEST ยังอัปเดตทับกันไม่ได้ จนกว่าจะมีลายเซ็นถาวรที่ตรงกัน"
                 else AppUpdateDownloadService.progress, 12f, false, sub
             )
@@ -815,7 +815,7 @@ class MainActivity : Activity() {
                             when {
                                 !release.newer -> updateStatus.text =
                                     "คุณใช้แอปรุ่นล่าสุดที่รองรับแล้ว"
-                                packageName.endsWith(".test") -> {
+                                packageName.contains(".test") -> {
                                     updateStatus.text = "พบรุ่น " + release.version +
                                         " แต่แอป TEST ไม่สามารถติดตั้งทับแอปหลักได้"
                                     android.app.AlertDialog.Builder(this@MainActivity)
