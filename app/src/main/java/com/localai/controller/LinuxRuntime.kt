@@ -4,6 +4,7 @@ import android.content.Context
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import java.io.File
+import java.io.RandomAccessFile
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.zip.GZIPInputStream
@@ -89,7 +90,7 @@ class LinuxRuntime(private val context: Context) {
     }
 
     /** Local-only, one-shot Linux console command, not exposed on the remote HTTP API. */
-    fun command(command: String, timeoutSeconds: Long = 35): String {
+    fun command(command: String, timeoutSeconds: Long = 35, onOutput: ((String) -> Unit)? = null): String {
         require(installed() && binariesPresent()) { "Install Linux from Control Center first" }
         require(command.length in 1..1000) { "Command must have 1–1000 characters" }
         val cmd = listOf(proot.absolutePath, "-0", "-r", rootfs.absolutePath,
@@ -111,6 +112,7 @@ class LinuxRuntime(private val context: Context) {
                     for (line in lines) {
                         synchronized(output) {
                             if (output.length < 128_000) output.append(line.take(2_000)).append('\n')
+                            try { onOutput?.invoke(line.take(160)) } catch (_: Exception) { }
                         }
                     }
                 }
@@ -160,7 +162,26 @@ class LinuxRuntime(private val context: Context) {
         return builder.start()
     }
 
-    fun desktopLog(logName: String): String =
-        File(dir, "$logName.log").takeIf { it.isFile }?.readText()?.takeLast(5000) ?: ""
+    /** Read only the final 8 KiB of a process log. */
+    fun desktopLog(logName: String): String {
+        require(logName.matches(Regex("[a-z0-9-]{1,36}"))) { "Bad desktop log name" }
+        val file = File(dir, "$logName.log")
+        if (!file.isFile) return ""
+        return RandomAccessFile(file, "r").use { input ->
+            val count = minOf(input.length(), 8192L).toInt()
+            input.seek(input.length() - count)
+            val data = ByteArray(count)
+            input.readFully(data)
+            String(data, Charsets.UTF_8).takeLast(5000)
+        }
+    }
+
+    /** Safe, non-mutating Linux self-test for end-user diagnostics. */
+    fun diagnostics(): String = command(
+        "printf 'LINUX_OK\\n'; uname -m; cat /etc/alpine-release; apk --version; " +
+            "test -w /root && echo HOME_WRITABLE; " +
+            "test -e /usr/bin/Xvnc && echo XVNC_INSTALLED || echo XVNC_MISSING",
+        timeoutSeconds = 25
+    )
 
 }
