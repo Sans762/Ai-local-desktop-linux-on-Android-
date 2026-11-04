@@ -175,7 +175,9 @@ class LinuxDesktopService : Service() {
                         else -> "กำลังดาวน์โหลดหน้าจอ Linux…"
                     })
                     // No separate apk update: --no-cache resolves package metadata.
-                    val setup = "apk add --no-cache $packages"
+                    // Alpine's native --wait avoids colliding with an active package transaction.
+                    // Never delete /lib/apk/db/lock: an active apk may own it.
+                    val setup = "apk --wait 60 add --no-cache $packages"
                     var lastNoticeAt = 0L
                     val result = linux.command(setup, timeoutSeconds = 480) { line ->
                         val now = System.currentTimeMillis()
@@ -197,6 +199,9 @@ class LinuxDesktopService : Service() {
                     require(result.trimEnd().endsWith("[exit 0]")) {
                         when {
                             "[timeout:" in result -> "ดาวน์โหลด Linux ใช้เวลานานเกินไป กรุณาตรวจ Wi-Fi แล้วลองใหม่"
+                            "Unable to lock database" in result || "Failed to open apk database" in result ->
+                                "ตัวจัดการแพ็กเกจ Linux กำลังถูกใช้งานอยู่หรือมีงานค้าง " +
+                                    "กรุณารอให้การติดตั้งก่อนหน้าจบ แล้วลองอีกครั้ง (ยังไม่ลบข้อมูล)"
                             "UNTRUSTED" in result -> "ตรวจไฟล์แพ็กเกจไม่ผ่าน: " + result.takeLast(450)
                             else -> "ติดตั้งไม่สำเร็จ: " + result.takeLast(700)
                         }

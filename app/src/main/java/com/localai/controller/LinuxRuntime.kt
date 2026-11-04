@@ -12,9 +12,15 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.zip.GZIPInputStream
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 
 /** Embedded Alpine userland on Android's Linux kernel, isolated inside app storage with PRoot. */
 class LinuxRuntime(private val context: Context) {
+    companion object {
+        // All app-created LinuxRuntime instances share one APK writer lock.
+        // This does not replace Alpine's own inter-process database lock.
+        private val apkWriterLock = ReentrantLock(true)
+    }
     private val dir = File(context.filesDir, "embedded_linux")
     private val rootfs = File(dir, "alpine-rootfs")
     private val nativeDir = File(context.applicationInfo.nativeLibraryDir)
@@ -177,6 +183,20 @@ class LinuxRuntime(private val context: Context) {
 
     /** Local-only, one-shot Linux console command, not exposed on the remote HTTP API. */
     fun command(command: String, timeoutSeconds: Long = 35, onOutput: ((String) -> Unit)? = null): String {
+        // Serialize local apk transactions, including commands from the
+        // terminal and AI agent, while the package installer is running.
+        val writesPackages = Regex("""(?m)(^|[;&|])\s*apk\s+(?:--[\w-]+\s+)*(?:add|del|fix|upgrade|update)\b""")
+            .containsMatchIn(command)
+        if (!writesPackages) return runCommand(command, timeoutSeconds, onOutput)
+        try {
+            apkWriterLock.lockInterruptibly()
+            return runCommand(command, timeoutSeconds, onOutput)
+        } finally {
+            if (apkWriterLock.isHeldByCurrentThread) apkWriterLock.unlock()
+        }
+    }
+
+    private fun runCommand(command: String, timeoutSeconds: Long, onOutput: ((String) -> Unit)?): String {
         require(installed() && binariesPresent()) { "Install Linux from Control Center first" }
         require(command.length in 1..1000) { "Command must have 1–1000 characters" }
         val cmd = listOf(proot.absolutePath, "-0", "-r", rootfs.absolutePath,

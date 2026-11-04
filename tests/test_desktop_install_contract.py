@@ -14,7 +14,10 @@ assert 'fun refreshPackageDns()' in runtime
 assert "getLinkProperties(network)?.dnsServers" in runtime
 assert 'linux.ensureDesktopRepositories()' in service
 assert 'linux.command(setup, timeoutSeconds = 480)' in service
-assert 'apk add --no-cache $packages' in service
+assert 'apk --wait 60 add --no-cache $packages' in service
+assert 'apkWriterLock.lockInterruptibly()' in runtime
+assert 'apkWriterLock.unlock()' in runtime
+assert 'กรุณารอให้การติดตั้งก่อนหน้าจบ' in service
 assert 'apk update && apk add' not in service
 assert 'NetworkCapabilities.NET_CAPABILITY_VALIDATED' in service
 assert 'fun status(context: Context)' in service
