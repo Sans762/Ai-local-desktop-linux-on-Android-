@@ -1,8 +1,11 @@
-# Local AI Linux Desktop for Android (v0.8)
+# Local AI Linux Desktop for Android (v0.13)
 
 A Linux-only AI workstation running in a native ARM64 Android app. **No Termux. No root. No Android UI automation.**
 
 **Read the development roadmap and missing features:** [DEVELOPMENT_PLAN_TH.md](DEVELOPMENT_PLAN_TH.md) (Thai).
+
+## Automatic updates (v0.13 source)
+The stable, owner-signed Android app can check GitHub Releases every ~12 hours via JobScheduler, automatically download a verified APK on an unmetered network, and show a notification prompting the Android installer. It keeps the same production application ID. Android still requires user confirmation for installation. **This is not active for old .test apps**, and production signing secrets have not yet been configured, so no verified v0.13 stable APK is published. See [auto-update setup](AUTO_UPDATE_TH.md).
 
 ## What is in the source
 - Embedded Alpine Linux ARM64 rootfs with PRoot, using Android's kernel and the app's private filesystem.
@@ -34,5 +37,6 @@ A Linux-only AI workstation running in a native ARM64 Android app. **No Termux. 
 - [Development plan (Thai)](DEVELOPMENT_PLAN_TH.md)
 - [Getting started: Linux desktop and PC VNC (Thai)](README_DESKTOP_TH.md)
 - [Build workflow](.github/workflows/build-apk.yml)
+- [Automatic signed updates and first-time setup (Thai)](AUTO_UPDATE_TH.md)
 
 This is an evolving prototype, not a verified production-ready remote desktop.
