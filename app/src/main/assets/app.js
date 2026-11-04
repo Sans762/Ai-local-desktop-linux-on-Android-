@@ -106,7 +106,7 @@ async function history() {
  */
 function isLinuxAction(message) {
   const input = message.trim();
-  return /^(?:ช่วย(?:ฉัน|ผม)?\s*)?(?:เปิด(?:โปรแกรม|แอป|เว็บ|เบราว์เซอร์|เทอร์มินัล|ไฟล์|โฟลเดอร์|หน้าต่าง)|คลิก|กด(?:ปุ่ม|ที่)|ขยับเมาส์|พิมพ์(?:ข้อความ|ใน|ลง)|สร้าง(?:โฟลเดอร์|ไฟล์)|ติดตั้ง(?:โปรแกรม|แพ็กเกจ)|สลับหน้าต่าง|ปิด(?:หน้าต่าง|โปรแกรม)|สั่ง(?:งาน)?\s*Linux|ควบคุม\s*Linux)\b?/iu.test(input)
+  return /^(?:ช่วย(?:ฉัน|ผม)?\s*)?(?:เปิด(?:โปรแกรม|แอป|เว็บ|เบราว์เซอร์|เทอร์มินัล|ไฟล์|โฟลเดอร์|หน้าต่าง)|คลิก|กด(?:ปุ่ม|ที่)|ขยับเมาส์|พิมพ์(?:ข้อความ|ใน|ลง)|สร้าง(?:โฟลเดอร์|ไฟล์)|ติดตั้ง(?:โปรแกรม|แพ็กเกจ)|สลับหน้าต่าง|ปิด(?:หน้าต่าง|โปรแกรม)|สั่ง(?:งาน)?\s*Linux|ควบคุม\s*Linux)/iu.test(input)
     || /^(?:please\s+)?(?:open|launch|click|move(?:\s+the)?\s+mouse|type|install(?:\s+a)?\s+package|create(?:\s+a)?\s+(?:file|folder)|close(?:\s+the)?\s+window)\b/i.test(input);
 }
 async function planChatLinuxTask(task, indicator) {
