@@ -513,6 +513,40 @@ class MainActivity : Activity() {
                 else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:18788")))
             }
             spacer(this, 9)
+            addView(label("เวอร์ชันแอป: " + AppUpdateManager(this@MainActivity).currentVersion(), 13f, true))
+            spacer(this, 9)
+            val updateStatus = label("ตรวจสอบรุ่นใหม่ได้จาก GitHub Releases", 12f, false, sub)
+            addView(updateStatus)
+            spacer(this, 8)
+            addButton(this, "↻  ตรวจหาอัปเดตแอป", true) {
+                updateStatus.text = "กำลังตรวจสอบอัปเดตผ่าน GitHub…"
+                Thread({
+                    try {
+                        val release = AppUpdateManager(this@MainActivity).checkLatest()
+                        runOnUiThread {
+                            if (release.newer) {
+                                updateStatus.text = "พบเวอร์ชันใหม่: " + release.version
+                                android.app.AlertDialog.Builder(this@MainActivity)
+                                    .setTitle("มีอัปเดต Local AI Linux Desktop")
+                                    .setMessage("รุ่นใหม่ " + release.version +
+                                        "\\nไฟล์ APK จะเปิดจาก GitHub โดยตรง Android จะถามยืนยันก่อนติดตั้ง" +
+                                        "\\n\\nหมายเหตุ: APK รุ่น Debug เดิมอาจมีลายเซ็นต่างกันและติดตั้งทับไม่ได้")
+                                    .setNegativeButton("ภายหลัง", null)
+                                    .setPositiveButton("ดาวน์โหลดอัปเดต") { _, _ ->
+                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.downloadUrl)))
+                                    }.show()
+                            } else {
+                                updateStatus.text = "คุณใช้รุ่นล่าสุดอยู่แล้ว (" + release.version + ")"
+                            }
+                        }
+                    } catch (e: Exception) {
+                        runOnUiThread { updateStatus.text = "ตรวจอัปเดตไม่ได้: " + (e.message ?: "ไม่ทราบสาเหตุ") }
+                    }
+                }, "native-update-check").start()
+            }
+            spacer(this, 9)
+            addView(label("อัปเดตผ่านระบบติดตั้งของ Android เท่านั้น • ไม่สามารถติดตั้งเงียบ ๆ ได้ • ถ้าระบบแจ้งลายเซ็นต่างกัน อย่าเพิ่งถอนแอปเดิม เพราะข้อมูล Linux จะหาย", 11.5f, false, sub))
+            spacer(this, 10)
             addView(label("Linux AI Agent ขออนุมัติก่อนรันคำสั่ง • เดสก์ท็อปเปิดจากแอปและให้คอมเชื่อมผ่าน VNC ได้ • ยังไม่ได้ทดสอบบน Android 17 • PRoot ไม่ใช่ VM", 12f, false, sub))
         }
         spacer(content, 26)
