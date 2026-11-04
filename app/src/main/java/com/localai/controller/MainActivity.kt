@@ -942,8 +942,8 @@ class MainActivity : Activity() {
                     statusLine.text = when {
                         isActive -> "✓  หน้าจอ Linux เปิดอยู่"
                         isWorking -> "◉  กำลังติดตั้ง…"
+                        error.isNotBlank() -> "✕  Linux Desktop หยุดหรือเปิดไม่ได้"
                         isReady -> "✓  ติดตั้งแล้ว พร้อมเปิด"
-                        error.isNotBlank() -> "✕  ติดตั้งไม่สำเร็จ"
                         else -> "○  ยังไม่ได้ติดตั้ง"
                     }
                     statusLine.setTextColor(when {
@@ -954,7 +954,7 @@ class MainActivity : Activity() {
                     progressLine.text = when {
                         isWorking -> LinuxDesktopService.status(this@MainActivity).take(125)
                         isActive -> "แตะดูหน้าจอเพื่อเปิดโปรแกรม Linux"
-                        error.isNotBlank() && !isReady -> error.take(120)
+                        error.isNotBlank() -> error.take(120)
                         isReady -> "กรอกรหัสด้านล่างเพื่อเปิดหน้าจอ"
                         else -> "ดาวน์โหลดครั้งแรกต้องใช้อินเทอร์เน็ต"
                     }
