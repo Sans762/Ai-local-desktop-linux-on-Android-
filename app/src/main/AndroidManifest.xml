@@ -17,7 +17,9 @@
         android:roundIcon="@drawable/ic_launcher_local_ai"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:extractNativeLibs="true">
-        <activity android:name=".MainActivity" android:exported="true">
+        <activity android:name=".MainActivity"
+            android:exported="true"
+            android:enableOnBackInvokedCallback="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
