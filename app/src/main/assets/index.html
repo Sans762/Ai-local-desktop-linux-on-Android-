@@ -50,6 +50,26 @@
         <button class="tab" type="button" data-tab="about"><span class="tab-icon">◫</span><span>ระบบ</span></button>
       </nav>
       <section id="chatTab" class="chat-tab">
+        <div class="live-control" aria-label="Linux monitor and desktop">
+          <div class="live-head">
+            <div><strong>สถานะเครื่องและหน้าจอ Linux</strong><small>ข้อมูลจริงจากมือถือ · ไม่ใช่หน้าจอ Android</small></div>
+            <button id="desktopToggle" class="subtle" type="button" aria-expanded="false" aria-controls="chatDesktopPanel">▣ ดูจอ Linux</button>
+          </div>
+          <div class="monitor-grid">
+            <div class="monitor-item monitor-cpu"><span>CPU</span><b id="liveCpu">กำลังตรวจ…</b><small id="liveCpuDetail">หน่วยประมวลผล</small></div>
+            <div class="monitor-item monitor-gpu"><span>GPU</span><b id="liveGpu">ไม่มีข้อมูล</b><small>Android อาจไม่อนุญาตให้อ่าน</small></div>
+            <div class="monitor-item monitor-ram"><span>RAM</span><b id="liveRam">—</b><small>หน่วยความจำว่าง</small></div>
+            <div class="monitor-item monitor-net"><span>เครือข่าย</span><b id="liveNetwork">กำลังตรวจ…</b><small id="liveNetworkDetail">การรับ–ส่งข้อมูลของแอป</small></div>
+          </div>
+          <div id="chatDesktopPanel" class="chat-desktop-panel" hidden>
+            <div class="live-screen-title">
+              <strong>Linux Desktop แบบโต้ตอบ</strong>
+              <button id="desktopHide" class="text-button" type="button">ซ่อนจอ</button>
+            </div>
+            <p id="desktopHint" class="desktop-hint">เริ่ม Linux Desktop ที่หน้า “ตั้งค่า → หน้าจอ Linux” ก่อน</p>
+            <div id="desktopFrameHost" class="desktop-frame-host"></div>
+          </div>
+        </div>
         <div id="messages" class="messages" aria-live="polite" aria-label="ประวัติสนทนา">
           <div class="intro">
             <div class="intro-mark"><span>✦</span><i></i></div>
