@@ -43,6 +43,11 @@ jobs:
           set -euo pipefail
           APK="app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
+          unzip -l "$APK" | grep -q 'assets/desktop.html'
+          unzip -l "$APK" | grep -q 'assets/novnc/core/rfb.js'
+          unzip -l "$APK" | grep -q 'assets/novnc/vendor/pako/lib/zlib/inflate.js'
+          unzip -l "$APK" | grep -q 'assets/alpine-rootfs.bundle'
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libproot.so'
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml > /tmp/linux-only-manifest.txt
           if grep -E 'BIND_ACCESSIBILITY_SERVICE|FOREGROUND_SERVICE_MEDIA_PROJECTION|android.accessibilityservice|ScreenShareService|AutomationAccessibilityService' /tmp/linux-only-manifest.txt; then
             echo "Unexpected Android remote control declaration found"
