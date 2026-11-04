@@ -62,6 +62,10 @@ for color in ('linuxGreen', 'aiPurple', 'desktopOrange', 'privacyBlue', 'dataPin
     assert color in native, f"Missing color category {color}"
 assert 'advancedSettingsVisible' in native, "Advanced controls must not overwhelm new users"
 assert "AccessibilityService" not in manifest and "mediaProjection" not in manifest
+assert "AppUpdateDownloadService" in manifest, "Missing in-app updater service"
+assert "FileProvider" in manifest, "Missing restricted APK FileProvider"
+assert "REQUEST_INSTALL_PACKAGES" in manifest, "User-approved update installer permission missing"
+assert "android.permission.ACCESS_NETWORK_STATE" in manifest
 
 required_app = {
     "login","dashboard","chatTab","deviceTab","aboutTab",
@@ -69,6 +73,7 @@ required_app = {
     "linuxPlanCommands","linuxExecute","linuxCancel","linuxCommand",
     "linuxRun","linuxCheck","linuxOutput","linuxReady","model","ram",
 }
+required_app |= {"liveCpu","liveGpu","liveRam","liveNetwork","desktopToggle","desktopHide","chatDesktopPanel","desktopFrameHost","desktopHint"}
 required_vnc = {"status","connect","disconnect","password","viewport","screen","cover"}
 assert required_app <= app.ids, f"Missing app UI ids: {required_app - app.ids}"
 assert required_vnc <= vnc.ids, f"Missing desktop UI ids: {required_vnc - vnc.ids}"
