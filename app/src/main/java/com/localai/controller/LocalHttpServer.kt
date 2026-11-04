@@ -22,6 +22,7 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
                       private val listenPort: Int = AiForegroundService.PORT) {
     private val pool = Executors.newFixedThreadPool(4)
     private val linuxAgent = LinuxAgent(context, ImportRepository(context, store, db), db)
+    private val monitor = LinuxWorkspaceMonitor(context)
     @Volatile private var alive = false
     private var server: ServerSocket? = null
     private var acceptor: Thread? = null
@@ -103,7 +104,7 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
         val headers = linkedMapOf("Content-Type" to type, "Content-Length" to data.size.toString(),
             "Cache-Control" to "no-store", "Connection" to "close", "X-Content-Type-Options" to "nosniff",
             "Referrer-Policy" to "no-referrer", "X-Frame-Options" to "DENY",
-            "Content-Security-Policy" to "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+            "Content-Security-Policy" to "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-src http://127.0.0.1:6080; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
         headers.putAll(extra)
         val out = BufferedOutputStream(socket.getOutputStream())
         out.write("HTTP/1.1 $status $statusText\r\n".toByteArray(StandardCharsets.US_ASCII))
@@ -168,6 +169,7 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
                 }
                 when (req.method to req.path) {
                     "GET" to "/api/status" -> json(sock, 200, ai.status().put("csrf", store.csrfToken()))
+                    "GET" to "/api/monitor" -> json(sock, 200, monitor.snapshot())
                     "GET" to "/api/history" -> json(sock, 200, JSONObject().put("ok", true).put("messages", db.recentMessages(35)))
                     "GET" to "/api/linux/status" ->
                         json(sock, 200, linuxAgent.status())
