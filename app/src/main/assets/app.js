@@ -13,7 +13,7 @@ function syncAppViewport() {
   const height = Math.floor(
     viewport && viewport.scale === 1 ? viewport.height : window.innerHeight
   );
-  if (Number.isFinite(height) && height > 160) {
+  if (Number.isFinite(height) && height > 80) {
     document.documentElement.style.setProperty('--app-height', height + 'px');
   }
 }
