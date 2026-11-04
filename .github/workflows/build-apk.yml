@@ -140,39 +140,10 @@ jobs:
             --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.14-signed-ARM64.apk") | .digest')"
           test "$EXPECTED" == "$ACTUAL"
           echo "Verified signed release APK digest: $ACTUAL"
-      - name: Publish verified v0.14 TEST APK on GitHub Releases
-        if: github.ref == 'refs/heads/main' && env.AI_APK_KIND == 'debug'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          MAIN_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
-          if [[ "$MAIN_SHA" != "$GITHUB_SHA" ]]; then
-            echo "Skipping stale workflow; only publish the latest commit."
-            exit 0
-          fi
-          TEST_APK="LocalAI-LinuxDesktop-v0.14-BackGestureFix-TEST-ARM64.apk"
-          cp "$AI_APK" "$TEST_APK"
-          test -s "$TEST_APK"
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$TEST_APK" | grep -q "package: name='com.localai.linuxagent.desktop.test.v014'"
-          if gh release view v0.14-verified-test >/dev/null 2>&1; then
-            echo "::error::v0.14-verified-test already exists; refusing to overwrite a signed APK."
-            exit 1
-          fi
-          gh release create v0.14-verified-test "$TEST_APK" \
-            --prerelease --target "$GITHUB_SHA" \
-            --title "Local AI Linux Desktop v0.14 TEST - Android back gesture fix" \
-            --notes "Direct Android ARM64 APK. Fixes Android 13+ predictive swipe back and nested settings navigation. Debug-signed TEST build: NOT an in-place update for older APKs. Do NOT uninstall an app containing Linux files or models to install this. GitHub CI verifies this APK, but Android 17 end-to-end hardware testing remains outstanding."
-          EXPECTED="sha256:$(sha256sum "$TEST_APK" | awk '{print $1}')"
-          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.14-verified-test" \
-            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.14-BackGestureFix-TEST-ARM64.apk") | .digest')"
-          if [[ "$EXPECTED" != "$ACTUAL" ]]; then
-            echo "::error::Published SHA-256 mismatch"
-            exit 1
-          fi
-          echo "Published direct GitHub APK verified: $ACTUAL"
-
+      # Debug builds remain CI artifacts only. Never publish new TEST APKs as
+      # user-facing updates: GitHub hosted debug keys are ephemeral and Android
+      # cannot update an existing install signed with a different certificate.
+      # Stable user APKs are published only with owner-controlled signing keys.
       - name: Remove temporary keystore
         if: always()
         shell: bash
