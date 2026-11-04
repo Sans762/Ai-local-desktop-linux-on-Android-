@@ -1,0 +1,4 @@
+<resources>
+  <string name="app_name">Local AI Native</string>
+  <string name="accessibility_description">Optional local-only screen UI automation. Enable only if you want this app to tap or type on your phone. No background automation is performed without an explicit request.</string>
+</resources>
