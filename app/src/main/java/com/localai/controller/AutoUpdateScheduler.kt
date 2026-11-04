@@ -75,7 +75,24 @@ object AutoUpdateScheduler {
         prefs(context).edit().remove("ready_version").apply()
     }
 
+    fun requestNow(context: Context) {
+        if (!enabled(context) || readyFile(context) != null) return
+        val scheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+        scheduler.schedule(
+            JobInfo.Builder(SOON_ID, ComponentName(context, AutoUpdateJobService::class.java))
+                .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)
+                .setMinimumLatency(2_000L)
+                .build()
+        )
+    }
+
     fun sync(context: Context) {
+        val pending = pendingVersion(context)
+        if (pending.isNotBlank() &&
+            AppUpdateManager(context).currentVersion().startsWith(pending + ".")) {
+            clearReady(context)
+            VerifiedApkUpdate.updateFile(context).delete()
+        }
         val scheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
         if (!enabled(context)) {
             scheduler.cancel(PERIODIC_ID)
