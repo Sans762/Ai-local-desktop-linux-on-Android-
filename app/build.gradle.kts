@@ -26,6 +26,7 @@ android {
         if (!keyFile.isNullOrBlank()) {
             create("persistent") {
                 storeFile = file(keyFile)
+                storeType = "pkcs12"
                 storePassword = System.getenv("AI_RELEASE_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("AI_RELEASE_KEY_ALIAS")
                 keyPassword = System.getenv("AI_RELEASE_KEY_PASSWORD")
