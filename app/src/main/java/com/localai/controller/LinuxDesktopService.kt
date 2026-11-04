@@ -64,6 +64,7 @@ class LinuxDesktopService : Service() {
     private val owned = mutableListOf<Process>()
     private var relay: DesktopTcpRelay? = null
     private var lanWeb: LocalHttpServer? = null
+    private var desktopViewer: DesktopWebServer? = null
     private var worker: Thread? = null
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -152,6 +153,7 @@ class LinuxDesktopService : Service() {
             }
         }
         relay = DesktopTcpRelay(ip, VNC_PORT, LOCAL_VNC_PORT).also { it.start() }
+        desktopViewer = DesktopWebServer(this).also { it.start() }
         if (AppStore(this).hasPassword()) {
             val store = AppStore(this)
             val db = ChatDatabase(this)
@@ -186,6 +188,8 @@ class LinuxDesktopService : Service() {
     }
 
     private fun cleanup() {
+        try { desktopViewer?.close() } catch (_: Exception) {}
+        desktopViewer = null
         try { lanWeb?.close() } catch (_: Exception) {}
         lanWeb = null
         try { relay?.close() } catch (_: Exception) {}
