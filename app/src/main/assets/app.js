@@ -36,8 +36,9 @@ async function refresh() {
     setText('ram', (s.ramAvailableMb || 0).toLocaleString() + ' MB');
     setText('service', s.working ? 'กำลังประมวลผล…' : 'พร้อมใช้งาน');
     setText('onlineLabel', s.working ? 'AI is thinking' : 'Local only');
-    const control = s.controlAllowed ? (s.accessibilityEnabled ? 'เปิดพร้อมใช้งาน' : 'รอสิทธิ์ Accessibility') : 'ปิดอยู่';
+    const control = s.linuxInstalled ? 'Alpine installed' : 'Not installed';
     setText('control', control);
+    setText('linuxReady', s.linuxInstalled ? '● Alpine Linux ติดตั้งแล้ว' : '○ ติดตั้ง Alpine จาก Control Center ก่อน');
     setText('sysModel', s.model || 'ยังไม่มีโมเดล');
     setText('sysRam', (s.ramAvailableMb || 0).toLocaleString() + ' MB');
     setText('sysControl', control);
@@ -150,36 +151,64 @@ for (const refreshButton of [ $('refresh'), ...document.querySelectorAll('[data-
 for (const logoutButton of [ $('logout'), ...document.querySelectorAll('[data-logout]') ]) {
   logoutButton.addEventListener('click', logout);
 }
-$('observe').addEventListener('click', async () => {
-  setText('snapshot', 'กำลังอ่านหน้าจอ…');
+let pendingLinuxPlan = null;
+function linuxOutput(value) { setText('linuxOutput', value); }
+function showLinuxPlan(show) { $('linuxPlanView').hidden = !show; }
+$('linuxPlan').addEventListener('click', async () => {
+  const task = $('linuxTask').value.trim();
+  if (!task) { linuxOutput('กรุณาเขียนงานที่ต้องการให้ AI ทำใน Linux'); return; }
+  $('linuxPlan').disabled = true;
+  pendingLinuxPlan = null;
+  showLinuxPlan(false);
+  linuxOutput('โมเดลกำลังสร้างแผนคำสั่ง Linux…');
   try {
-    const data = await request('/api/observe');
-    setText('snapshot', JSON.stringify(data.screen, null, 2));
-  } catch (e) { setText('snapshot', e.message); }
+    const data = await request('/api/linux/plan', {task});
+    pendingLinuxPlan = data.planId;
+    setText('linuxSummary', data.summary);
+    setText('linuxPlanCommands', data.commands.map((c, i) => (i + 1) + '. $ ' + c).join('\n\n'));
+    showLinuxPlan(true);
+    linuxOutput('สร้างแผนแล้ว ยังไม่ได้รันคำสั่งใด ๆ');
+  } catch (e) { linuxOutput('วางแผนไม่สำเร็จ: ' + e.message); }
+  finally { $('linuxPlan').disabled = false; }
 });
-for (const button of document.querySelectorAll('[data-action]')) {
-  button.addEventListener('click', async () => {
-    const action = button.dataset.action;
-    const args = { action };
-    if (action === 'tap') {
-      const x = Number($('tapX').value), y = Number($('tapY').value);
-      if (!$('tapX').value || !$('tapY').value || !Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0) {
-        setText('snapshot', 'โปรดกรอกพิกัด X และ Y ที่ถูกต้อง'); return;
-      }
-      args.x = x; args.y = y;
-    }
-    if (action === 'type') {
-      args.text = $('typeText').value;
-      if (!args.text) { setText('snapshot', 'โปรดกรอกข้อความที่ต้องการพิมพ์'); return; }
-    }
-    button.disabled = true;
-    setText('snapshot', 'กำลังส่งคำสั่ง…');
-    try {
-      const result = await request('/api/action', args);
-      setText('snapshot', JSON.stringify(result, null, 2));
-    } catch (e) { setText('snapshot', e.message); }
-    finally { button.disabled = false; }
-  });
-}
+$('linuxCancel').addEventListener('click', () => {
+  pendingLinuxPlan = null;
+  showLinuxPlan(false);
+  linuxOutput('ยกเลิกแผนแล้ว ไม่มีการรันคำสั่ง');
+});
+$('linuxExecute').addEventListener('click', async () => {
+  if (!pendingLinuxPlan) return;
+  if (!window.confirm('คุณตรวจคำสั่ง Linux ทุกบรรทัดแล้ว และยืนยันให้รันจริงใน Alpine Linux ใช่หรือไม่?')) return;
+  const planId = pendingLinuxPlan;
+  pendingLinuxPlan = null;
+  showLinuxPlan(false);
+  $('linuxExecute').disabled = true;
+  linuxOutput('กำลังดำเนินงานใน Alpine Linux…');
+  try {
+    const data = await request('/api/linux/execute', {planId});
+    linuxOutput(data.results.map(x => '$ ' + x.command + '\n' + x.output).join('\n\n') +
+      '\n\n' + (data.completed ? '✓ เสร็จสิ้น' : '⚠ หยุดเมื่อคำสั่งผิดพลาด'));
+  } catch (e) { linuxOutput('Linux execution error: ' + e.message); }
+  finally { $('linuxExecute').disabled = false; }
+});
+$('linuxRun').addEventListener('click', async () => {
+  const command = $('linuxCommand').value.trim();
+  if (!command) return;
+  if (!window.confirm('รันคำสั่งนี้ใน Alpine Linux จริงหรือไม่?\n\n' + command)) return;
+  $('linuxRun').disabled = true;
+  linuxOutput('กำลังรัน Linux command…');
+  try {
+    const result = await request('/api/linux/command', {command});
+    linuxOutput('$ ' + result.command + '\n' + result.output);
+  } catch (e) { linuxOutput('Linux error: ' + e.message); }
+  finally { $('linuxRun').disabled = false; }
+});
+$('linuxCheck').addEventListener('click', async () => {
+  try {
+    const data = await request('/api/linux/status');
+    setText('linuxReady', data.ready ? '● Alpine Linux พร้อมใช้งาน' : '○ ยังต้องติดตั้ง Alpine Linux จาก Control Center');
+    linuxOutput(JSON.stringify(data, null, 2));
+  } catch (e) { linuxOutput('Linux status error: ' + e.message); }
+});
 refresh().then(s => { if (s) history(); });
 setInterval(() => { if (!document.hidden) refresh(); }, 12000);
