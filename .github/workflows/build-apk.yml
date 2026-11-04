@@ -110,6 +110,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          MAIN_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "$MAIN_SHA" != "$GITHUB_SHA" ]]; then
+            echo "Stale workflow commit; do not publish an older APK over the latest build."
+            exit 0
+          fi
           cp "$AI_APK" LocalAI-LinuxDesktop-v0.9-signed-ARM64.apk
           if gh release view v0.9-linux-desktop >/dev/null 2>&1; then
             gh release upload v0.9-linux-desktop LocalAI-LinuxDesktop-v0.9-signed-ARM64.apk --clobber
@@ -126,15 +131,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.9-DEBUG-ARM64.apk
-          if gh release view v0.9-debug-test >/dev/null 2>&1; then
-            gh release upload v0.9-debug-test LocalAI-LinuxDesktop-v0.9-DEBUG-ARM64.apk --clobber
+          MAIN_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha')"
+          if [[ "$MAIN_SHA" != "$GITHUB_SHA" ]]; then
+            echo "Stale workflow commit; do not publish an older APK over the latest build."
+            exit 0
+          fi
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.9-Verified-TEST-ARM64.apk
+          if gh release view v0.9-verified-test >/dev/null 2>&1; then
+            gh release upload v0.9-verified-test LocalAI-LinuxDesktop-v0.9-Verified-TEST-ARM64.apk --clobber
           else
-            gh release create v0.9-debug-test LocalAI-LinuxDesktop-v0.9-DEBUG-ARM64.apk \
+            gh release create v0.9-verified-test LocalAI-LinuxDesktop-v0.9-Verified-TEST-ARM64.apk \
               --prerelease --target "$GITHUB_SHA" \
               --title "Local AI Linux Desktop v0.9 TEST - ARM64" \
               --notes "TEST APK only: debug signed; Android may refuse to update a prior debug APK with a different signature. DO NOT uninstall your original app if it contains Linux files, models or chats. Includes Alpine setup notifications, optional Chromium installer, Linux diagnostics, Android SAF backup export, and LAN shell-command restrictions. Device-level testing and backup restore remain incomplete. Prerelease is excluded from the signed in-app updater."
           fi
+          EXPECTED="sha256:$(sha256sum "$AI_APK" | awk '{print $1}')"
+          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.9-verified-test" \
+            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.9-Verified-TEST-ARM64.apk") | .digest')"
+          if [[ "$ACTUAL" != "$EXPECTED" ]]; then
+            echo "::error::Published APK SHA-256 mismatch: expected $EXPECTED, got $ACTUAL"
+            exit 1
+          fi
+          echo "Published APK SHA-256 verified: $EXPECTED"
+
       - name: Remove temporary keystore
         if: always()
         shell: bash
