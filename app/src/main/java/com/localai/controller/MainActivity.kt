@@ -346,7 +346,7 @@ class MainActivity : Activity() {
             spacer(this, 8)
             addView(label("Alpine Linux ARM64 + PRoot ทำงานบน kernel ของ Android โดยไม่ใช้ Termux หรือ Root", 13f, false, sub))
             spacer(this, 8)
-            addView(label("รุ่นนี้ไม่มี Accessibility, ไม่มี MediaProjection และไม่มีการควบคุม Android ผ่านรีโมท • ระบบ GUI Linux/VNC ยังไม่ได้ติดตั้ง", 12f, false, sub))
+            addView(label("ไม่มี Accessibility หรือการควบคุม Android • Linux GUI ต้องติดตั้งโปรแกรมเพิ่มในขั้นตอน 07 และเริ่มจากแอป", 12f, false, sub))
         }
         cardBlock(content) {
             addView(label("06  /  Linux built-in · Alpine ARM64", 12f, true, mint))
@@ -395,15 +395,92 @@ class MainActivity : Activity() {
             addView(label("โปรดระวัง: คำสั่ง Linux สามารถแก้ไฟล์ใน rootfs ของแอปได้ อย่ารันคำสั่งที่ไม่รู้จัก", 11.5f, false, sub))
         }
         cardBlock(content) {
-            addView(label("07  /  ระบบและข้อจำกัด", 12f, true, mint))
+            addView(label("07  /  Linux Desktop · Remote จากคอม", 12f, true, mint))
+            spacer(this, 10)
+            val desktopReady = LinuxDesktopService.installed(this@MainActivity)
+            val desktopStatus = label(
+                when {
+                    LinuxDesktopService.running -> "●  เดสก์ท็อป Linux เปิดอยู่"
+                    LinuxDesktopService.installing -> "◉  กำลังติดตั้งโปรแกรมเดสก์ท็อป"
+                    desktopReady -> "●  พร้อมเริ่ม Linux Desktop"
+                    else -> "○  ยังไม่มีโปรแกรมเดสก์ท็อป"
+                }, 15f, true, if (LinuxDesktopService.running) mint else sub
+            )
+            addView(desktopStatus)
+            spacer(this, 6)
+            addView(label("เดสก์ท็อป Openbox พร้อมจัดการไฟล์และเปิด Terminal • คอมเชื่อมผ่าน VNC บน Wi-Fi/VPN ส่วนตัว", 12f, false, sub))
+            spacer(this, 12)
+            addButton(this, "↓  ติดตั้ง Linux Desktop (อินเทอร์เน็ตครั้งแรก)") {
+                if (!LinuxRuntime(this@MainActivity).available()) {
+                    notifyUser("ติดตั้ง Alpine Linux จากขั้นตอน 06 ก่อน")
+                } else {
+                    startForegroundService(Intent(this@MainActivity, LinuxDesktopService::class.java)
+                        .setAction(LinuxDesktopService.ACTION_INSTALL))
+                    desktopStatus.text = "กำลังติดตั้ง TigerVNC / Openbox / File Manager… ตรวจในแถบแจ้งเตือน"
+                    notifyUser("กำลังติดตั้งเดสก์ท็อป Linux")
+                }
+            }
+            spacer(this, 12)
+            addView(label("รหัสผ่าน VNC (8 ตัวแรกที่ใช้ยืนยันตัวตน)", 12f, false, sub))
+            spacer(this, 7)
+            val vncPassword = field("ตั้งรหัสผ่าน 8–16 ตัวอักษรภาษาอังกฤษ/ตัวเลข", true)
+            addView(vncPassword)
+            spacer(this, 9)
+            addButton(this, "▶  เริ่ม Linux Desktop + เปิดให้คอมเชื่อม", true) {
+                if (!LinuxDesktopService.installed(this@MainActivity)) {
+                    notifyUser("ติดตั้งโปรแกรม Linux Desktop ก่อน")
+                } else if (!store.hasPassword()) {
+                    notifyUser("ตั้งรหัสผ่านของ AI Web ในขั้นตอน 03 ก่อน")
+                } else {
+                    val password = vncPassword.text.toString()
+                    if (!password.matches(Regex("[A-Za-z0-9]{8,16}"))) {
+                        notifyUser("รหัส VNC ต้องมี 8–16 ตัวอักษรอังกฤษหรือตัวเลข")
+                    } else {
+                        startForegroundService(Intent(this@MainActivity, LinuxDesktopService::class.java)
+                            .setAction(LinuxDesktopService.ACTION_START)
+                            .putExtra(LinuxDesktopService.EXTRA_PASSWORD, password))
+                        vncPassword.text.clear()
+                        desktopStatus.text = "กำลังเปิด Linux Desktop…"
+                        ui.postDelayed({ if (currentTab == "control") showTab("control") }, 2600)
+                    }
+                }
+            }
+            spacer(this, 9)
+            addButton(this, "■  หยุด Linux Desktop / รีโมท") {
+                stopService(Intent(this@MainActivity, LinuxDesktopService::class.java))
+                ui.postDelayed({ if (currentTab == "control") showTab("control") }, 600)
+            }
+            spacer(this, 10)
+            val ip = LinuxDesktopService.ipAddress
+            if (LinuxDesktopService.running && ip.isNotBlank()) {
+                addView(label("คอมต่อ VNC: $ip:5902", 15f, true, mint).apply { setTextIsSelectable(true) })
+                spacer(this, 7)
+                addView(label("เว็บ AI บนคอม: http://$ip:18789", 13f, true, mint).apply { setTextIsSelectable(true) })
+                spacer(this, 5)
+                addView(label("เว็บใช้รหัสผ่าน AI ที่ตั้งในขั้นตอน 03", 11f, false, sub))
+            } else {
+                addView(label(LinuxDesktopService.message.take(250), 11f, false, sub))
+            }
+            if (LinuxDesktopService.lastError.isNotBlank()) {
+                spacer(this, 6)
+                addView(label(LinuxDesktopService.lastError.take(340), 11f, false, Color.rgb(255, 177, 183)))
+            }
+            spacer(this, 11)
+            addButton(this, "↻  อัปเดตสถานะ Desktop") { showTab("control") }
+            spacer(this, 10)
+            addView(label("ความปลอดภัย: เปิดรีโมทเมื่อใช้จริงเท่านั้น • VNC และ HTTP ไม่เข้ารหัส ต้องใช้ Wi-Fi ส่วนตัวหรือ VPN เท่านั้น ห้ามส่งพอร์ต 5902/18789 ออกอินเทอร์เน็ต", 11.5f, false, sub))
+        }
+        cardBlock(content) {
+            addView(label("08  /  ระบบและข้อจำกัด", 12f, true, mint))
             spacer(this, 8)
             addView(label("Android Native • Loopback Server 18788 • SQLite Memory • GGUF CPU", 12.5f, false, sub))
             spacer(this, 9)
             addButton(this, "เปิดเว็บ Dashboard ในเบราว์เซอร์") {
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:18788")))
+                if (!AiForegroundService.running) notifyUser("กรุณาเริ่มบริการ AI ก่อนเปิดเว็บ")
+                else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:18788")))
             }
             spacer(this, 9)
-            addView(label("Linux AI Agent จำกัดการสั่งงานอยู่ใน Alpine userland และขออนุมัติก่อนรันทุกแผน • Linux GUI/VNC และการเชื่อมตรงกับ ChatGPT ยังไม่รองรับ • PRoot ไม่ใช่ security sandbox", 12f, false, sub))
+            addView(label("Linux AI Agent ขออนุมัติก่อนรันคำสั่ง • เดสก์ท็อปเปิดจากแอปและให้คอมเชื่อมผ่าน VNC ได้ • ยังไม่ได้ทดสอบบน Android 17 • PRoot ไม่ใช่ VM", 12f, false, sub))
         }
         spacer(content, 26)
     }
