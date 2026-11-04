@@ -25,6 +25,16 @@ assert 'if (actionInstalling) installing = true' in service
 assert 'val ip = privateIp()' in service
 assert 'if (ip != null)' in service
 assert 'private fun startDesktop(linux: LinuxRuntime, password: String, ip: String?)' in service
+# Xvnc on Android PRoot must have an app-private writable /tmp.
+assert "fun prepareDesktopTemp()" in runtime
+assert 'File(rootfs, "tmp/.X11-unix")' in runtime
+assert 'Os.chmod(folder.absolutePath, 1023)' in runtime
+assert 'Files.isSymbolicLink(folder.toPath())' in runtime
+assert 'linux.prepareDesktopTemp()' in service
+assert 'listOf(":1", "-nolock", "-geometry"' in service
+assert 'LOCAL_VNC_PORT), 300' in service, "Do not replace an active local desktop"
+assert 'ดูสาเหตุที่เปิด Linux ไม่ได้' in ui
+assert 'setNeutralButton("ข้อมูลเทคนิค")' in ui
 assert 'desktopAdvancedVisible' in ui
 assert '＋  ตัวเลือกเพิ่มเติม' in ui
 assert 'ui.postDelayed(ticker, 650)' in ui

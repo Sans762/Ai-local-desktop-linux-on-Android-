@@ -1035,12 +1035,27 @@ class MainActivity : Activity() {
                 val runningNow = LinuxDesktopService.running
                 val statusLine = label("", 14f, true, desktopOrange)
                 val progressLine = label("", 12f, false, sub)
-                val errorLink = actionButton("!  ดูสาเหตุที่ติดตั้งไม่ได้") {
+                val errorLink = actionButton("!  ดูสาเหตุที่เปิด Linux ไม่ได้") {
+                    val technical = LinuxDesktopService.error(this@MainActivity).ifBlank {
+                        "ไม่มีข้อผิดพลาดที่บันทึกไว้"
+                    }.takeLast(1800)
+                    val summary = when {
+                        "Xvnc" in technical && ("Permission denied" in technical ||
+                            ".X1-lock" in technical) ->
+                            "Linux Desktop เปิดไม่ขึ้นเพราะสิทธิ์ไฟล์ชั่วคราว\n" +
+                                "แอปรุ่นใหม่จะลองแก้อัตโนมัติ"
+                        else -> "เปิดหน้าจอ Linux ไม่สำเร็จ\nแตะข้อมูลเทคนิคเพื่อดูรายละเอียด"
+                    }
                     android.app.AlertDialog.Builder(this@MainActivity)
-                        .setTitle("รายละเอียดการติดตั้ง Linux")
-                        .setMessage(LinuxDesktopService.error(this@MainActivity).ifBlank {
-                            "ไม่มีข้อผิดพลาดที่บันทึกไว้"
-                        }.takeLast(1800))
+                        .setTitle("หน้าจอ Linux เปิดไม่ได้")
+                        .setMessage(summary)
+                        .setNeutralButton("ข้อมูลเทคนิค") { _, _ ->
+                            android.app.AlertDialog.Builder(this@MainActivity)
+                                .setTitle("รายละเอียด Xvnc")
+                                .setMessage(technical)
+                                .setPositiveButton("ปิด", null)
+                                .show()
+                        }
                         .setPositiveButton("ปิด", null)
                         .show()
                 }.apply {

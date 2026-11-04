@@ -1,6 +1,7 @@
 package com.localai.controller
 
 import android.content.Context
+import android.system.Os
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
@@ -147,6 +148,30 @@ class LinuxRuntime(private val context: Context) {
             // Only remove staging files created by this attempt; never touch an existing rootfs.
             staging.deleteRecursively()
             throw e
+        }
+    }
+
+    /**
+     * Xvnc creates Unix sockets in /tmp/.X11-unix and (unless disabled) an X
+     * server lock in /tmp. Old Alpine installs may have a non-writable /tmp
+     * because tar extraction did not retain directory modes. Repair ONLY
+     * app-private temp directory permissions; never erase Linux user files or
+     * a potentially active X session's sockets.
+     */
+    fun prepareDesktopTemp() {
+        require(available()) { "ติดตั้ง Linux ก่อนเปิดหน้าจอ" }
+        val dirs = listOf(File(rootfs, "tmp"), File(rootfs, "tmp/.X11-unix"))
+        for (folder in dirs) {
+            require(!Files.isSymbolicLink(folder.toPath())) {
+                "โฟลเดอร์ชั่วคราว Linux ไม่ปลอดภัย"
+            }
+            require(folder.isDirectory || folder.mkdirs()) {
+                "เตรียมโฟลเดอร์ชั่วคราว Linux ไม่สำเร็จ"
+            }
+            // 01777: world-writable sticky directory, the normal Linux /tmp mode.
+            // The Android application still owns and isolates these paths.
+            Os.chmod(folder.absolutePath, 1023)
+            require(folder.canWrite()) { "ไม่มีสิทธิ์เขียนไฟล์ชั่วคราว Linux" }
         }
     }
 

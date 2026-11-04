@@ -217,10 +217,24 @@ class LinuxDesktopService : Service() {
             password.take(8) + "' | /usr/bin/vncpasswd -f > /root/.vnc/passwd && chmod 600 /root/.vnc/passwd"
         val response = linux.command(auth, timeoutSeconds = 25)
         require(response.trimEnd().endsWith("[exit 0]")) { "Could not create VNC auth file" }
-        notifyStatus("Starting Linux graphics server…")
+        // Repair legacy rootfs /tmp permissions without deleting any existing
+        // desktop lock, socket or user data.
+        linux.prepareDesktopTemp()
+        // -nolock is needed because Android PRoot may block hard-linking the
+        // /tmp/.X1-lock used by Xorg. The service owns exactly one Xvnc :1,
+        // and a live listener on its loopback port must never be replaced.
+        try {
+            Socket().use { it.connect(InetSocketAddress("127.0.0.1", LOCAL_VNC_PORT), 300) }
+            error("พอร์ต Linux Desktop ถูกใช้งานอยู่ กรุณาหยุดหน้าจอเดิมก่อน")
+        } catch (_: java.net.ConnectException) {
+            // Port not in use: safe to start a new managed desktop.
+        } catch (_: java.net.SocketTimeoutException) {
+            error("ตรวจสอบพอร์ต Linux Desktop ไม่สำเร็จ กรุณาลองอีกครั้ง")
+        }
+        notifyStatus("กำลังเปิดหน้าจอ Linux…")
         val xvnc = linux.startDesktopProcess(
             "/usr/bin/Xvnc",
-            listOf(":1", "-geometry", "1280x720", "-depth", "24",
+            listOf(":1", "-nolock", "-geometry", "1280x720", "-depth", "24",
                 "-localhost", "yes", "-rfbport", LOCAL_VNC_PORT.toString(),
                 "-SecurityTypes", "VncAuth", "-rfbauth", "/root/.vnc/passwd",
                 "-AlwaysShared", "-nolisten", "tcp"),
@@ -229,7 +243,13 @@ class LinuxDesktopService : Service() {
         synchronized(owned) { owned.add(xvnc) }
         var socketReady = false
         for (attempt in 0 until 20) {
-            if (!xvnc.isAlive) throw IllegalStateException("Xvnc exited: " + linux.desktopLog("xvnc").takeLast(500))
+            if (!xvnc.isAlive) {
+                val log = linux.desktopLog("xvnc")
+                val reason = if ("Linking lock file" in log && "Permission denied" in log)
+                    "Linux Desktop สร้างไฟล์ล็อกไม่ได้ · โปรดลองเปิดใหม่"
+                    else "Xvnc exited: " + log.takeLast(500)
+                throw IllegalStateException(reason)
+            }
             try { Socket("127.0.0.1", LOCAL_VNC_PORT).use { socketReady = true } }
             catch (_: Exception) { Thread.sleep(300) }
             if (socketReady) break
