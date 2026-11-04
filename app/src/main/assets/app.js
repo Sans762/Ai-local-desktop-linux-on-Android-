@@ -71,6 +71,67 @@ async function refresh() {
     return null;
   }
 }
+let linuxDesktopActive = false;
+let desktopExpanded = false;
+const shortNum = (value, suffix='') =>
+  Number.isFinite(value) && value >= 0 ? value.toFixed(value < 10 ? 1 : 0) + suffix : '—';
+
+function updateDesktopFrame() {
+  const panel = $('chatDesktopPanel');
+  panel.hidden = !desktopExpanded;
+  $('desktopToggle').setAttribute('aria-expanded', String(desktopExpanded));
+  setText('desktopToggle', desktopExpanded ? '▣ ซ่อนจอ Linux' : '▣ ดูจอ Linux');
+  const host = $('desktopFrameHost');
+  if (!desktopExpanded || !linuxDesktopActive ||
+      window.location.hostname !== '127.0.0.1') {
+    host.replaceChildren();
+    setText('desktopHint', !linuxDesktopActive
+      ? 'ยังไม่ได้เปิด Linux Desktop · ไปที่ตั้งค่า → หน้าจอ Linux เพื่อเริ่ม'
+      : 'เมื่อเปิดจากคอม ให้ใช้ VNC Viewer ต่อ IP มือถือ:5902 · หน้าจอแบบฝังใช้ได้ในแอปบนมือถือ');
+    return;
+  }
+  setText('desktopHint', 'Linux Desktop ของคุณ · ใส่รหัส VNC เพื่อคลิกและพิมพ์ใน Linux (ไม่ควบคุม Android)');
+  if (!host.querySelector('iframe')) {
+    const frame = document.createElement('iframe');
+    frame.title = 'Linux Desktop แบบเรียลไทม์';
+    frame.loading = 'eager';
+    frame.referrerPolicy = 'no-referrer';
+    frame.src = 'http://127.0.0.1:6080/';
+    host.appendChild(frame);
+  }
+}
+async function refreshMonitor() {
+  if ($('dashboard').hidden) return;
+  try {
+    const data = await request('/api/monitor');
+    const cpu = data.systemCpuPercent >= 0 ? data.systemCpuPercent : data.appCpuPercent;
+    setText('liveCpu', shortNum(cpu, '%'));
+    setText('liveCpuDetail', data.systemCpuPercent >= 0 ? 'CPU ทั้งระบบ' :
+      data.appCpuPercent >= 0 ? 'เฉพาะแอป (หลายแกน)' : 'ระบบไม่อนุญาตให้อ่าน');
+    setText('liveGpu', data.gpuPercent == null ? 'ไม่มีข้อมูล' : shortNum(data.gpuPercent, '%'));
+    setText('liveRam', (data.freeRamMb ?? 0).toLocaleString() + ' MB');
+    setText('liveNetwork', data.networkType || 'ไม่ทราบ');
+    const down = shortNum(data.appRxKbs, ' KB/s');
+    const up = shortNum(data.appTxKbs, ' KB/s');
+    setText('liveNetworkDetail', 'แอป ↓' + down + ' ↑' + up);
+    if (linuxDesktopActive !== !!data.linuxDesktopRunning) {
+      linuxDesktopActive = !!data.linuxDesktopRunning;
+      updateDesktopFrame();
+    }
+  } catch (_) {
+    setText('liveCpu', 'ไม่พร้อม');
+    setText('liveNetwork', 'ไม่พร้อม');
+  }
+}
+$('desktopToggle').addEventListener('click', () => {
+  desktopExpanded = !desktopExpanded;
+  updateDesktopFrame();
+});
+$('desktopHide').addEventListener('click', () => {
+  desktopExpanded = false;
+  updateDesktopFrame();
+});
+
 function addMessage(role, content, waiting = false) {
   const list = $('messages');
   list.querySelector('.intro')?.remove();
@@ -154,7 +215,7 @@ $('loginForm').addEventListener('submit', async e => {
     await request('/login', { password: $('password').value });
     $('password').value = '';
     const s = await refresh();
-    if (s) await history();
+    if (s) { await history(); await refreshMonitor(); }
   } catch (e) { setText('loginError', e.message); }
 });
 $('send').addEventListener('click', chat);
@@ -235,5 +296,6 @@ $('linuxCheck').addEventListener('click', async () => {
     linuxOutput(JSON.stringify(data, null, 2));
   } catch (e) { linuxOutput('Linux status error: ' + e.message); }
 });
-refresh().then(s => { if (s) history(); });
+refresh().then(s => { if (s) { history(); refreshMonitor(); } });
 setInterval(() => { if (!document.hidden) refresh(); }, 12000);
+setInterval(() => { if (!document.hidden) refreshMonitor(); }, 5000);
