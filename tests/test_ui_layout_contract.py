@@ -45,6 +45,9 @@ app = Collector(); app.feed(html)
 vnc = Collector(); vnc.feed(desktop)
 assert not app.duplicates and not vnc.duplicates, "Duplicate UI IDs found"
 assert "width=device-width" in html and "width=device-width" in desktop
+assert "วันนี้ให้ช่วยอะไรดี?" in html, "Chat welcome copy should be friendly and short"
+assert "advanced-console" in html, "Manual Linux terminal must be collapsed for new users"
+assert "Beginner web UI:" in css, "Small-screen monitor and chat spacing not customized"
 assert "viewport-fit=cover" in html and "viewport-fit=cover" in desktop
 assert "--app-height" in css and "visualViewport" in js, "Keyboard viewport fix missing"
 assert "@media (max-width:430px)" in css and "@media (max-width:330px)" in css
