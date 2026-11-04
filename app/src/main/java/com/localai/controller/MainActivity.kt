@@ -925,17 +925,9 @@ class MainActivity : Activity() {
         }
         if (settingsCategory == "data") {
         categoryCard(content, dataPink) {
-            addView(label("⬇  สำรองข้อมูลและอัปเดตแอป", 14f, true, dataPink))
-            spacer(this, 8)
-            addView(label("ดูแลข้อมูลและติดตั้งอัปเดตของแอปได้ที่นี่", 12.5f, false, sub))
-            spacer(this, 9)
-            addButton(this, "เปิดหน้าแชท AI ผ่านเว็บเบราว์เซอร์") {
-                if (!AiForegroundService.running) notifyUser("กรุณาเริ่มบริการ AI ก่อนเปิดเว็บ")
-                else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:18788")))
-            }
-            spacer(this, 9)
-            addView(label("เวอร์ชันแอป: " + AppUpdateManager(this@MainActivity).currentVersion(), 13f, true))
-            spacer(this, 9)
+            addView(label("เวอร์ชัน " + AppUpdateManager(this@MainActivity).currentVersion(),
+                14f, true, dataPink))
+            spacer(this, 10)
             if (AutoUpdateScheduler.canUpdate(this@MainActivity)) {
                 val toggle = android.widget.CheckBox(this@MainActivity).apply {
                     text = "อัปเดตอัตโนมัติเมื่อใช้ Wi-Fi"
@@ -974,36 +966,49 @@ class MainActivity : Activity() {
                     updateStatus.text = "ระบบกำลังตรวจเมื่อเชื่อมต่อ Wi-Fi"
                 }
             } else {
-                addView(label("รุ่น TEST ยังอัปเดตทับไม่ได้ เพราะลายเซ็นไม่ตรงกัน",
+                addView(label("รุ่นทดสอบ · ยังอัปเดตทับแอปเดิมไม่ได้",
                     12f, false, sub))
-                spacer(this, 5)
-                addView(label("ระบบอัปเดตอัตโนมัติใช้กับรุ่น Release ที่มีคีย์ถาวรเท่านั้น",
-                    11.5f, false, sub))
             }
-            spacer(this, 11)
-            addView(label("สำรอง Linux + AI ก่อนเปลี่ยน APK", 14f, true, mint))
-            spacer(this, 7)
-            addView(label("บันทึก Alpine, โมเดล GGUF และฐานข้อมูลแชทเป็นไฟล์ .tar.gz ไปยังโฟลเดอร์ที่เลือก • ไฟล์สำรองไม่เข้ารหัสและอาจมีข้อมูลส่วนตัว • รุ่นนี้ยังไม่มีปุ่มกู้คืนอัตโนมัติ", 12f, false, sub))
-            spacer(this, 8)
-            addView(label(BackupService.progress.take(160), 12f, false, sub))
-            spacer(this, 8)
-            addButton(this, "⬇  สำรองข้อมูล Linux + AI") {
-                if (LinuxDesktopService.running || LinuxDesktopService.installing ||
-                    AiForegroundService.running || ModelDownloadService.running || BackupService.running) {
-                    notifyUser("หยุด Desktop, AI และการดาวน์โหลดก่อนสำรองข้อมูล")
-                } else {
-                    startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                        type = "application/gzip"
-                        putExtra(Intent.EXTRA_TITLE, "LocalAI-Linux-Backup-" +
-                            java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US)
-                                .format(java.util.Date()) + ".tar.gz")
-                    }, 44)
+            spacer(this, 12)
+            addButton(this, if (dataAdvancedExpanded)
+                "−  ซ่อนตัวเลือกเพิ่มเติม" else "＋  สำรองข้อมูลและตัวเลือกอื่น") {
+                dataAdvancedExpanded = !dataAdvancedExpanded
+                showTab("control")
+            }
+            if (dataAdvancedExpanded) {
+                spacer(this, 12)
+                addView(label("สำรองข้อมูลของคุณ", 14f, true, linuxGreen))
+                spacer(this, 6)
+                addView(label("รวมไฟล์ Linux, AI และประวัติแชทเป็นไฟล์เดียว " +
+                    "ไฟล์สำรองยังไม่เข้ารหัสและไม่มีระบบกู้คืนอัตโนมัติ",
+                    11.5f, false, sub))
+                spacer(this, 8)
+                addView(label(BackupService.progress.take(120), 11f, false, sub))
+                spacer(this, 8)
+                addButton(this, "⬇  สำรองข้อมูล") {
+                    if (LinuxDesktopService.running || LinuxDesktopService.installing ||
+                        AiForegroundService.running || ModelDownloadService.running || BackupService.running) {
+                        notifyUser("ปิด AI และหน้าจอ Linux ก่อนสำรองข้อมูล")
+                    } else {
+                        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            type = "application/gzip"
+                            putExtra(Intent.EXTRA_TITLE, "LocalAI-Linux-Backup-" +
+                                java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US)
+                                    .format(java.util.Date()) + ".tar.gz")
+                        }, 44)
+                    }
+                }
+                spacer(this, 10)
+                addButton(this, "เปิดแชทผ่านเบราว์เซอร์") {
+                    if (!AiForegroundService.running) {
+                        notifyUser("เปิด AI ก่อน")
+                    } else {
+                        startActivity(Intent(Intent.ACTION_VIEW,
+                            Uri.parse("http://127.0.0.1:18788")))
+                    }
                 }
             }
-
-            spacer(this, 10)
-            addView(label("Linux AI Agent ขออนุมัติก่อนรันคำสั่ง • เดสก์ท็อปเปิดจากแอปและให้คอมเชื่อมผ่าน VNC ได้ • ยังไม่ได้ทดสอบบน Android 17 • PRoot ไม่ใช่ VM", 12f, false, sub))
         }
         }
         spacer(content, 26)
