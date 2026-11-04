@@ -41,7 +41,7 @@ assert 'ui.postDelayed(ticker, 650)' in ui
 assert 'previousBusy != nowBusy' in ui
 assert 'LinuxDesktopService.status(this@MainActivity)' in ui
 assert 'LinuxDesktopService.error(this@MainActivity)' in ui
-assert 'ดูสาเหตุที่ติดตั้งไม่ได้' in ui
+assert 'ดูสาเหตุที่เปิด Linux ไม่ได้' in ui
 assert 'ตรวจในแถบแจ้งเตือน' not in ui, "Removed stale manual status placeholder"
 assert 'ดาวน์โหลดหน้าจอ Linux (ครั้งแรก)' not in ui, "Old overwhelming desktop panel"
 assert 'apk update && apk add' not in service
