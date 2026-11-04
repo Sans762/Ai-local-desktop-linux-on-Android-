@@ -27,6 +27,9 @@ class LinuxRuntime(private val context: Context) {
         if (installed()) { progress("Alpine Linux is already installed"); return }
         require(binariesPresent()) { "Missing PRoot executables in APK" }
         dir.mkdirs()
+        dir.listFiles()?.filter { it.isDirectory &&
+            it.name.matches(Regex("alpine-extract-[0-9]{8,20}")) }
+            ?.forEach { it.deleteRecursively() } // abandoned staging only, never rootfs
         val staging = File(dir, "alpine-extract-${System.currentTimeMillis()}")
         require(staging.mkdirs()) { "Cannot create Linux filesystem" }
         val links = mutableListOf<Pair<File, String>>()
@@ -36,6 +39,7 @@ class LinuxRuntime(private val context: Context) {
             context.assets.open("alpine-rootfs.bundle").use { raw ->
                 TarArchiveInputStream(GZIPInputStream(raw, 64 * 1024)).use { tar ->
                     while (true) {
+                        if (Thread.currentThread().isInterrupted) error("Linux installation interrupted")
                         val entry: TarArchiveEntry = tar.nextTarEntry ?: break
                         count++
                         require(count < 60_000) { "Too many Linux archive entries" }
@@ -54,6 +58,7 @@ class LinuxRuntime(private val context: Context) {
                                     val buffer = ByteArray(32768)
                                     var remaining = entry.size
                                     while (remaining > 0) {
+                                        if (Thread.currentThread().isInterrupted) error("Linux installation interrupted")
                                         val n = tar.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
                                         require(n > 0) { "Truncated rootfs archive" }
                                         out.write(buffer, 0, n); remaining -= n
