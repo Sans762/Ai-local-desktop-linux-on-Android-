@@ -9,6 +9,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 
 /** Long-running initial Linux extraction with visible progress; never overwrites existing rootfs. */
 class LinuxInstallService : Service() {
@@ -31,7 +32,15 @@ class LinuxInstallService : Service() {
         lastError = ""
         update(true)
         Thread({
+            var wakeLock: PowerManager.WakeLock? = null
             try {
+                val power = getSystemService(POWER_SERVICE) as PowerManager
+                wakeLock = power.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK, "LocalAI:AlpineInstall"
+                ).apply {
+                    setReferenceCounted(false)
+                    acquire(5L * 60_000L)
+                }
                 require(!LinuxDesktopService.running && !LinuxDesktopService.installing &&
                     !AiForegroundService.running && !BackupService.running) {
                     "Stop other Linux tasks before installing Alpine"
@@ -47,6 +56,8 @@ class LinuxInstallService : Service() {
                 progress = "Linux install failed: " + lastError
                 update(false)
             } finally {
+                try { if (wakeLock?.isHeld == true) wakeLock.release() }
+                catch (_: Exception) { }
                 running = false
                 stopForeground(STOP_FOREGROUND_DETACH)
                 stopSelf()
