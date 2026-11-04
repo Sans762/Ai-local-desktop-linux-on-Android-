@@ -22,7 +22,7 @@ assert 'fun error(context: Context)' in service
 assert 'completionNotification(false)' in service
 assert 'completionNotification(true)' in service
 assert 'if (actionInstalling) installing = true' in service
-assert 'val ip = privateIp()' in service
+assert 'val ip = if (password.length >= 8) privateIp() else null' in service, 'Short VNC PINs must not expose LAN access'
 assert 'if (ip != null)' in service
 assert "ACTION_INSTALL_FULL" in service
 assert 'xfce4 xfce4-terminal dbus adwaita-icon-theme' in service
