@@ -58,6 +58,12 @@ class MainActivity : Activity() {
     private var aiNameExpanded = false
     private var dataAdvancedExpanded = false
     private var desktopRefreshToken = 0
+    private var terminalCommandThread: Thread? = null
+    private var terminalBusy = false
+    private var terminalOutputText = "เทอร์มินัลพร้อมใช้งาน"
+    private var terminalOutputView: TextView? = null
+    private var terminalRunButton: TextView? = null
+    private var terminalStopButton: TextView? = null
     private val ui = Handler(Looper.getMainLooper())
 
     private val bg = Color.rgb(7, 12, 26)
@@ -323,11 +329,15 @@ class MainActivity : Activity() {
         currentTab = target
         refreshChip()
         workspaceTab.background = if (target == "workspace") gradient(14) else panel(cardDeep, 14)
-        controlsTab.background = if (target == "control") gradient(14) else panel(cardDeep, 14)
+        controlsTab.background = if (target != "workspace") gradient(14) else panel(cardDeep, 14)
         screenHost.removeAllViews()
+        terminalOutputView = null
+        terminalRunButton = null
+        terminalStopButton = null
         when (target) {
             "workspace" -> showWorkspace()
             "desktop" -> showDesktop()
+            "terminal" -> showTerminal()
             else -> showControls()
         }
     }
@@ -660,7 +670,11 @@ class MainActivity : Activity() {
                     12f, false, sub))
                 spacer(this, 12)
                 if (ready) {
-                    addButton(this, "▣  ไปตั้งค่าหน้าจอคอม", true) {
+                    addButton(this, "⌨  เปิดเทอร์มินัล", true) {
+                        showTab("terminal")
+                    }
+                    spacer(this, 8)
+                    addButton(this, "▣  ไปหน้าจอ Linux") {
                         settingsCategory = "desktop"
                         showTab("control")
                     }
@@ -709,6 +723,10 @@ class MainActivity : Activity() {
                 }
                 ui.postDelayed(watch, 800)
                 spacer(this, 10)
+                addButton(this, "♡  ส่งรายงานตรวจระบบให้ ChatGPT") {
+                    shareLinuxSupportReport()
+                }
+                spacer(this, 8)
                 addButton(this, if (advancedSettingsVisible)
                     "−  ซ่อนเครื่องมือขั้นสูง" else "＋  เครื่องมือขั้นสูง") {
                     advancedSettingsVisible = !advancedSettingsVisible
