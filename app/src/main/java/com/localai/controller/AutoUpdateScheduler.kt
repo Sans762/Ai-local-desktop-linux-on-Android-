@@ -88,8 +88,10 @@ object AutoUpdateScheduler {
 
     fun sync(context: Context) {
         val pending = pendingVersion(context)
-        if (pending.isNotBlank() &&
-            AppUpdateManager(context).currentVersion().startsWith(pending + ".")) {
+        val current = AppUpdateManager(context).currentVersion()
+        if (pending.isNotBlank() && current.startsWith(pending) &&
+            (current.length == pending.length || current[pending.length] == '-' ||
+                current[pending.length] == '+')) {
             clearReady(context)
             VerifiedApkUpdate.updateFile(context).delete()
         }
