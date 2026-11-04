@@ -66,9 +66,9 @@ class AppUpdateDownloadService : Service() {
                     setDataAndType(fileUri, "application/vnd.android.package-archive")
                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                require(installer.resolveActivity(packageManager) != null) {
-                    "ไม่พบโปรแกรมติดตั้ง APK ของ Android"
-                }
+                // Android will resolve the system installer when the user taps
+                // the finished notification. Do not hide this behind package
+                // visibility queries, which vary between Android builds.
                 progress = "ดาวน์โหลดและตรวจสอบผ่าน · แตะเพื่อติดตั้ง " + version
                 notifyUpdate(progress, false, installer)
             } catch (e: Exception) {
