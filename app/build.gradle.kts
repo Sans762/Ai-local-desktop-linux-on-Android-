@@ -9,6 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.localai.linuxagent.desktop"
+        manifestPlaceholders["appLabel"] = "Local AI Linux"
         minSdk = 26
         targetSdk = 36
         versionCode = 9
@@ -32,6 +33,13 @@ android {
         }
     }
     buildTypes {
+        getByName("debug") {
+            // Independent TEST installation: never overwrite a differently signed
+            // existing user app and never require deleting Linux/model data.
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            manifestPlaceholders["appLabel"] = "Local AI Linux TEST"
+        }
         release {
             isMinifyEnabled = false
             signingConfig = signingConfigs.findByName("persistent")
