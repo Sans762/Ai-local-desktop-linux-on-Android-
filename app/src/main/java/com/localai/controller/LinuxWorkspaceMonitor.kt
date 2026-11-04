@@ -18,13 +18,15 @@ class LinuxWorkspaceMonitor(private val context: Context) {
     private var prevRx = -1L
     private var prevTx = -1L
 
-    private fun cpuTicks(): LongArray? = try {
+    private fun cpuTicks(): LongArray? {
+        return try {
         val line = File("/proc/stat").useLines { it.firstOrNull() }
             ?: return null
         val fields = line.trim().split(Regex("\\s+"))
         if (fields.firstOrNull() != "cpu" || fields.size < 5) null
         else fields.drop(1).map { it.toLong() }.toLongArray()
-    } catch (_: Exception) { null }
+        } catch (_: Exception) { null }
+    }
 
     @Synchronized fun snapshot(): JSONObject {
         val now = SystemClock.elapsedRealtime()
