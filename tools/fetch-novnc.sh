@@ -11,5 +11,5 @@ tar -xzf "$TMP/novnc.tar.gz" -C "$TMP/extracted" --strip-components=1
 cp -R "$TMP/extracted/core" "$TMP/extracted/vendor" app/src/main/assets/novnc/
 cp "$TMP/extracted/LICENSE.txt" app/src/main/assets/novnc/LICENSE.txt
 test -s app/src/main/assets/novnc/core/rfb.js
-test -s app/src/main/assets/novnc/vendor/pako/pako.esm.mjs
+test -s app/src/main/assets/novnc/vendor/pako/lib/inflate.js
 echo "Embedded noVNC source pinned to $REV (see assets/novnc/LICENSE.txt)"
