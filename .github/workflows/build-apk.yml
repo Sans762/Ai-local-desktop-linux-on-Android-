@@ -121,7 +121,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success() && env.AI_APK_KIND == 'release'
         with:
-          name: LocalAI-LinuxDesktop-v0.18-APK
+          name: LocalAI-LinuxDesktop-owner-signed-APK
           path: ${{ env.AI_APK }}
           if-no-files-found: error
 
@@ -137,20 +137,30 @@ jobs:
             echo "Stale workflow commit; do not publish an older APK over the latest build."
             exit 0
           fi
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.18-signed-ARM64.apk
-          if gh release view v0.18-linux-desktop >/dev/null 2>&1; then
-            echo "::error::Refusing to overwrite an already published signed APK. Bump versionCode and versionName for the next update."
+          # Read the signed APK's actual version instead of publishing every build
+          # under a hard-coded v0.18 tag. The app's updater accepts this tag/asset shape.
+          BADGING="$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$AI_APK" | head -n 1)"
+          VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\\([^']*\\)'.*/\\1/p")"
+          if [[ ! "$VERSION_NAME" =~ ^([0-9]+)\\.([0-9]+)\\.[0-9]+([-+][a-zA-Z0-9._-]+)?$ ]]; then
+            echo "::error::Invalid versionName: $VERSION_NAME. Expected major.minor.patch"
             exit 1
           fi
-          gh release create v0.18-linux-desktop LocalAI-LinuxDesktop-v0.18-signed-ARM64.apk \
+          TAG="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}-linux-desktop"
+          ASSET="LocalAI-LinuxDesktop-v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}-signed-ARM64.apk"
+          cp "$AI_APK" "$ASSET"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::Refusing to overwrite signed APK at $TAG. Increase versionCode and versionName before the next release."
+            exit 1
+          fi
+          gh release create "$TAG" "$ASSET" \
             --target "$GITHUB_SHA" \
-            --title "Local AI Linux Desktop v0.18 - automatic signed updates" \
-            --notes "Owner-signed stable Android app. Checks for verified updates and downloads automatically on unmetered Wi-Fi via Android JobScheduler. A user must approve the Android system installer prompt. No silent installs, no app-ID changes, no user-data deletion. Older APKs with different signing keys are not updatable in-place. Runtime on Android 17 still requires device testing."
+            --title "Local AI Linux Desktop $VERSION_NAME - owner-signed update" \
+            --notes "Owner-signed Android app. Updates download over Wi-Fi and prompt the Android installer. Identical app ID and signing certificate are required for in-place updates. Android 17 end-to-end testing is still required."
           EXPECTED="sha256:$(sha256sum "$AI_APK" | awk '{print $1}')"
-          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.18-linux-desktop" \
-            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.18-signed-ARM64.apk") | .digest')"
+          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" \
+            --jq ".assets[] | select(.name==\"$ASSET\") | .digest")"
           test "$EXPECTED" == "$ACTUAL"
-          echo "Verified signed release APK digest: $ACTUAL"
+          echo "Verified signed release APK $TAG digest: $ACTUAL"
       # Debug builds are verified only, never uploaded or published as app
       # downloads: ephemeral debug keys CANNOT install over existing apps.
       # Stable releases must use the SAME owner-controlled signing key.
