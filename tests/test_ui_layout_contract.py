@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Static regression checks for Android + Linux Workspace UI.
+These do not replace real-device layout screenshots or WebView tests.
+"""
+from html.parser import HTMLParser
+from pathlib import Path
+import re
+import subprocess
+import tempfile
+
+root = Path("app/src/main")
+assets = root / "assets"
+native = (root / "java/com/localai/controller/MainActivity.kt").read_text()
+css = (assets / "app.css").read_text()
+js = (assets / "app.js").read_text()
+html = (assets / "index.html").read_text()
+desktop = (assets / "desktop.html").read_text()
+manifest = (root / "AndroidManifest.xml").read_text()
+
+class Collector(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.ids = set()
+        self.duplicates = set()
+        self.current_tag = ""
+        self.module_script = []
+        self.in_module = False
+    def handle_starttag(self, tag, attrs):
+        props = dict(attrs)
+        id_ = props.get("id")
+        if id_:
+            if id_ in self.ids:
+                self.duplicates.add(id_)
+            self.ids.add(id_)
+        if tag == "script" and props.get("type") == "module":
+            self.in_module = True
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.in_module = False
+    def handle_data(self, data):
+        if self.in_module:
+            self.module_script.append(data)
+
+app = Collector(); app.feed(html)
+vnc = Collector(); vnc.feed(desktop)
+assert not app.duplicates and not vnc.duplicates, "Duplicate UI IDs found"
+assert "width=device-width" in html and "width=device-width" in desktop
+assert "viewport-fit=cover" in html and "viewport-fit=cover" in desktop
+assert "--app-height" in css and "visualViewport" in js, "Keyboard viewport fix missing"
+assert "@media (max-width:430px)" in css and "@media (max-width:330px)" in css
+assert "min-height:360px" not in desktop, "VNC viewport has a hard min-height"
+assert "min-height:0" in desktop and "--viewer-height" in desktop
+assert "compactScreen()" in native and "LinearLayout.LayoutParams(0, -2, 1f)" in native
+assert "NATIVE WORKSPACE  •  V0.4" not in native
+assert "AccessibilityService" not in manifest and "mediaProjection" not in manifest
+
+required_app = {
+    "login","dashboard","chatTab","deviceTab","aboutTab",
+    "messages","message","send","linuxTask","linuxPlan","linuxPlanView",
+    "linuxPlanCommands","linuxExecute","linuxCancel","linuxCommand",
+    "linuxRun","linuxCheck","linuxOutput","linuxReady","model","ram",
+}
+required_vnc = {"status","connect","disconnect","password","viewport","screen","cover"}
+assert required_app <= app.ids, f"Missing app UI ids: {required_app - app.ids}"
+assert required_vnc <= vnc.ids, f"Missing desktop UI ids: {required_vnc - vnc.ids}"
+for match in re.findall(r"\$\('([^']+)'\)", js):
+    assert match in app.ids, f"app.js references missing id: {match}"
+
+assert len(vnc.module_script) == 1
+with tempfile.TemporaryDirectory() as tmp:
+    script_file = Path(tmp) / "desktop-viewer.mjs"
+    script_file.write_text(vnc.module_script[0])
+    subprocess.run(["node", "--check", str(script_file)], check=True)
+subprocess.run(["node", "--check", str(assets / "app.js")], check=True)
+print("PASS: UI HTML IDs, native responsive navigation, mobile viewport, VNC fit, JS syntax")
