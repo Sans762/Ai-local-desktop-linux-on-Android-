@@ -62,6 +62,9 @@
         <service android:name=".BackupService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <service android:name=".RestoreService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <service android:name=".ModelDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
