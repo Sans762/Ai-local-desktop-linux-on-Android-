@@ -45,6 +45,19 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "native-memory.
         return scores.sortedByDescending { it.first }.take(limit.coerceIn(1, 6)).map { it.second }
     }
 
+    /** Save verified Linux task outcomes without storing raw commands or user passwords. */
+    @Synchronized fun rememberLinuxSuccess(summary: String) {
+        val safe = summary.trim().take(260)
+        if (safe.isBlank() || Regex("(?i)(password|passwd|token|secret|รหัสผ่าน|api.?key)")
+                .containsMatchIn(safe)) return
+        val row = ContentValues().apply {
+            put("ts", System.currentTimeMillis() / 1000.0)
+            put("content", "Linux task completed: " + safe)
+            put("tags", "linux desktop success")
+        }
+        writableDatabase.insert("memory", null, row)
+    }
+
     /** Reads a *copy* of the old Termux SQLite DB, never writes to the source database. */
     @Synchronized fun importLegacy(copy: File): JSONObject {
         val legacy = SQLiteDatabase.openDatabase(copy.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
