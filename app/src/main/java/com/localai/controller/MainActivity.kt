@@ -907,40 +907,6 @@ class MainActivity : Activity() {
                 addButton(this, "♡  ส่งรายงานตรวจระบบให้ ChatGPT") {
                     shareLinuxSupportReport()
                 }
-                spacer(this, 8)
-                addButton(this, if (advancedSettingsVisible)
-                    "−  ซ่อนเครื่องมือขั้นสูง" else "＋  เครื่องมือขั้นสูง") {
-                    advancedSettingsVisible = !advancedSettingsVisible
-                    showTab("control")
-                }
-                if (advancedSettingsVisible) {
-                    spacer(this, 10)
-                    addView(label("คำสั่ง Linux (Terminal)", 12f, true, linuxGreen))
-                    spacer(this, 6)
-                    val command = field("คำสั่ง เช่น uname -a")
-                        .apply { setText("uname -a && cat /etc/alpine-release") }
-                    addView(command)
-                    spacer(this, 8)
-                    val output = label("ผลลัพธ์จะแสดงตรงนี้", 11.5f, false, sub).apply {
-                        setPadding(dp(10), dp(10), dp(10), dp(10))
-                        background = panel(cardDeep, 13)
-                        setTextIsSelectable(true)
-                    }
-                    addButton(this, "รันคำสั่ง") {
-                        output.text = "กำลังทำงาน…"
-                        val value = command.text.toString()
-                        Thread({
-                            val result = try { linux.command(value) }
-                                catch (e: Exception) { "Linux: " + (e.message ?: "error") }
-                            runOnUiThread { output.text = result }
-                        }, "advanced-linux-command").start()
-                    }
-                    spacer(this, 8)
-                    addView(output)
-                    spacer(this, 5)
-                    addView(label("คำสั่งอาจแก้ไฟล์ Linux ได้ ใช้เฉพาะคำสั่งที่เข้าใจ",
-                        11f, false, sub))
-                }
             }
         }
         if (settingsCategory == "desktop") {
@@ -1341,6 +1307,10 @@ class MainActivity : Activity() {
     private fun navigateBackWithinApp() {
         // The operating system handles IME dismissal and dialogs first.
         when {
+            currentTab == "terminal" -> {
+                settingsCategory = "linux"
+                showTab("control")
+            }
             currentTab == "desktop" -> {
                 showTab(if (tabBeforeDesktop == "workspace") "workspace" else "control")
             }
