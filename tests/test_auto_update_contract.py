@@ -19,6 +19,11 @@ assert "Publish verified v0.14 TEST APK on GitHub Releases" not in workflow, "Us
 assert "if: github.ref == 'refs/heads/main' && env.AI_APK_KIND == 'release'" in workflow
 assert 'signingConfigs' in gradle and 'persistent' in gradle
 assert "RELEASE_KEYSTORE_BASE64" in workflow
+assert 'TAG="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}-linux-desktop"' in workflow
+assert 'ASSET="LocalAI-LinuxDesktop-v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}-signed-ARM64.apk"' in workflow
+assert 'gh release create "$TAG" "$ASSET"' in workflow
+assert 'gh release create v0.18-linux-desktop' not in workflow
+
 assert 'AutoUpdateJobService' in manifest and 'android.permission.BIND_JOB_SERVICE' in manifest
 assert 'RECEIVE_BOOT_COMPLETED' in manifest
 assert 'setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED)' in schedule
