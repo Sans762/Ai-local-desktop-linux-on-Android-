@@ -19,6 +19,7 @@ import java.util.concurrent.Executors
 class LocalHttpServer(private val context: Context, private val store: AppStore,
                       private val db: ChatDatabase, private val ai: NativeAgent) {
     private val pool = Executors.newFixedThreadPool(4)
+    private val linuxAgent = LinuxAgent(context, ImportRepository(context, store, db), db)
     @Volatile private var alive = false
     private var server: ServerSocket? = null
     private var acceptor: Thread? = null
@@ -155,20 +156,27 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
                 when (req.method to req.path) {
                     "GET" to "/api/status" -> json(sock, 200, ai.status().put("csrf", store.csrfToken()))
                     "GET" to "/api/history" -> json(sock, 200, JSONObject().put("ok", true).put("messages", db.recentMessages(35)))
-                    "GET" to "/api/observe" -> {
-                        if (!store.allowUiControl()) { error(sock, 403, "CONTROL_DISABLED"); return }
-                        val svc = AutomationAccessibilityService.current
-                        json(sock, 200, JSONObject().put("ok", svc != null).put("screen", svc?.observe() ?: JSONObject()))
+                    "GET" to "/api/linux/status" ->
+                        json(sock, 200, linuxAgent.status())
+                    "POST" to "/api/linux/plan" -> {
+                        val task = JSONObject(req.body).optString("task", "")
+                        val reply = runBlocking { withTimeout(150_000) { linuxAgent.propose(task) } }
+                        json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
+                    }
+                    "POST" to "/api/linux/execute" -> {
+                        val id = JSONObject(req.body).optString("planId", "")
+                        val reply = runBlocking { withTimeout(150_000) { linuxAgent.execute(id) } }
+                        json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
+                    }
+                    "POST" to "/api/linux/command" -> {
+                        val value = JSONObject(req.body).optString("command", "")
+                        val reply = runBlocking { withTimeout(50_000) { linuxAgent.command(value) } }
+                        json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
                     }
                     "POST" to "/api/chat" -> {
                         val input = JSONObject(req.body).optString("message", "")
                         val reply = runBlocking { withTimeout(150_000) { ai.chat(input) } }
                         json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
-                    }
-                    "POST" to "/api/action" -> {
-                        val action = JSONObject(req.body)
-                        val result = ai.directAction(action)
-                        json(sock, if (result.optBoolean("ok")) 200 else 403, result)
                     }
                     "POST" to "/logout" -> json(sock, 200, JSONObject().put("ok", true), mapOf(
                         "Set-Cookie" to "native_ai_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"))
