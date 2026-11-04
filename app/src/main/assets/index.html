@@ -41,18 +41,18 @@
     </aside>
     <main class="main">
       <header class="topbar">
-        <div><div class="eyebrow">LOCAL AI / LINUX WORKSPACE</div><h1>Linux Workspace<span class="heading-star">✦</span></h1><p>พูดคุย วางแผน และจัดการ Alpine Linux ในแอป</p></div>
-        <div class="top-actions"><span class="status"><span class="dot"></span> <span id="onlineLabel">Local only</span></span></div>
+        <div><h1>แชทกับ AI<span class="heading-star">✦</span></h1><p>AI ในเครื่องของคุณ</p></div>
+        <div class="top-actions"><span class="status"><span class="dot"></span> <span id="onlineLabel">ในเครื่อง</span></span></div>
       </header>
       <nav class="tabs" aria-label="โหมดทำงาน">
-        <button class="tab active" type="button" data-tab="chat"><span class="tab-icon">◉</span><span>แชท AI</span></button>
-        <button class="tab" type="button" data-tab="device"><span class="tab-icon">⌘</span><span>Linux Agent</span></button>
+        <button class="tab active" type="button" data-tab="chat"><span class="tab-icon">◉</span><span>แชท</span></button>
+        <button class="tab" type="button" data-tab="device"><span class="tab-icon">⌘</span><span>งาน Linux</span></button>
         <button class="tab" type="button" data-tab="about"><span class="tab-icon">◫</span><span>ระบบ</span></button>
       </nav>
       <section id="chatTab" class="chat-tab">
         <div class="live-control" aria-label="Linux monitor and desktop">
           <div class="live-head">
-            <div><strong>สถานะเครื่องและหน้าจอ Linux</strong><small>ข้อมูลจริงจากมือถือ · ไม่ใช่หน้าจอ Android</small></div>
+            <div><strong>สถานะมือถือ</strong><small>CPU · GPU · RAM · เครือข่าย</small></div>
             <button id="desktopToggle" class="subtle" type="button" aria-expanded="false" aria-controls="chatDesktopPanel">▣ ดูจอ Linux</button>
           </div>
           <div class="monitor-grid">
@@ -73,37 +73,35 @@
         <div id="messages" class="messages" aria-live="polite" aria-label="ประวัติสนทนา">
           <div class="intro">
             <div class="intro-mark"><span>✦</span><i></i></div>
-            <span class="eyebrow">INTELLIGENCE, ON YOUR DEVICE</span>
-            <h2>เริ่มต้นด้วยไอเดียของคุณ</h2>
-            <p>ถามได้ทั้งภาษาไทยและภาษาอังกฤษ ข้อความจะถูกประมวลผลในมือถือเมื่อเลือกโมเดล GGUF แล้ว</p>
+            <h2>วันนี้ให้ช่วยอะไรดี?</h2>
+            <p>พิมพ์คำถามหรือสั่งงานได้เลย</p>
             <div class="quick-prompts">
               <button data-prompt="ช่วยวางแผนงานของฉันวันนี้" type="button">✧ วางแผนงานวันนี้</button>
-              <button data-prompt="ช่วยอธิบายเรื่อง AI ออฟไลน์อย่างเข้าใจง่าย" type="button">◈ ทำความเข้าใจ AI</button>
-              <button data-prompt="Hello! Please introduce yourself in English." type="button">↗ Practice English</button>
+              <button data-prompt="ช่วยอธิบายเรื่อง AI ออฟไลน์อย่างเข้าใจง่าย" type="button">◈ ถามเรื่อง AI</button>
+              <button data-prompt="Hello! Please introduce yourself in English." type="button">↗ ฝึกภาษาอังกฤษ</button>
             </div>
           </div>
         </div>
         <div class="composer">
           <div class="composer-inner">
-            <div class="input-area"><textarea id="message" rows="2" placeholder="พิมพ์ข้อความหรือคำสั่งของคุณ…" maxlength="3500" aria-label="ข้อความถึง AI"></textarea><button id="send" class="send" type="button" aria-label="ส่งข้อความ"><span>➤</span></button></div>
-            <div class="composer-meta"><span id="chatHint">โหลดโมเดลเมื่อส่งข้อความ เพื่อประหยัด RAM</span><span>ON DEVICE <i class="tiny-dot"></i></span></div>
+            <div class="input-area"><textarea id="message" rows="2" placeholder="พิมพ์ข้อความถึง AI…" maxlength="3500" aria-label="ข้อความถึง AI"></textarea><button id="send" class="send" type="button" aria-label="ส่งข้อความ"><span>➤</span></button></div>
+            <div class="composer-meta"><span id="chatHint">กำลังตรวจความพร้อม AI…</span><span>ออฟไลน์ <i class="tiny-dot"></i></span></div>
           </div>
         </div>
       </section>
       <section id="deviceTab" class="info-tab" hidden>
         <div class="page-heading">
-          <div class="eyebrow">ON-DEVICE LINUX AGENT</div>
-          <h2>AI ควบคุม Linux</h2>
-          <p>รันคำสั่งและจัดการไฟล์ภายใน Alpine ARM64 โดยไม่ใช้ Termux และไม่เข้าถึงหน้าจอ Android</p>
+          <h2>ให้ AI ช่วยงาน Linux</h2>
+          <p>บอกสิ่งที่อยากทำ แล้วตรวจแผนก่อนอนุมัติ</p>
         </div>
-        <div class="notice"><span>◎</span><div><b>AI เสนอแผนก่อนลงมือ</b>
-          <p>AI สร้างคำสั่ง shell ให้ตรวจสอบ กดอนุมัติจึงจะรันจริงใน Linux • ไม่มีการควบคุม Android</p></div></div>
+        <div class="notice"><span>◎</span><div><b>คุณเป็นคนอนุมัติ</b>
+          <p>AI จะไม่ลงมือทำจนกว่าคุณจะกดยืนยัน</p></div></div>
         <div class="content-grid">
           <div class="surface">
-            <div class="surface-heading"><div><span class="eyebrow">ASK LINUX AGENT</span><h3>สั่งงานด้วยภาษาธรรมชาติ</h3></div><span class="surface-icon">✦</span></div>
-            <label class="field-label" for="linuxTask">งานที่ต้องการให้ AI ทำใน Linux</label>
-            <textarea id="linuxTask" class="linux-input" rows="4" maxlength="1600" placeholder="เช่น ตรวจเวอร์ชัน Alpine, ติดตั้ง Python3 และสร้างโฟลเดอร์โปรเจกต์"></textarea>
-            <div class="action-row"><button id="linuxPlan" type="button" class="primary">✧ สร้างแผน Linux</button></div>
+            <div class="surface-heading"><div><h3>อยากให้ AI ทำอะไร?</h3></div><span class="surface-icon">✦</span></div>
+            <label class="field-label" for="linuxTask">สั่งงาน Linux</label>
+            <textarea id="linuxTask" class="linux-input" rows="4" maxlength="1600" placeholder="เช่น ช่วยสร้างโฟลเดอร์งานให้หน่อย"></textarea>
+            <div class="action-row"><button id="linuxPlan" type="button" class="primary">✧ ดูแผนก่อนทำ</button></div>
             <div id="linuxPlanView" hidden>
               <p id="linuxSummary" class="field-label"></p>
               <pre id="linuxPlanCommands" class="linux-terminal"></pre>
@@ -111,16 +109,17 @@
               <div class="action-row"><button id="linuxExecute" class="primary" type="button">✓ อนุมัติและรันใน Linux</button><button id="linuxCancel" class="subtle" type="button">ยกเลิก</button></div>
             </div>
           </div>
-          <div class="surface">
-            <div class="surface-heading"><div><span class="eyebrow">ALPINE TERMINAL</span><h3>Linux Console</h3></div><span class="surface-icon">⌘</span></div>
+          <details class="surface advanced-console"><summary>＋  เครื่องมือขั้นสูง (Terminal)</summary>
+            <div class="advanced-console-content">
             <p id="linuxReady" class="field-label">ตรวจสถานะ Alpine…</p>
-            <label class="field-label" for="linuxCommand">รันคำสั่ง Linux เอง</label>
+            <label class="field-label" for="linuxCommand">ป้อนคำสั่ง Linux ด้วยตนเอง</label>
             <input id="linuxCommand" value="uname -a &amp;&amp; cat /etc/alpine-release" autocomplete="off" maxlength="1000">
             <div class="action-row"><button id="linuxRun" class="subtle" type="button">▶ รันใน Linux</button><button id="linuxCheck" class="subtle" type="button">↻ ตรวจ Linux</button></div>
             <pre id="linuxOutput" class="linux-terminal" aria-live="polite">ผลลัพธ์ Linux จะแสดงที่นี่</pre>
-          </div>
+            </div>
+          </details>
         </div>
-        <div class="notice secondary"><span>ⓘ</span><p>PRoot ใช้ kernel ของ Android ร่วมกัน ไม่ใช่ VM • Linux Desktop พร้อม noVNC และ VNC แยกใน Control Center หลังติดตั้งแพ็กเกจเดสก์ท็อป</p></div>
+        
       </section>
       <section id="aboutTab" class="info-tab" hidden>
         <div class="page-heading"><div class="eyebrow">DEVICE OVERVIEW</div><h2>ระบบของฉัน</h2><p>ภาพรวมบริการ AI ออฟไลน์และความปลอดภัยบนมือถือของคุณ</p></div>

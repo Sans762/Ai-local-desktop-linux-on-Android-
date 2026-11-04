@@ -189,3 +189,28 @@ html, body { min-width:0; max-width:100%; overflow-x:clip; }
   .live-head button{font-size:10px;padding:6px}
   .monitor-item b{font-size:11px}
 }
+
+/* Beginner web UI: short labels, reduced height on mobile, optional Linux console. */
+.advanced-console{overflow:hidden}
+.advanced-console>summary{list-style:none;cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:700;color:#c9bfff;outline-offset:3px}
+.advanced-console>summary::-webkit-details-marker{display:none}
+.advanced-console-content{border-top:1px solid #323f60;padding-top:12px}
+@media(max-width:850px){
+  .topbar{padding:10px 13px 8px}
+  .topbar h1{font-size:18px;line-height:1.25;margin:0}
+  .topbar p{display:none}
+  .tabs{padding:5px 7px max(6px,env(safe-area-inset-bottom))}
+  .live-control{padding:7px 9px}
+  .live-head small{display:none}
+  .monitor-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:5px}
+  .monitor-item{padding:7px 6px;min-height:43px;gap:2px}
+  .monitor-item b{font-size:11px}
+  .monitor-item small{display:none}
+  .intro-mark{width:56px;height:56px;margin-bottom:8px}
+  .intro-mark span{font-size:30px}
+  .intro h2{font-size:18px;margin:7px 0 5px}
+  .intro p{line-height:1.5}
+  .quick-prompts{margin-top:12px;gap:6px}
+  .messages{padding:11px;gap:11px}
+}
+@media(max-width:345px){.monitor-item b{font-size:10px}.monitor-item{padding:6px 4px}}
