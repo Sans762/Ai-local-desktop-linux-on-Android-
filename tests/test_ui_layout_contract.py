@@ -64,12 +64,18 @@ assert "@media (max-width:430px)" in css and "@media (max-width:330px)" in css
 assert "min-height:360px" not in desktop, "VNC viewport has a hard min-height"
 assert "min-height:0" in desktop and "--viewer-height" in desktop
 assert "compactScreen()" in native and "LinearLayout.LayoutParams(0, -2, 1f)" in native
-assert 'desktopTab = actionButton("▣  Linux")' in native
+assert 'private fun showHome()' in native
+assert 'showTab("home")' in native
+for label in ['หน้าแรก','แชท','Linux','เครื่องมือ','ตั้งค่า']:
+    assert label in native, f"Missing compact navigation label: {label}"
 assert 'desktopTab.background = if (target == "desktop")' in native
+assert 'bottom.addView(button, LinearLayout.LayoutParams(0, -2, 1f)' in native
+assert 'if (desktopRunning) showTab("desktop")' in native
+assert 'else openSetting(if (linuxReady) "desktop" else "linux")' in native
 assert "NATIVE WORKSPACE  •  V0.4" not in native
 assert 'addCategoryMenu(this)' in native, "Missing settings category menu"
 assert 'addSetupCheck(this' in native, "Missing guided checklist"
-assert 'progressBar' in native, "Missing checklist progress indicator"
+assert '"ความพร้อม: $completed/4"' in native, "Missing setup progress feedback"
 assert native.count('categoryCard(content,') == 6, "Expected six compact setting panels across five categories"
 assert native.count('if (settingsCategory == "ai")') >= 1
 assert native.count('if (settingsCategory == "linux")') >= 1
@@ -79,8 +85,8 @@ assert 'advancedSettingsVisible' in native, "Advanced controls must not overwhel
 assert 'setupChecklistExpanded' in native, "Onboarding checklist must be collapsible"
 assert 'aiOptionsExpanded' in native, "Optional AI models should not crowd the default screen"
 assert 'dataAdvancedExpanded' in native, "Advanced data actions should not crowd the default screen"
-assert 'ต่อไป: ' in native, "Users need a clear next-step action"
-assert 'ซ่อนขั้นตอน' in native, "Checklist should expand only when requested"
+assert 'else -> "▶  เริ่ม AI"' in native, "Home should present one main AI action"
+assert 'ซ่อนรายการตั้งค่า' in native, "Checklist should stay collapsed by default"
 assert 'arrayOf("▣  หน้าจอคอม"' in native
 
 assert "AccessibilityService" not in manifest and "mediaProjection" not in manifest
@@ -109,9 +115,11 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(["node", "--check", str(script_file)], check=True)
 subprocess.run(["node", "--check", str(assets / "app.js")], check=True)
 
-# The four-step first-run guide must actually visit Linux + Desktop.
-assert '!alpineReady -> "linux"' in native
-assert 'modelFile == null -> "ai"' in native
-assert '!desktopReady -> "desktop"' in native
+# Real feature status and one-action home; never claim AI/Linux/PC ready without checks.
+assert 'val modelReady = imports.modelFile() != null' in native
+assert 'val linuxReady = LinuxRuntime(this).installed()' in native
+assert 'val desktopReady = LinuxDesktopService.installed(this)' in native
+assert 'val desktopRunning = LinuxDesktopService.running' in native
+assert 'Linux ในแอปนี้อยู่บนมือถือ ไม่ใช่หน้าจอ Windows PC' in native
 
 print("PASS: UI HTML IDs, native responsive navigation, mobile viewport, VNC fit, JS syntax")

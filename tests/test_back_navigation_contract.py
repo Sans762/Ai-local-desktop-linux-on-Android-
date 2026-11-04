@@ -11,7 +11,7 @@ assert "onBackInvokedDispatcher.unregisterOnBackInvokedCallback(" in s
 assert "android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT" in s
 assert "override fun onBackPressed()" in s and "navigateBackWithinApp()" in s
 assert 'currentTab == "control" && settingsCategory != "start"' in s
-assert 'currentTab == "workspace"' in s and 'currentTab == "desktop"' in s
+assert 'currentTab != "home" -> showTab("home")' in s
 assert 'showTab("control")' in s
 assert 'moveTaskToBack(true)' in s
 assert "lastBackAtMs" in s

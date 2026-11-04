@@ -42,8 +42,10 @@ class MainActivity : Activity() {
     private lateinit var imports: ImportRepository
     private lateinit var mainColumn: LinearLayout
     private lateinit var screenHost: FrameLayout
+    private lateinit var homeTab: TextView
     private lateinit var workspaceTab: TextView
     private lateinit var desktopTab: TextView
+    private lateinit var toolsTab: TextView
     private lateinit var controlsTab: TextView
     private lateinit var serviceChip: TextView
     private var webView: WebView? = null
@@ -258,7 +260,7 @@ class MainActivity : Activity() {
         androidx.core.view.ViewCompat.requestApplyInsets(mainColumn)
         buildShell()
         installGestureBackHandler()
-        showTab(if (store.hasPassword() && AiForegroundService.running) "workspace" else "control")
+        showTab("home")
         AutoUpdateScheduler.sync(this)
         if (AutoUpdateScheduler.enabled(this) && Build.VERSION.SDK_INT >= 33 &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -270,61 +272,86 @@ class MainActivity : Activity() {
         }
     }
 
+    /** Compact native shell: real status only, one main action, fixed bottom navigation. */
     private fun buildShell() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(if (compactScreen()) 10 else 19), dp(9),
-                dp(if (compactScreen()) 10 else 19), dp(7))
+            setPadding(dp(12), dp(6), dp(12), dp(6))
         }
         mainColumn.addView(header, LinearLayout.LayoutParams(-1, -2))
-        val logo = label("✦", if (compactScreen()) 21f else 25f, true).apply {
+        val logo = label("✦", 19f, true).apply {
             gravity = Gravity.CENTER
-            background = gradient(15)
+            background = gradient(12)
         }
-        val markSize = if (compactScreen()) 40 else 49
-        header.addView(logo, LinearLayout.LayoutParams(dp(markSize), dp(markSize)))
+        header.addView(logo, LinearLayout.LayoutParams(dp(38), dp(38)))
         val titleStack = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(if (compactScreen()) 8 else 12), 0, dp(3), 0)
-            addView(label("Local AI", if (compactScreen()) 17f else 19f, true))
-            addView(label("แชท • Linux", 10f, false, sub))
+            setPadding(dp(9), 0, 0, 0)
+            addView(label("Local AI Linux", 16f, true))
+            addView(label("AI ในมือถือ • Linux", 10f, false, sub))
         }
         header.addView(titleStack, LinearLayout.LayoutParams(0, -2, 1f))
-        serviceChip = label("", 11f, true).apply {
+        serviceChip = label("", 10f, true).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(6), dp(7), dp(6), dp(7))
-            background = panel(cardDeep, 14)
+            setPadding(dp(9), dp(6), dp(9), dp(6))
+            background = panel(cardDeep, 12)
         }
         header.addView(serviceChip)
 
-        val nav = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(10), dp(2), dp(10), dp(7))
-        }
-        mainColumn.addView(nav)
-        workspaceTab = actionButton("✦  แชท") { showTab("workspace") }
-        desktopTab = actionButton("▣  Linux") { showTab("desktop") }
-        controlsTab = actionButton("⚙  ตั้งค่า") { showTab("control") }
-        nav.addView(workspaceTab, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(3) })
-        nav.addView(desktopTab, LinearLayout.LayoutParams(0, -2, 1f).apply {
-            leftMargin = dp(3); rightMargin = dp(3)
-        })
-        nav.addView(controlsTab, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(3) })
         screenHost = FrameLayout(this).apply { setBackgroundColor(bg) }
         mainColumn.addView(screenHost, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        // Navigation stays reachable even on small Android 17 screens.
+        val bottom = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            background = panel(cardDeep, 19)
+        }
+        mainColumn.addView(bottom, LinearLayout.LayoutParams(-1, -2).apply {
+            leftMargin = dp(7)
+            rightMargin = dp(7)
+            bottomMargin = dp(4)
+        })
+        fun item(title: String, action: () -> Unit): TextView =
+            actionButton(title, onClick = action).apply {
+                textSize = if (compactScreen()) 10.5f else 11.5f
+                gravity = Gravity.CENTER
+                minHeight = dp(51)
+                maxLines = 2
+                setPadding(dp(2), dp(6), dp(2), dp(6))
+            }
+        homeTab = item("⌂\nหน้าแรก") { showTab("home") }
+        workspaceTab = item("✦\nแชท") { showTab("workspace") }
+        desktopTab = item("▣\nLinux") {
+            if (LinuxDesktopService.running) showTab("desktop")
+            else openSetting("desktop")
+        }
+        toolsTab = item("⌨\nเครื่องมือ") {
+            if (LinuxRuntime(this).available()) showTab("terminal")
+            else openSetting("linux")
+        }
+        controlsTab = item("⚙\nตั้งค่า") { openSetting("start") }
+        for (button in listOf(homeTab, workspaceTab, desktopTab, toolsTab, controlsTab)) {
+            bottom.addView(button, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                leftMargin = dp(1)
+                rightMargin = dp(1)
+            })
+        }
         refreshChip()
     }
 
     private fun refreshChip() {
-        val running = AiForegroundService.running
-        serviceChip.text = if (compactScreen()) {
-            if (running) "● ON" else "● OFF"
-        } else {
-            if (running) "● ACTIVE" else "● OFFLINE"
-        }
-        serviceChip.contentDescription = if (running) "AI service working" else "AI service stopped"
-        serviceChip.setTextColor(if (running) mint else sub)
+        val active = AiForegroundService.running
+        serviceChip.text = if (active) "● AI เปิดอยู่" else "● AI ปิดอยู่"
+        serviceChip.contentDescription = if (active) "AI service active" else "AI service stopped"
+        serviceChip.setTextColor(if (active) mint else sub)
+    }
+
+    private fun openSetting(category: String) {
+        settingsCategory = category
+        showTab("control")
     }
 
     private fun showTab(target: String) {
@@ -334,20 +361,115 @@ class MainActivity : Activity() {
         }
         currentTab = target
         refreshChip()
+        homeTab.background = if (target == "home") gradient(14) else panel(cardDeep, 14)
         workspaceTab.background = if (target == "workspace") gradient(14) else panel(cardDeep, 14)
         desktopTab.background = if (target == "desktop") gradient(14) else panel(cardDeep, 14)
-        controlsTab.background = if (target != "workspace" && target != "desktop")
-            gradient(14) else panel(cardDeep, 14)
+        toolsTab.background = if (target == "terminal") gradient(14) else panel(cardDeep, 14)
+        controlsTab.background = if (target == "control") gradient(14) else panel(cardDeep, 14)
         screenHost.removeAllViews()
         terminalOutputView = null
         terminalRunButton = null
         terminalStopButton = null
         when (target) {
+            "home" -> showHome()
             "workspace" -> showWorkspace()
             "desktop" -> showDesktop()
             "terminal" -> showTerminal()
             else -> showControls()
         }
+    }
+
+    /** Real-device home screen: never label an uninstalled AI or Linux as ready. */
+    private fun showHome() {
+        val modelReady = imports.modelFile() != null
+        val linuxReady = LinuxRuntime(this).installed()
+        val desktopReady = LinuxDesktopService.installed(this)
+        val aiRunning = AiForegroundService.running
+        val desktopRunning = LinuxDesktopService.running
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            clipToPadding = false
+            setPadding(dp(12), 0, dp(12), dp(12))
+        }
+        screenHost.addView(scroll, FrameLayout.LayoutParams(-1, -1))
+        val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        scroll.addView(content)
+        content.addView(label("สวัสดี 👋", 23f, true), LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = dp(12)
+        })
+        content.addView(label("เลือกสิ่งที่อยากทำได้เลย", 12f, false, sub))
+        cardBlock(content, 12) {
+            setPadding(dp(15), dp(14), dp(15), dp(15))
+            background = panel(mixColor(card, accent, 0.19f), 19,
+                mixColor(line, accent, 0.45f))
+            val primaryTitle = when {
+                aiRunning -> "AI กำลังทำงาน"
+                !modelReady -> "เริ่มใช้งาน AI"
+                else -> "พร้อมเปิด AI"
+            }
+            addView(label(primaryTitle, 19f, true))
+            spacer(this, 6)
+            addView(label("โมเดล: " + if (modelReady) "ติดตั้งแล้ว" else "ยังไม่ได้ติดตั้ง",
+                12f, false, if (modelReady) linuxGreen else sub))
+            addView(label("บริการ AI: " + if (aiRunning) "เปิดอยู่" else "ปิดอยู่",
+                12f, false, if (aiRunning) linuxGreen else sub))
+            spacer(this, 12)
+            val mainAction = when {
+                aiRunning -> "✦  เปิดแชท AI"
+                !modelReady -> "↓  ติดตั้งโมเดล AI"
+                !store.hasPassword() -> "🔐  ตั้งรหัสผ่าน"
+                else -> "▶  เริ่ม AI"
+            }
+            addButton(this, mainAction, true) {
+                when {
+                    aiRunning -> showTab("workspace")
+                    !modelReady -> openSetting("ai")
+                    !store.hasPassword() -> openSetting("privacy")
+                    else -> startAi()
+                }
+            }
+        }
+        cardBlock(content, 9) {
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            val row = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+            }
+            addView(row)
+            row.addView(label("▣  Linux Desktop", 16f, true),
+                LinearLayout.LayoutParams(0, -2, 1f))
+            row.addView(label(when {
+                desktopRunning -> "● เปิดอยู่"
+                desktopReady -> "● พร้อมเปิด"
+                linuxReady -> "○ ยังไม่มี Desktop"
+                else -> "○ ยังไม่ได้ติดตั้ง"
+            }, 11f, true, if (desktopRunning) linuxGreen else sub))
+            spacer(this, 8)
+            addButton(this, when {
+                desktopRunning -> "เปิดหน้าจอ Linux"
+                !linuxReady -> "ติดตั้ง Linux"
+                desktopReady -> "เริ่มหน้าจอ Linux"
+                else -> "ติดตั้ง Linux Desktop"
+            }) {
+                if (desktopRunning) showTab("desktop")
+                else openSetting(if (linuxReady) "desktop" else "linux")
+            }
+        }
+        cardBlock(content, 9) {
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            addView(label("เครื่องมือ", 15f, true))
+            spacer(this, 7)
+            addButton(this, "⌨  เทอร์มินัล Linux") {
+                if (linuxReady) showTab("terminal") else openSetting("linux")
+            }
+            spacer(this, 6)
+            addButton(this, "⚙  โมเดล · สำรองข้อมูล · อัปเดต") { openSetting("start") }
+        }
+        content.addView(label(
+            "Linux ในแอปนี้อยู่บนมือถือ ไม่ใช่หน้าจอ Windows PC",
+            10.5f, false, sub
+        ), LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
     }
 
     private fun showWorkspace() {
@@ -666,93 +788,34 @@ class MainActivity : Activity() {
         val completed = listOf(store.hasPassword(), alpineReady,
             modelFile != null, desktopReady).count { it }
         if (settingsCategory == "start") {
-            // Guide first-time users through every required component, not just AI chat.
-            // The older flow skipped Alpine and the desktop despite showing "4 steps".
-            val nextCategory = when {
-                !store.hasPassword() -> "privacy"
-                !alpineReady -> "linux"
-                modelFile == null -> "ai"
-                !desktopReady -> "desktop"
-                else -> "workspace"
+            cardBlock(content, 6) {
+                setPadding(dp(14), dp(12), dp(14), dp(12))
+                addView(label("ตั้งค่า", 19f, true))
+                spacer(this, 3)
+                addView(label("เลือกเฉพาะส่วนที่ต้องการ", 12f, false, sub))
+                spacer(this, 8)
+                addCategoryMenu(this)
             }
-            val nextAction = when (nextCategory) {
-                "privacy" -> "ตั้งรหัสผ่าน"
-                "ai" -> "ดาวน์โหลด AI"
-                "linux" -> "ติดตั้ง Linux"
-                "desktop" -> "ติดตั้งหน้าจอคอม"
-                else -> "เปิดแชท AI"
-            }
-            cardBlock(content, 5) {
-                setPadding(dp(14), dp(13), dp(14), dp(13))
-                background = panel(mixColor(card, accent, 0.11f), 17,
-                    mixColor(line, accent, 0.29f))
-                addView(label(if (completed == 4) "✓  พร้อมใช้งานแล้ว" else
-                    "เริ่มต้นใช้งาน", 14f, true, if (completed == 4) linuxGreen else aiPurple))
-                spacer(this, 4)
-                addView(label(when {
-                    AiForegroundService.running -> "AI กำลังทำงาน"
-                    completed == 4 -> "ทุกอย่างพร้อมแล้ว"
-                    nextCategory == "workspace" -> "AI พร้อมแชท · หน้าจอ Linux ตั้งค่าเพิ่มได้"
-                    else -> "เหลืออีก " + (4 - completed) + " ขั้นตอน"
-                }, 12f, false, sub))
-                spacer(this, 11)
-                addButton(this, when {
-                    AiForegroundService.running -> "✦  เปิดแชท AI"
-                    nextCategory == "workspace" -> "▶  เปิด AI"
-                    else -> "ต่อไป: " + nextAction + "  ›"
-                }, true) {
-                    if (AiForegroundService.running) showTab("workspace")
-                    else if (nextCategory == "workspace") startAi()
-                    else {
-                        settingsCategory = nextCategory
-                        showTab("control")
-                    }
-                }
-            }
-            cardBlock(content, 7) {
-                setPadding(dp(12), dp(11), dp(12), dp(11))
-                val progressRow = LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.HORIZONTAL
-                    gravity = Gravity.CENTER_VERTICAL
-                }
-                addView(progressRow)
-                progressRow.addView(label("ความพร้อม  $completed/4", 12.5f, true),
-                    LinearLayout.LayoutParams(0, -2, 1f))
-                progressRow.addView(actionButton(if (setupChecklistExpanded)
-                    "ซ่อนขั้นตอน  ⌃" else "ดูขั้นตอน  ⌄") {
+            cardBlock(content, 8) {
+                setPadding(dp(12), dp(10), dp(12), dp(10))
+                addView(label("ความพร้อม: $completed/4", 12f, true, sub))
+                spacer(this, 6)
+                addButton(this, if (setupChecklistExpanded)
+                    "ซ่อนรายการตั้งค่า  ⌃" else "ดูรายการตั้งค่า  ⌄") {
                     setupChecklistExpanded = !setupChecklistExpanded
                     showTab("control")
-                }.apply {
-                    minHeight = dp(34)
-                    textSize = 11.5f
-                    setPadding(dp(9), dp(5), dp(9), dp(5))
-                })
-                spacer(this, 6)
-                val progressBar = android.widget.ProgressBar(this@MainActivity, null,
-                    android.R.attr.progressBarStyleHorizontal).apply {
-                    max = 4
-                    progress = completed
-                    progressTintList = android.content.res.ColorStateList.valueOf(linuxGreen)
-                    progressBackgroundTintList = android.content.res.ColorStateList.valueOf(line)
-                    contentDescription = "พร้อม " + completed + " จาก 4 ขั้นตอน"
                 }
-                addView(progressBar, LinearLayout.LayoutParams(-1, dp(5)))
                 if (setupChecklistExpanded) {
-                    spacer(this, 8)
-                    addSetupCheck(this, "รหัสผ่าน", "ตั้งรหัสผ่านเข้า AI",
-                        store.hasPassword(), privacyBlue, "privacy")
-                    addSetupCheck(this, "Linux", "ติดตั้ง Alpine Linux",
-                        alpineReady, linuxGreen, "linux")
-                    addSetupCheck(this, "สมอง AI", "ดาวน์โหลดโมเดล AI",
-                        modelFile != null, aiPurple, "ai")
-                    addSetupCheck(this, "หน้าจอคอม", "ติดตั้ง Linux Desktop",
-                        desktopReady, desktopOrange, "desktop")
+                    spacer(this, 7)
+                    addSetupCheck(this, "รหัสผ่าน", "เข้า AI", store.hasPassword(),
+                        privacyBlue, "privacy")
+                    addSetupCheck(this, "Linux", "Alpine Linux", alpineReady,
+                        linuxGreen, "linux")
+                    addSetupCheck(this, "โมเดล", "AI ออฟไลน์", modelFile != null,
+                        aiPurple, "ai")
+                    addSetupCheck(this, "หน้าจอ Linux", "Linux Desktop", desktopReady,
+                        desktopOrange, "desktop")
                 }
-            }
-            cardBlock(content, 7) {
-                setPadding(dp(12), dp(9), dp(12), dp(11))
-                addView(label("เมนู", 14f, true))
-                addCategoryMenu(this)
             }
         } else {
             val section = when (settingsCategory) {
@@ -1431,29 +1494,14 @@ class MainActivity : Activity() {
     }
 
     private fun navigateBackWithinApp() {
-        // The operating system handles IME dismissal and dialogs first.
+        // Swipe Back always returns to Home without stopping Linux or AI.
         when {
-            currentTab == "terminal" -> {
-                settingsCategory = "linux"
-                showTab("control")
-            }
-            currentTab == "desktop" -> {
-                showTab(if (tabBeforeDesktop == "workspace") "workspace" else "control")
-            }
-            currentTab == "workspace" -> {
-                settingsCategory = "start"
-                showTab("control")
-            }
             currentTab == "control" && settingsCategory != "start" -> {
                 settingsCategory = "start"
                 showTab("control")
             }
-            currentTab != "control" -> {
-                settingsCategory = "start"
-                showTab("control")
-            }
+            currentTab != "home" -> showTab("home")
             else -> {
-                // On root, never accidentally destroy a running Linux/AI session.
                 val now = android.os.SystemClock.elapsedRealtime()
                 if (now - lastBackAtMs <= 2200L) {
                     lastBackAtMs = 0L
