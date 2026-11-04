@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070e20">
+<title>Linux Desktop · Local AI</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#070e20;color:#edf2ff}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;background:#101b35;border-bottom:1px solid #2b385d}
+.brand{display:flex;align-items:center;gap:10px}.mark{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:linear-gradient(125deg,#7274ff,#59cbbb);font-size:21px}
+.brand strong{display:block;font-size:15px}.brand small{display:block;color:#95a7c9;font-size:10px;letter-spacing:.14em}
+#status{font-size:11px;border:1px solid #3c4b70;background:#172440;border-radius:99px;padding:6px 10px;color:#b9c9e8}
+main{padding:12px;max-width:1400px;margin:auto}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
+button,input{font:inherit;border-radius:10px}button{border:1px solid #5365a6;padding:9px 13px;color:#edf2ff;background:#263458;cursor:pointer}button.primary{background:linear-gradient(100deg,#6676f0,#735ec4);border:0;font-weight:700}
+input{padding:10px 11px;background:#101d34;border:1px solid #3b4d72;color:#fff;width:180px;min-width:0}
+#viewport{background:#030812;border:1px solid #2b3d65;border-radius:16px;position:relative;overflow:hidden;min-height:calc(100dvh - 140px)}
+#screen{width:100%;height:calc(100dvh - 170px);min-height:360px;touch-action:none}
+#screen canvas{max-width:100%}#hint{color:#a8bcdb;font-size:12px;margin:10px 3px 4px}
+#cover{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+#cover .inside{background:#121f3c;border:1px solid #32436a;border-radius:20px;padding:23px;text-align:center;max-width:380px;margin:12px}
+#cover strong{display:block;font-size:19px;margin-bottom:10px}#cover p{line-height:1.6;color:#afc0dd;font-size:13px}
+@media(max-width:630px){main{padding:7px}.toolbar{gap:6px}input{flex:1;min-width:120px}button{padding:9px 11px;font-size:13px}#viewport{border-radius:9px}#screen{height:calc(100dvh - 190px)}}
+</style></head><body>
+<header><div class="brand"><span class="mark">✦</span><div><strong>Linux Desktop</strong><small>ALPINE · OPENBOX · LOCAL AI</small></div></div><span id="status">ไม่ได้เชื่อมต่อ</span></header>
+<main><div class="toolbar">
+<input id="password" type="password" autocomplete="off" placeholder="รหัสผ่าน VNC 8 ตัวแรก" maxlength="8" aria-label="VNC password">
+<button class="primary" id="connect">เชื่อมต่อ</button>
+<button id="disconnect">หยุดดู</button>
+<button id="cad">Ctrl+Alt+Del</button>
+<button id="full">เต็มจอ</button>
+</div><div id="viewport"><div id="screen"></div><div id="cover"><div class="inside"><strong>Linux Desktop ของคุณ</strong><p>เริ่ม Linux Desktop ใน Control Center ก่อน จากนั้นใส่รหัสผ่าน VNC และเชื่อมต่อเพื่อใช้งานหน้าจอ Linux ได้จริง</p></div></div></div>
+<p id="hint">สัมผัสหน้าจอเพื่อคลิกหรือใช้เมาส์และคีย์บอร์ดของอุปกรณ์ · หน้าจอนี้เป็น Linux ไม่ใช่ Android · เชื่อมต่อผ่าน localhost เท่านั้น</p>
+</main>
+<script type="module">
+import RFB from '/novnc/core/rfb.js';
+let rfb = null;
+const el = id => document.getElementById(id);
+const status = text => el('status').textContent=text;
+el('connect').addEventListener('click', () => {
+  if(rfb){try{rfb.disconnect();}catch(_){}rfb=null;}
+  const password=el('password').value;
+  if(!password){status('กรุณากรอกรหัส VNC');return;}
+  status('กำลังเชื่อมต่อ…');
+  try {
+    rfb = new RFB(el('screen'), 'ws://127.0.0.1:6080/ws', {credentials:{password}});
+    rfb.scaleViewport=true; rfb.resizeSession=false;
+    rfb.addEventListener('connect', () => {status('เชื่อมต่อ Linux แล้ว');el('cover').hidden=true;el('password').value='';});
+    rfb.addEventListener('disconnect', e => {status(e.detail.clean?'ตัดการเชื่อมต่อ':'เชื่อมต่อไม่ได้ ตรวจว่า Desktop เปิดอยู่');el('cover').hidden=false;});
+    rfb.addEventListener('credentialsrequired', () => {
+      const credential=el('password').value || window.prompt('ใส่รหัส VNC') || '';
+      rfb.sendCredentials({password:credential});
+    });
+  } catch(e){status(e.message);}
+});
+el('disconnect').addEventListener('click',()=>{if(rfb)rfb.disconnect();});
+el('cad').addEventListener('click',()=>{if(rfb)rfb.sendCtrlAltDel();});
+el('full').addEventListener('click',()=>{const v=el('viewport');if(!document.fullscreenElement)v.requestFullscreen?.();else document.exitFullscreen?.();});
+window.addEventListener('pagehide',()=>{if(rfb)rfb.disconnect();});
+</script></body></html>
