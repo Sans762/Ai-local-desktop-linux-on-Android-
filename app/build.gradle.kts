@@ -17,8 +17,25 @@ android {
     }
 
     packaging { jniLibs.useLegacyPackaging = true }
+
+    // Use an owner-controlled keystore when configured in GitHub Actions secrets.
+    // Never commit private signing keys or passwords to the public repository.
+    signingConfigs {
+        val keyFile = System.getenv("AI_RELEASE_KEYSTORE")
+        if (!keyFile.isNullOrBlank()) {
+            create("persistent") {
+                storeFile = file(keyFile)
+                storePassword = System.getenv("AI_RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("AI_RELEASE_KEY_ALIAS")
+                keyPassword = System.getenv("AI_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("persistent")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
