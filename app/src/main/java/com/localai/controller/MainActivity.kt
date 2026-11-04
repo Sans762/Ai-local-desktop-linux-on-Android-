@@ -47,6 +47,7 @@ class MainActivity : Activity() {
     private var webView: WebView? = null
     private var desktopWebView: WebView? = null
     private var currentTab = "control"
+    private var settingsCategory = "start"
     private val ui = Handler(Looper.getMainLooper())
 
     private val bg = Color.rgb(7, 12, 26)
@@ -57,6 +58,106 @@ class MainActivity : Activity() {
     private val sub = Color.rgb(155, 168, 199)
     private val accent = Color.rgb(122, 115, 255)
     private val mint = Color.rgb(91, 232, 187)
+
+    // Each category has its own color; all state is derived from installed services,
+    // never from a fake "completed" preference flag.
+    private val linuxGreen = Color.rgb(112, 228, 173)
+    private val aiPurple = Color.rgb(189, 158, 255)
+    private val desktopOrange = Color.rgb(255, 197, 120)
+    private val privacyBlue = Color.rgb(125, 192, 255)
+    private val dataPink = Color.rgb(255, 158, 182)
+
+    private fun mixColor(a: Int, b: Int, share: Float): Int =
+        Color.rgb(
+            (Color.red(a) * (1f - share) + Color.red(b) * share).toInt(),
+            (Color.green(a) * (1f - share) + Color.green(b) * share).toInt(),
+            (Color.blue(a) * (1f - share) + Color.blue(b) * share).toInt()
+        )
+
+    private fun categoryCard(parent: LinearLayout, tone: Int, body: LinearLayout.() -> Unit): LinearLayout =
+        cardBlock(parent) {
+            background = panel(mixColor(card, tone, 0.105f), 20, mixColor(line, tone, 0.42f))
+            body()
+        }
+
+    private fun categorySelector(name: String, description: String, id: String, color: Int): TextView =
+        actionButton(name + "\n" + description) {
+            settingsCategory = id
+            showTab("control")
+        }.apply {
+            textSize = if (compactScreen()) 12.5f else 13f
+            gravity = Gravity.CENTER_VERTICAL
+            minHeight = dp(76)
+            setPadding(dp(11), dp(10), dp(10), dp(10))
+            setTextColor(if (settingsCategory == id) Color.WHITE else color)
+            background = panel(
+                mixColor(cardDeep, color, if (settingsCategory == id) 0.26f else 0.12f),
+                15, mixColor(line, color, if (settingsCategory == id) 0.88f else 0.40f)
+            )
+            contentDescription = name + ", " + description + if (settingsCategory == id) ", เลือกแล้ว" else ""
+        }
+
+    private fun addCategoryMenu(parent: LinearLayout) {
+        val items = listOf(
+            arrayOf("🐧  Linux พื้นฐาน", "ติดตั้งและตรวจสอบ", "linux"),
+            arrayOf("✦  AI ของฉัน", "ดาวน์โหลดและพูดคุย", "ai"),
+            arrayOf("▣  หน้าจอ Linux", "เปิดโปรแกรมและรีโมท", "desktop"),
+            arrayOf("🔐  ความปลอดภัย", "รหัสผ่านและสิทธิ์", "privacy"),
+            arrayOf("⬇  ข้อมูลและอัปเดต", "สำรองและอัปเดตแอป", "data")
+        )
+        val colors = listOf(linuxGreen, aiPurple, desktopOrange, privacyBlue, dataPink)
+        val columns = if (resources.configuration.screenWidthDp < 360 ||
+            resources.configuration.fontScale >= 1.5f) 1 else 2
+        for (start in items.indices step columns) {
+            val line = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.TOP
+            }
+            parent.addView(line, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            for (index in start until minOf(start + columns, items.size)) {
+                val it = items[index]
+                val element = categorySelector(it[0], it[1], it[2], colors[index])
+                line.addView(element, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                    if (index > start) leftMargin = dp(8)
+                })
+            }
+            if (columns == 2 && start + 1 == items.size) {
+                line.addView(View(this), LinearLayout.LayoutParams(0, 1, 1f).apply {
+                    leftMargin = dp(8)
+                })
+            }
+        }
+    }
+
+    private fun addSetupCheck(parent: LinearLayout, title: String, detail: String,
+                              done: Boolean, color: Int, target: String) {
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(10), dp(10), dp(10))
+            background = panel(mixColor(cardDeep, color, 0.10f), 13,
+                mixColor(line, color, 0.23f))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                settingsCategory = target
+                showTab("control")
+            }
+        }
+        box.addView(label(if (done) "✓" else "○", 22f, true, if (done) linuxGreen else color)
+            .apply { gravity = Gravity.CENTER },
+            LinearLayout.LayoutParams(dp(34), dp(34)))
+        val textGroup = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(7), 0, 0, 0)
+            addView(label(title, 13.5f, true))
+            addView(label(if (done) "ติดตั้ง/ตั้งค่าแล้ว • แตะเพื่อตรวจสอบ" else detail,
+                11.5f, false, sub))
+        }
+        box.addView(textGroup, LinearLayout.LayoutParams(0, -2, 1f))
+        box.contentDescription = (if (done) "ทำแล้ว" else "ยังไม่ทำ") + ": " + title + ". " + detail
+        parent.addView(box, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+    }
 
     private fun dp(n: Int): Int = (resources.displayMetrics.density * n + .5f).toInt()
     private fun compactScreen(): Boolean =
