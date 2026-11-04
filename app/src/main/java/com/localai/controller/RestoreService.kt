@@ -101,8 +101,14 @@ class RestoreService : Service() {
                             require(entry.isFile && entry.size in 1..16384) {
                                 "ข้อมูลหัวไฟล์สำรองไม่ถูกต้อง"
                             }
-                            manifest = JSONObject(String(tar.readNBytes(entry.size.toInt()),
-                                Charsets.UTF_8))
+                            val headerBytes = ByteArray(entry.size.toInt())
+                            var read = 0
+                            while (read < headerBytes.size) {
+                                val n = tar.read(headerBytes, read, headerBytes.size - read)
+                                require(n > 0) { "หัวไฟล์สำรองเสียหรือถูกตัด" }
+                                read += n
+                            }
+                            manifest = JSONObject(String(headerBytes, Charsets.UTF_8))
                             require(manifest!!.optString("format") == "localai-linux-backup" &&
                                 manifest!!.optInt("version") in 1..2) {
                                 "ไม่ใช่ไฟล์สำรอง Local AI ที่รองรับ"
