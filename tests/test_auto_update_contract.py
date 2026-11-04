@@ -14,6 +14,9 @@ gradle = Path("app/build.gradle.kts").read_text()
 workflow = Path(".github/workflows/build-apk.yml").read_text()
 
 assert 'applicationId = "com.localai.linuxagent.desktop"' in gradle
+assert 'applicationIdSuffix = ".test.v014"' in gradle, "Do not create new TEST package IDs per release"
+assert "Publish verified v0.14 TEST APK on GitHub Releases" not in workflow, "User-facing debug APKs produce duplicate apps"
+assert "if: github.ref == 'refs/heads/main' && env.AI_APK_KIND == 'release'" in workflow
 assert 'signingConfigs' in gradle and 'persistent' in gradle
 assert "RELEASE_KEYSTORE_BASE64" in workflow
 assert 'AutoUpdateJobService' in manifest and 'android.permission.BIND_JOB_SERVICE' in manifest
