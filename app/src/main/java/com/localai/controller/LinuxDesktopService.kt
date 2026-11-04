@@ -274,14 +274,14 @@ class LinuxDesktopService : Service() {
                 if (!closing && !xvnc.isAlive) {
                     updateStatus("หน้าจอ Linux หยุดทำงาน",
                         "Xvnc exited: " + linux.desktopLog("xvnc").takeLast(600))
-                    completionNotification(false)
+                    completionNotification(false, crashed = true)
                     stopSelf()
                 }
             } catch (_: InterruptedException) { }
         }, "linux-desktop-watchdog").apply { isDaemon = true; start() }
     }
 
-    private fun completionNotification(success: Boolean) {
+    private fun completionNotification(success: Boolean, crashed: Boolean = false) {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val channel = "linux_desktop_install_results"
         manager.createNotificationChannel(
@@ -292,9 +292,16 @@ class LinuxDesktopService : Service() {
         val note = Notification.Builder(this, channel)
             .setSmallIcon(if (success) android.R.drawable.stat_sys_download_done
                 else android.R.drawable.stat_notify_error)
-            .setContentTitle(if (success) "ติดตั้งหน้าจอ Linux สำเร็จ" else "ติดตั้งหน้าจอ Linux ไม่สำเร็จ")
-            .setContentText(if (success) "เปิดแอปแล้วแตะหน้าจอ Linux" else
-                "เปิดแอปเพื่อดูสาเหตุและลองใหม่")
+            .setContentTitle(when {
+                crashed -> "Linux Desktop หยุดทำงาน"
+                success -> "ติดตั้งหน้าจอ Linux สำเร็จ"
+                else -> "ติดตั้งหน้าจอ Linux ไม่สำเร็จ"
+            })
+            .setContentText(when {
+                crashed -> "แตะเพื่อดูรายละเอียด แล้วเปิดหน้าจอ Linux ใหม่"
+                success -> "เปิดแอปแล้วแตะหน้าจอ Linux"
+                else -> "เปิดแอปเพื่อดูสาเหตุและลองใหม่"
+            })
             .setAutoCancel(true)
             .setContentIntent(open)
             .build()
