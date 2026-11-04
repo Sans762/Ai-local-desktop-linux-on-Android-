@@ -156,6 +156,13 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
                     return
                 }
                 if (!authenticated) { error(sock, 401, "LOGIN_REQUIRED"); return }
+                // A browser on an unencrypted private LAN can access the AI chat, but
+                // must NEVER gain shell execution in the Android app's Linux rootfs.
+                // Local user approval via the device's loopback UI is required.
+                if (bindIp != "127.0.0.1" && req.path in setOf(
+                        "/api/linux/execute", "/api/linux/command", "/api/linux/plan")) {
+                    error(sock, 403, "LINUX_COMMANDS_REQUIRE_ON_DEVICE_APPROVAL"); return
+                }
                 if (req.method == "POST" && req.headers["x-csrf-token"] != store.csrfToken()) {
                     error(sock, 403, "INVALID_CSRF_TOKEN"); return
                 }
