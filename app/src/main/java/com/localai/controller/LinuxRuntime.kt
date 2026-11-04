@@ -22,6 +22,43 @@ class LinuxRuntime(private val context: Context) {
     fun installed(): Boolean = rootfs.resolve("bin/busybox").isFile
     fun binariesPresent(): Boolean = proot.isFile && loader.isFile
 
+    /**
+     * The Alpine minirootfs may expose only main, while TigerVNC requires
+     * community. Append the matching official HTTPS mirror only in app storage.
+     */
+    fun ensureDesktopRepositories(): String {
+        require(installed()) { "ติดตั้ง Alpine Linux ก่อน" }
+        val version = File(rootfs, "etc/alpine-release").readText().trim()
+        val branch = Regex("""^([0-9]+)\.([0-9]+)\.""").find(version)
+            ?: error("อ่านเวอร์ชัน Alpine ไม่ได้: $version")
+        val base = "https://dl-cdn.alpinelinux.org/alpine/v${branch.groupValues[1]}.${branch.groupValues[2]}"
+        val repositories = File(rootfs, "etc/apk/repositories")
+        repositories.parentFile?.mkdirs()
+        val original = if (repositories.isFile) repositories.readText() else ""
+        val entries = original.lines().map { it.trim() }
+            .filter { it.isNotBlank() && !it.startsWith("#") }
+        val missing = listOf("main", "community").map { "$base/$it" }.filter { official ->
+            entries.none { entry ->
+                entry.removeSuffix("/") == official ||
+                    (entry.contains("/alpine/v${branch.groupValues[1]}.${branch.groupValues[2]}/") &&
+                        entry.endsWith("/" + official.substringAfterLast('/')))
+            }
+        }
+        if (missing.isNotEmpty()) {
+            repositories.appendText(
+                (if (original.isNotEmpty() && !original.endsWith("\n")) "\n" else "") +
+                    missing.joinToString("\n", postfix = "\n")
+            )
+        }
+        val dns = File(rootfs, "etc/resolv.conf")
+        if (!dns.isFile || dns.length() == 0L) {
+            dns.parentFile?.mkdirs()
+            dns.writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
+        }
+        return "Alpine $version repositories: main + community"
+    }
+
+
     /** Run on a worker thread. Never overwrite an existing Linux rootfs or user's Linux files. */
     fun install(progress: (String) -> Unit) {
         if (installed()) { progress("Alpine Linux is already installed"); return }
@@ -123,8 +160,18 @@ class LinuxRuntime(private val context: Context) {
                 }
             } catch (_: Exception) { }
         }.apply { isDaemon = true; start() }
-        val finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
-        if (!finished) process.destroyForcibly()
+        val finished = try {
+            process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            process.destroyForcibly()
+            reader.interrupt()
+            Thread.currentThread().interrupt()
+            throw IllegalStateException("Linux command cancelled", e)
+        }
+        if (!finished) {
+            process.destroyForcibly()
+            process.waitFor(2, TimeUnit.SECONDS)
+        }
         reader.join(2000)
         val result = synchronized(output) { output.toString() }
         return result.take(128_000) + if (finished) "\n[exit ${process.exitValue()}]" else "\n[timeout: process stopped]"
