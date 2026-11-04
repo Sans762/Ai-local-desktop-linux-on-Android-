@@ -83,6 +83,8 @@ jobs:
           unzip -l "$APK" | grep -q 'assets/novnc/vendor/pako/lib/zlib/inflate.js'
           unzip -l "$APK" | grep -q 'assets/alpine-rootfs.bundle'
           unzip -l "$APK" | grep -q 'lib/arm64-v8a/libproot.so'
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | grep -q "BackupService"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml | grep -q "LinuxInstallService"
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml > /tmp/linux-only-manifest.txt
           if grep -E 'BIND_ACCESSIBILITY_SERVICE|FOREGROUND_SERVICE_MEDIA_PROJECTION|android.accessibilityservice|ScreenShareService|AutomationAccessibilityService' /tmp/linux-only-manifest.txt; then
             echo "Unexpected Android remote control declaration found"
@@ -93,7 +95,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAI-LinuxDesktop-v0.8-APK
+          name: LocalAI-LinuxDesktop-v0.9-APK
           path: ${{ env.AI_APK }}
           if-no-files-found: error
 
@@ -104,14 +106,30 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.8-signed-ARM64.apk
-          if gh release view v0.8-linux-desktop >/dev/null 2>&1; then
-            gh release upload v0.8-linux-desktop LocalAI-LinuxDesktop-v0.8-signed-ARM64.apk --clobber
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.9-signed-ARM64.apk
+          if gh release view v0.9-linux-desktop >/dev/null 2>&1; then
+            gh release upload v0.9-linux-desktop LocalAI-LinuxDesktop-v0.9-signed-ARM64.apk --clobber
           else
-            gh release create v0.8-linux-desktop LocalAI-LinuxDesktop-v0.8-signed-ARM64.apk \
+            gh release create v0.9-linux-desktop LocalAI-LinuxDesktop-v0.9-signed-ARM64.apk \
               --target "$GITHUB_SHA" \
-              --title "Local AI Linux Desktop v0.8 - ARM64" \
-              --notes "Linux Desktop v0.8: persistent owner-controlled release signature, same Android package as v0.6, update checker, Openbox, PC VNC and AI web. Existing debug builds signed with a different key cannot be updated in place. Back up app data before migration; no Android device test has been completed."
+              --title "Local AI Linux Desktop v0.9 - ARM64" \
+              --notes "Linux Desktop v0.9: persistent owner-controlled release signature, same Android package as v0.6, update checker, Openbox, PC VNC and AI web. Existing debug builds signed with a different key cannot be updated in place. Back up app data before migration; no Android device test has been completed."
+          fi
+      - name: Publish debug test APK as GitHub prerelease (not an in-place upgrade)
+        if: github.ref == 'refs/heads/main' && env.AI_APK_KIND == 'debug'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.9-DEBUG-ARM64.apk
+          if gh release view v0.9-debug-test >/dev/null 2>&1; then
+            gh release upload v0.9-debug-test LocalAI-LinuxDesktop-v0.9-DEBUG-ARM64.apk --clobber
+          else
+            gh release create v0.9-debug-test LocalAI-LinuxDesktop-v0.9-DEBUG-ARM64.apk \
+              --prerelease --target "$GITHUB_SHA" \
+              --title "Local AI Linux Desktop v0.9 TEST - ARM64" \
+              --notes "TEST APK only: debug signed; Android may refuse to update a prior debug APK with a different signature. DO NOT uninstall your original app if it contains Linux files, models or chats. Includes Alpine setup notifications, optional Chromium installer, Linux diagnostics, Android SAF backup export, and LAN shell-command restrictions. Device-level testing and backup restore remain incomplete. Prerelease is excluded from the signed in-app updater."
           fi
       - name: Remove temporary keystore
         if: always()
