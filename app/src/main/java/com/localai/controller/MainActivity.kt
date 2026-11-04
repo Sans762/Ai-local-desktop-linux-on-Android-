@@ -477,7 +477,7 @@ class MainActivity : Activity() {
             textSize = 12f
         }
         terminalOutputView = output
-        terminalScroll.addView(output, ScrollView.LayoutParams(-1, -2))
+        terminalScroll.addView(output, FrameLayout.LayoutParams(-1, -2))
         root.addView(terminalScroll, LinearLayout.LayoutParams(-1, 0, 1f))
         terminalScroll.post { terminalScroll.fullScroll(View.FOCUS_DOWN) }
         spacer(root, 9)
