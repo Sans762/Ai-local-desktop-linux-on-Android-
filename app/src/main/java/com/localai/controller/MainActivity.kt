@@ -1286,20 +1286,37 @@ class MainActivity : Activity() {
         } catch (e: Exception) { notifyUser("Download failed: ${e.message}") }
     }
 
+    /** Wait for the socket to bind instead of assuming it is ready after 900 ms. */
+    private fun awaitAiReady(remainingChecks: Int) {
+        if (isFinishing || isDestroyed) return
+        refreshChip()
+        when {
+            AiForegroundService.running -> showTab("workspace")
+            AiForegroundService.lastError.isNotBlank() -> {
+                notifyUser(AiForegroundService.lastError)
+                settingsCategory = "start"
+                showTab("control")
+            }
+            remainingChecks > 0 -> ui.postDelayed({
+                awaitAiReady(remainingChecks - 1)
+            }, 400L)
+            else -> {
+                notifyUser("AI ยังไม่พร้อม กรุณาลองเปิดใหม่")
+                settingsCategory = "start"
+                showTab("control")
+            }
+        }
+    }
+
     private fun startAi() {
         if (!store.hasPassword()) { notifyUser("ตั้งรหัสผ่านเว็บก่อนเริ่มบริการ"); return }
         try {
             if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                 requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 90)
+            AiForegroundService.lastError = ""
             startForegroundService(Intent(this, AiForegroundService::class.java))
             notifyUser("กำลังเริ่มบริการ AI…")
-            ui.postDelayed({
-                refreshChip()
-                if (AiForegroundService.running) showTab("workspace") else {
-                    notifyUser(AiForegroundService.lastError.ifBlank { "บริการยังเริ่มไม่สำเร็จ" })
-                    showTab("control")
-                }
-            }, 900)
+            ui.postDelayed({ awaitAiReady(20) }, 300L)
         } catch (e: Exception) { notifyUser("เริ่มบริการไม่สำเร็จ: ${e.message}") }
     }
 

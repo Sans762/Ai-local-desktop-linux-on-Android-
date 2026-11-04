@@ -54,6 +54,9 @@ assert "if (!textarea.value.trim()) textarea.value = content;" in js, "Failed ch
 assert "private fun showWebFailure(view: WebView?)" in native, "Localhost WebView failure needs native retry"
 assert "request?.isForMainFrame == true" in native, "Avoid overlays from subresource errors"
 assert "else desktop.reload()" in native, "Reopening Linux Desktop should refresh disconnected viewer"
+assert "private fun awaitAiReady(remainingChecks: Int)" in native, "AI startup should retry until ready"
+assert "awaitAiReady(20)" in native and "AiForegroundService.lastError = \"\"" in native
+assert "}, 900)" not in native, "Do not assume AI is ready after a fixed short delay"
 assert "Beginner web UI:" in css, "Small-screen monitor and chat spacing not customized"
 assert "viewport-fit=cover" in html and "viewport-fit=cover" in desktop
 assert "--app-height" in css and "visualViewport" in js, "Keyboard viewport fix missing"
