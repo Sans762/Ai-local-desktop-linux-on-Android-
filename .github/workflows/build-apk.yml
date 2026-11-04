@@ -141,7 +141,7 @@ jobs:
           # under a hard-coded v0.18 tag. The app's updater accepts this tag/asset shape.
           BADGING="$("$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$AI_APK" | head -n 1)"
           VERSION_NAME="$(printf '%s\n' "$BADGING" | sed -n "s/.*versionName='\\([^']*\\)'.*/\\1/p")"
-          if [[ ! "$VERSION_NAME" =~ ^([0-9]+)\\.([0-9]+)\\.[0-9]+([-+][a-zA-Z0-9._-]+)?$ ]]; then
+          if [[ ! "$VERSION_NAME" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+([-+][a-zA-Z0-9._-]+)?$ ]]; then
             echo "::error::Invalid versionName: $VERSION_NAME. Expected major.minor.patch"
             exit 1
           fi
