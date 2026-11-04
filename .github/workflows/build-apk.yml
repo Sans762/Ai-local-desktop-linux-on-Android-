@@ -57,6 +57,9 @@ jobs:
             echo "AI_APK_KIND=debug" >> "$GITHUB_ENV"
             echo "::warning::No persistent release signing secrets. This debug APK may NOT update prior APKs in place; do not uninstall an app containing data without first backing it up."
           fi
+      - name: Check mobile layouts and JavaScript syntax
+        shell: bash
+        run: python3 tests/test_ui_layout_contract.py
       - name: Build Android APK
         shell: bash
         run: |
@@ -90,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAI-LinuxDesktop-v0.7-APK
+          name: LocalAI-LinuxDesktop-v0.8-APK
           path: ${{ env.AI_APK }}
           if-no-files-found: error
 
@@ -101,14 +104,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.7-signed-ARM64.apk
-          if gh release view v0.7-linux-desktop >/dev/null 2>&1; then
-            gh release upload v0.7-linux-desktop LocalAI-LinuxDesktop-v0.7-signed-ARM64.apk --clobber
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.8-signed-ARM64.apk
+          if gh release view v0.8-linux-desktop >/dev/null 2>&1; then
+            gh release upload v0.8-linux-desktop LocalAI-LinuxDesktop-v0.8-signed-ARM64.apk --clobber
           else
-            gh release create v0.7-linux-desktop LocalAI-LinuxDesktop-v0.7-signed-ARM64.apk \
+            gh release create v0.8-linux-desktop LocalAI-LinuxDesktop-v0.8-signed-ARM64.apk \
               --target "$GITHUB_SHA" \
-              --title "Local AI Linux Desktop v0.7 - ARM64" \
-              --notes "Linux Desktop v0.7: persistent owner-controlled release signature, same Android package as v0.6, update checker, Openbox, PC VNC and AI web. Existing debug builds signed with a different key cannot be updated in place. Back up app data before migration; no Android device test has been completed."
+              --title "Local AI Linux Desktop v0.8 - ARM64" \
+              --notes "Linux Desktop v0.8: persistent owner-controlled release signature, same Android package as v0.6, update checker, Openbox, PC VNC and AI web. Existing debug builds signed with a different key cannot be updated in place. Back up app data before migration; no Android device test has been completed."
           fi
       - name: Remove temporary keystore
         if: always()
