@@ -125,6 +125,34 @@ jobs:
           path: ${{ env.AI_APK }}
           if-no-files-found: error
 
+      - name: Reject accidental APK signing-key rotation
+        if: env.AI_APK_KIND == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # A new certificate would create installation failures, even if the
+          # package name and version code remain correct. Compare with the
+          # most recent *owner-signed* published APK, never old debug builds.
+          PREVIOUS_URL="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq             '[.[].assets[]? | select(.name | test("^LocalAI-LinuxDesktop-v[0-9]+[.][0-9]+-signed-ARM64[.]apk$")) | .browser_download_url][0] // empty')"
+          if [[ -z "$PREVIOUS_URL" ]]; then
+            echo "No earlier owner-signed APK; first signed release uses this key."
+          else
+            curl --fail --location --silent --show-error --retry 3 --max-time 120               "$PREVIOUS_URL" -o "$RUNNER_TEMP/previous-release.apk"
+            APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+            "$APKSIGNER" verify "$RUNNER_TEMP/previous-release.apk"
+            PREVIOUS_CERT="$("$APKSIGNER" verify --print-certs "$RUNNER_TEMP/previous-release.apk" |
+              awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}')"
+            CURRENT_CERT="$("$APKSIGNER" verify --print-certs "$AI_APK" |
+              awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}')"
+            test -n "$PREVIOUS_CERT" && test -n "$CURRENT_CERT"
+            if [[ "$PREVIOUS_CERT" != "$CURRENT_CERT" ]]; then
+              echo "::error::Signing certificate changed; publishing would break in-place Android updates."
+              exit 1
+            fi
+            echo "Verified: same signing certificate as last published signed APK."
+          fi
       - name: Publish direct-download standalone APK
         if: github.ref == 'refs/heads/main' && env.AI_APK_KIND == 'release'
         env:
