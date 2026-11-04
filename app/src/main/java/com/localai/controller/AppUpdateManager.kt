@@ -77,7 +77,7 @@ class AppUpdateManager(private val context: Context) {
             val assets = release.optJSONArray("assets") ?: error("No APK assets in release")
             var url: String? = null
             var digest: String? = null
-            var bytes: Long = -1L
+            var assetSize: Long = -1L
             for (i in 0 until assets.length()) {
                 val item = assets.getJSONObject(i)
                 if (item.optString("name") != expectedName) continue
@@ -89,7 +89,7 @@ class AppUpdateManager(private val context: Context) {
                         item.optLong("size", 0) in 1..150_000_000L) {
                         url = value
                         digest = hash
-                        bytes = item.optLong("size")
+                        assetSize = item.optLong("size")
                         break
                     }
                 }
@@ -101,7 +101,7 @@ class AppUpdateManager(private val context: Context) {
             }
             val local = version(currentVersion(), currentPattern) ?: listOf(0, 0, 0)
             return Release(tag, title, verifiedUrl, page,
-                isNewer(latest, local), digest ?: error("Missing verified SHA-256"), bytes)
+                isNewer(latest, local), digest ?: error("Missing verified SHA-256"), assetSize)
         } finally {
             connection.disconnect()
         }
