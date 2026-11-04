@@ -17,18 +17,20 @@ import java.util.concurrent.Executors
 
 /** Loopback-only web server. No remote bind, no external HTTP endpoints or AI API. */
 class LocalHttpServer(private val context: Context, private val store: AppStore,
-                      private val db: ChatDatabase, private val ai: NativeAgent) {
+                      private val db: ChatDatabase, private val ai: NativeAgent,
+                      private val bindIp: String = "127.0.0.1",
+                      private val listenPort: Int = AiForegroundService.PORT) {
     private val pool = Executors.newFixedThreadPool(4)
     private val linuxAgent = LinuxAgent(context, ImportRepository(context, store, db), db)
     @Volatile private var alive = false
     private var server: ServerSocket? = null
     private var acceptor: Thread? = null
-    private val origin = "http://127.0.0.1:${AiForegroundService.PORT}"
+    private val origin = "http://$bindIp:$listenPort"
     private var failures = 0
     private var firstFailure = 0L
 
     fun start() {
-        server = ServerSocket(AiForegroundService.PORT, 16, InetAddress.getByName("127.0.0.1"))
+        server = ServerSocket(listenPort, 16, InetAddress.getByName(bindIp))
         alive = true
         acceptor = Thread({
             while (alive) {
@@ -124,6 +126,10 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
             try {
                 sock.soTimeout = 12_000
                 val req = readRequest(sock.getInputStream())
+                // Reject DNS rebinding and wrong-host traffic, including on LAN.
+                if (req.headers["host"] != "$bindIp:$listenPort") {
+                    error(sock, 403, "INVALID_HOST"); return
+                }
                 val authenticated = store.hasSession(req.cookie("native_ai_session"))
                 if (req.method == "POST" && (req.headers["origin"] != origin || req.headers["content-type"]?.startsWith("application/json") != true)) {
                     error(sock, 403, "SAME_ORIGIN_JSON_REQUIRED"); return
