@@ -625,6 +625,28 @@ class MainActivity : Activity() {
             }
             spacer(this, 9)
             addView(label("อัปเดตผ่านระบบติดตั้งของ Android เท่านั้น • ไม่สามารถติดตั้งเงียบ ๆ ได้ • ถ้าระบบแจ้งลายเซ็นต่างกัน อย่าเพิ่งถอนแอปเดิม เพราะข้อมูล Linux จะหาย", 11.5f, false, sub))
+            spacer(this, 11)
+            addView(label("สำรอง Linux + AI ก่อนเปลี่ยน APK", 14f, true, mint))
+            spacer(this, 7)
+            addView(label("บันทึก Alpine, โมเดล GGUF และฐานข้อมูลแชทเป็นไฟล์ .tar.gz ไปยังโฟลเดอร์ที่เลือก • ไฟล์สำรองไม่เข้ารหัสและอาจมีข้อมูลส่วนตัว • รุ่นนี้ยังไม่มีปุ่มกู้คืนอัตโนมัติ", 12f, false, sub))
+            spacer(this, 8)
+            addView(label(BackupService.progress.take(160), 12f, false, sub))
+            spacer(this, 8)
+            addButton(this, "⬇  สำรองข้อมูล Linux + AI") {
+                if (LinuxDesktopService.running || LinuxDesktopService.installing ||
+                    AiForegroundService.running || ModelDownloadService.running || BackupService.running) {
+                    notifyUser("หยุด Desktop, AI และการดาวน์โหลดก่อนสำรองข้อมูล")
+                } else {
+                    startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(Intent.CATEGORY_OPENABLE)
+                        type = "application/gzip"
+                        putExtra(Intent.EXTRA_TITLE, "LocalAI-Linux-Backup-" +
+                            java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US)
+                                .format(java.util.Date()) + ".tar.gz")
+                    }, 44)
+                }
+            }
+
             spacer(this, 10)
             addView(label("Linux AI Agent ขออนุมัติก่อนรันคำสั่ง • เดสก์ท็อปเปิดจากแอปและให้คอมเชื่อมผ่าน VNC ได้ • ยังไม่ได้ทดสอบบน Android 17 • PRoot ไม่ใช่ VM", 12f, false, sub))
         }
@@ -681,6 +703,16 @@ class MainActivity : Activity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (resultCode != RESULT_OK) return
         val uri = data?.data ?: return
+        if (requestCode == 44) {
+            try {
+                startForegroundService(Intent(this, BackupService::class.java)
+                    .putExtra(BackupService.EXTRA_DESTINATION, uri))
+                notifyUser("กำลังสำรองข้อมูล ตรวจสถานะในแถบแจ้งเตือน")
+            } catch (e: Exception) {
+                notifyUser("สำรองข้อมูลไม่สำเร็จ: " + (e.message ?: "unknown"))
+            }
+            return
+        }
         notifyUser("กำลังนำเข้าไฟล์…")
         Thread({
             try {
