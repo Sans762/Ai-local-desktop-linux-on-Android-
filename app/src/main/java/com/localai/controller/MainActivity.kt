@@ -106,7 +106,7 @@ class MainActivity : Activity() {
     private fun field(hintText: String, password: Boolean = false): EditText = EditText(this).apply {
         hint = hintText
         setHintTextColor(sub)
-        setTextColor(text)
+        setTextColor(this@MainActivity.text)
         textSize = 14f
         isSingleLine = true
         background = panel(cardDeep, 13)
@@ -240,7 +240,7 @@ class MainActivity : Activity() {
 
     private fun showControls() {
         val scroll = ScrollView(this).apply {
-            fillViewport = true
+            isFillViewport = true
             clipToPadding = false
             setPadding(dp(17), 0, dp(17), dp(22))
         }
@@ -325,7 +325,7 @@ class MainActivity : Activity() {
             val control = CheckBox(this@MainActivity).apply {
                 text = "อนุญาตให้ AI ส่งคำสั่งแตะ/พิมพ์/ย้อนกลับ"
                 textSize = 13f
-                setTextColor(text)
+                setTextColor(this@MainActivity.text)
                 buttonTintList = android.content.res.ColorStateList.valueOf(accent)
                 isChecked = store.allowUiControl()
                 setOnCheckedChangeListener { _, checked ->
@@ -359,7 +359,7 @@ class MainActivity : Activity() {
                 val remoteInput = CheckBox(this@MainActivity).apply {
                     text = "อนุญาตให้รีโมทกดหน้าจอ/พิมพ์ได้ในเซสชันนี้"
                     textSize = 13f
-                    setTextColor(text)
+                    setTextColor(this@MainActivity.text)
                     buttonTintList = android.content.res.ColorStateList.valueOf(accent)
                     isChecked = RemoteSession.allowInput
                     setOnCheckedChangeListener { _, checked ->

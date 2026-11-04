@@ -68,7 +68,7 @@ class ScreenShareService : Service() {
                 else intent?.getParcelableExtra(EXTRA_INTENT)
             require(resultCode == android.app.Activity.RESULT_OK && data != null) { "Screen capture consent not granted" }
             val mgr = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-            val capture = mgr.getMediaProjection(resultCode, data)
+            val capture = requireNotNull(mgr.getMediaProjection(resultCode, data)) { "Unable to start MediaProjection" }
             projection = capture
             listenerThread = HandlerThread("native-screen-frames").apply { start() }
             val handler = Handler(listenerThread!!.looper)
