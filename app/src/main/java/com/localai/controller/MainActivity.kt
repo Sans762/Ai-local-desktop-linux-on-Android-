@@ -534,50 +534,91 @@ class MainActivity : Activity() {
             }
         }
         if (settingsCategory == "ai") {
-        categoryCard(content, aiPurple) {
-            addView(label("✦  เลือกสมอง AI", 14f, true, aiPurple))
-            spacer(this, 10)
-            addView(label(modelFile?.name ?: "ยังไม่ได้ติดตั้งสมอง AI", 17f, true))
-            spacer(this, 4)
-            addView(label(if (modelFile != null) "มีไฟล์ AI แล้ว • กดเปิด AI ที่หน้าแรกเพื่อใช้งาน" else "ดาวน์โหลด AI ด้านล่างก่อนเริ่มแชท", 12.5f, false, sub))
-            spacer(this, 13)
-            addButton(this, "＋  ใช้โมเดล AI ที่มีอยู่ในเครื่อง", true) { pick(31, "*/*") }
-            spacer(this, 10)
-            val modelProgress = label(ModelDownloadService.progress, 12f, false, sub)
-            addView(modelProgress)
-            spacer(this, 8)
-            addButton(this, "↓  ดาวน์โหลด AI ขนาดเล็ก (ประหยัดพื้นที่ · 491 MB)") { startModelDownload("small", modelProgress) }
-            spacer(this, 8)
-            addButton(this, "↓  ดาวน์โหลด AI คุณภาพสูงขึ้น (1.12 GB)") { startModelDownload("balanced", modelProgress) }
-            spacer(this, 7)
-            addView(label("ต้องต่ออินเทอร์เน็ตตอนดาวน์โหลดครั้งแรก จากนั้นพูดคุยกับ AI แบบออฟไลน์ได้", 12f, false, sub))
-        }
-        }
-        if (settingsCategory == "ai") {
-        categoryCard(content, aiPurple) {
-            addView(label("✎  ชื่อ AI และข้อมูลที่จำ", 14f, true, aiPurple))
-            spacer(this, 8)
-            val name = field("อยากเรียก AI ว่าอะไร? (ข้ามได้)").apply { setText(store.aiName()) }
-            addView(name)
-            spacer(this, 10)
-            addButton(this, "บันทึกชื่อ AI") {
-                store.setAiName(name.text.toString().trim().ifBlank { "Local AI" })
-                notifyUser("บันทึกชื่อ AI แล้ว")
+            categoryCard(content, aiPurple) {
+                setPadding(dp(12), dp(13), dp(12), dp(13))
+                val modelReady = modelFile != null
+                addView(label(if (modelReady) "✓  AI พร้อมใช้งาน" else
+                    "ยังไม่มีสมอง AI", 16f, true,
+                    if (modelReady) linuxGreen else aiPurple))
+                spacer(this, 5)
+                addView(label(if (modelReady) "คุยกับ AI ได้แบบออฟไลน์" else
+                    "ดาวน์โหลดครั้งแรก แล้วใช้งานได้โดยไม่ต้องต่อเน็ต",
+                    12f, false, sub))
+                val modelProgress = label(ModelDownloadService.progress, 11.5f, false, sub)
+                if (ModelDownloadService.running) {
+                    spacer(this, 8)
+                    addView(modelProgress)
+                }
+                spacer(this, 12)
+                if (!modelReady) {
+                    addButton(this, "↓  ดาวน์โหลด AI (แนะนำ · 1.12 GB)", true) {
+                        startModelDownload("balanced", modelProgress)
+                        if (modelProgress.parent == null) addView(modelProgress)
+                    }
+                } else {
+                    addButton(this, if (AiForegroundService.running)
+                        "✦  ไปหน้าแชท" else "▶  เปิด AI และแชท", true) {
+                        if (AiForegroundService.running) showTab("workspace")
+                        else if (!store.hasPassword()) {
+                            settingsCategory = "privacy"
+                            showTab("control")
+                            notifyUser("ตั้งรหัสผ่านก่อนใช้งาน AI")
+                        } else startAi()
+                    }
+                }
+                spacer(this, 10)
+                addButton(this, if (aiOptionsExpanded)
+                    "−  ซ่อนตัวเลือกโมเดล" else "＋  ตัวเลือกโมเดลอื่น") {
+                    aiOptionsExpanded = !aiOptionsExpanded
+                    showTab("control")
+                }
+                if (aiOptionsExpanded) {
+                    spacer(this, 9)
+                    addButton(this, "↓  AI ขนาดเล็ก (491 MB)") {
+                        startModelDownload("small", modelProgress)
+                        if (modelProgress.parent == null) addView(modelProgress)
+                    }
+                    spacer(this, 7)
+                    addButton(this, "＋  เลือกไฟล์ AI ที่มีอยู่") { pick(31, "*/*") }
+                    if (modelReady) {
+                        spacer(this, 5)
+                        addView(label("ที่ใช้ตอนนี้: " + modelFile!!.name.take(55),
+                            11f, false, sub))
+                    }
+                }
             }
-            spacer(this, 12)
-            addButton(this, if (advancedSettingsVisible) "−  ซ่อนตัวเลือกขั้นสูง" else "＋  ตัวเลือกขั้นสูง (สำหรับผู้มีไฟล์เดิม)") {
-                advancedSettingsVisible = !advancedSettingsVisible
-                showTab("control")
+            categoryCard(content, aiPurple) {
+                setPadding(dp(12), dp(11), dp(12), dp(11))
+                addButton(this, if (aiNameExpanded)
+                    "−  ซ่อนการตั้งชื่อ AI" else "✎  ตั้งชื่อ AI (ไม่บังคับ)") {
+                    aiNameExpanded = !aiNameExpanded
+                    showTab("control")
+                }
+                if (aiNameExpanded) {
+                    spacer(this, 9)
+                    val name = field("ชื่อที่อยากเรียก AI").apply { setText(store.aiName()) }
+                    addView(name)
+                    spacer(this, 8)
+                    addButton(this, "บันทึกชื่อ") {
+                        store.setAiName(name.text.toString().trim().ifBlank { "Local AI" })
+                        notifyUser("บันทึกชื่อเรียบร้อย")
+                        aiNameExpanded = false
+                        showTab("control")
+                    }
+                    spacer(this, 9)
+                    addButton(this, if (advancedSettingsVisible)
+                        "−  ซ่อนการนำเข้าข้อมูล" else "＋  นำเข้าข้อมูลจากแอปเก่า") {
+                        advancedSettingsVisible = !advancedSettingsVisible
+                        showTab("control")
+                    }
+                    if (advancedSettingsVisible) {
+                        spacer(this, 7)
+                        addButton(this, "นำเข้าประวัติแชท .db") { pick(32, "*/*") }
+                        spacer(this, 7)
+                        addButton(this, "นำเข้าชื่อ AI .json") { pick(33, "application/json") }
+                    }
+                }
             }
-            if (advancedSettingsVisible) {
-                spacer(this, 9)
-                addButton(this, "นำเข้าประวัติแชทเก่า (ไฟล์ .db)") { pick(32, "*/*") }
-                spacer(this, 9)
-                addButton(this, "นำเข้าชื่อ AI จากไฟล์ตั้งค่า .json") { pick(33, "application/json") }
-                spacer(this, 7)
-                addView(label("ใช้เมื่อต้องการนำไฟล์จากระบบเดิมเข้ามาเท่านั้น ไม่ลบไฟล์ต้นฉบับ", 12f, false, sub))
-            }
-        }
         }
         if (settingsCategory == "privacy") {
         categoryCard(content, privacyBlue) {
@@ -599,21 +640,6 @@ class MainActivity : Activity() {
             }
             spacer(this, 7)
             addView(label("ต้องใช้รหัสผ่านเมื่อเปิดหน้า AI ผ่านเว็บ • หากเปิดให้คอมเชื่อมต่อ ให้ใช้เฉพาะ Wi-Fi ส่วนตัวหรือ VPN", 12f, false, sub))
-        }
-        }
-        if (settingsCategory == "ai") {
-        categoryCard(content, aiPurple) {
-            addView(label("✧  ให้ AI ช่วยทำงาน Linux", 14f, true, aiPurple))
-            spacer(this, 9)
-            addView(label("พิมพ์งานที่อยากให้ AI ช่วย เช่น สร้างโฟลเดอร์ เปิดโปรแกรม หรือจัดการไฟล์ Linux", 14f, true))
-            spacer(this, 8)
-            addView(label("AI จะบอกแผนให้คุณดูก่อน และทำงานใน Linux เมื่อคุณกดยืนยันเท่านั้น", 12f, false, sub))
-            spacer(this, 11)
-            addButton(this, "✦  ไปหน้าพูดคุยและสั่ง AI", true) {
-                if (!AiForegroundService.running) {
-                    notifyUser("เริ่มบริการ AI ก่อนเปิด Linux Workspace")
-                } else showTab("workspace")
-            }
         }
         }
         if (settingsCategory == "linux") {
