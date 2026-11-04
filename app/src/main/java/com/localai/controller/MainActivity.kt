@@ -520,11 +520,18 @@ class MainActivity : Activity() {
                 notifyUser("บันทึกชื่อ AI แล้ว")
             }
             spacer(this, 12)
-            addButton(this, "นำเข้าความจำเก่า memory.db") { pick(32, "*/*") }
-            spacer(this, 9)
-            addButton(this, "นำเข้าชื่อจาก safe-config.json") { pick(33, "application/json") }
-            spacer(this, 7)
-            addView(label("นำเข้าข้อมูลเป็นสำเนา ไม่ลบไฟล์และโมเดลต้นฉบับ • ไม่ต้องใช้ Termux", 12f, false, sub))
+            addButton(this, if (advancedSettingsVisible) "−  ซ่อนตัวเลือกขั้นสูง" else "＋  ตัวเลือกขั้นสูง (สำหรับผู้มีไฟล์เดิม)") {
+                advancedSettingsVisible = !advancedSettingsVisible
+                showTab("control")
+            }
+            if (advancedSettingsVisible) {
+                spacer(this, 9)
+                addButton(this, "นำเข้าประวัติแชทเก่า (ไฟล์ .db)") { pick(32, "*/*") }
+                spacer(this, 9)
+                addButton(this, "นำเข้าชื่อ AI จากไฟล์ตั้งค่า .json") { pick(33, "application/json") }
+                spacer(this, 7)
+                addView(label("ใช้เมื่อต้องการนำไฟล์จากระบบเดิมเข้ามาเท่านั้น ไม่ลบไฟล์ต้นฉบับ", 12f, false, sub))
+            }
         }
         }
         if (settingsCategory == "privacy") {
@@ -611,14 +618,20 @@ class MainActivity : Activity() {
                 }
             }
             spacer(this, 12)
-            addView(label("LINUX CONSOLE", 11.5f, true, sub))
+            addButton(this, if (advancedSettingsVisible) "−  ซ่อนเครื่องมือขั้นสูง" else "＋  เปิดเครื่องมือขั้นสูง (Terminal)") {
+                advancedSettingsVisible = !advancedSettingsVisible
+                showTab("control")
+            }
+            if (advancedSettingsVisible) {
+            spacer(this, 12)
+            addView(label("คำสั่ง Linux (สำหรับผู้ใช้ขั้นสูง)", 11.5f, true, sub))
             spacer(this, 8)
             val command = field("เช่น uname -a หรือ apk --version").apply {
                 setText("uname -a && cat /etc/alpine-release")
             }
             addView(command)
             spacer(this, 9)
-            val output = label("Linux command output will appear here", 12f, false, mint).apply {
+            val output = label("ผลลัพธ์คำสั่งจะแสดงที่นี่", 12f, false, mint).apply {
                 setPadding(dp(12), dp(12), dp(12), dp(12))
                 background = panel(cardDeep, 13)
                 setTextIsSelectable(true)
@@ -635,6 +648,7 @@ class MainActivity : Activity() {
             addView(output)
             spacer(this, 8)
             addView(label("โปรดระวัง: คำสั่ง Linux สามารถแก้ไฟล์ใน rootfs ของแอปได้ อย่ารันคำสั่งที่ไม่รู้จัก", 11.5f, false, sub))
+            }
         }
         }
         if (settingsCategory == "desktop") {
