@@ -35,4 +35,19 @@ assert 'ดูสาเหตุที่ติดตั้งไม่ได้
 assert 'ตรวจในแถบแจ้งเตือน' not in ui, "Removed stale manual status placeholder"
 assert 'ดาวน์โหลดหน้าจอ Linux (ครั้งแรก)' not in ui, "Old overwhelming desktop panel"
 assert 'apk update && apk add' not in service
+
+# The mobile installer must not pause simply because the screen turned off.
+manifest = Path("app/src/main/AndroidManifest.xml").read_text()
+setup = (src / "LinuxInstallService.kt").read_text()
+assert 'android.permission.WAKE_LOCK' in manifest
+assert 'PowerManager.PARTIAL_WAKE_LOCK' in setup
+assert 'PowerManager.PARTIAL_WAKE_LOCK' in service
+assert 'wakeLock.release()' in setup
+assert 'setupWakeLock.release()' in service
+# Never report a dead Xvnc server as healthy; leave the log visible.
+assert 'private var healthThread: Thread?' in service
+assert 'while (!closing && xvnc.isAlive)' in service
+assert 'linux.desktopLog("xvnc").takeLast(600)' in service
+assert 'healthThread?.interrupt()' in service
+
 print("PASS: live installer state, Alpine repositories/DNS, bounded retries, compact desktop UI")
