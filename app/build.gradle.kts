@@ -34,8 +34,11 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            // Independent TEST installation: never overwrite a differently signed
-            // existing user app and never require deleting Linux/model data.
+            // Freeze this TEST package identity. Do not change the suffix per version:
+            // every distinct applicationId produces another launcher icon.
+            // Debug APKs built with ephemeral signing keys are for CI diagnostics ONLY.
+            // Ship user updates solely as owner-signed stable APKs using the fixed
+            // production ID above, with the SAME signing certificate across releases.
             applicationIdSuffix = ".test.v014"
             versionNameSuffix = "-test-v014"
             manifestPlaceholders["appLabel"] = "Local AI Linux TEST"
