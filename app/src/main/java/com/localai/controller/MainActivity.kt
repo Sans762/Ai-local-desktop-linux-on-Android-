@@ -1172,6 +1172,10 @@ class MainActivity : Activity() {
                         "ไม่มีข้อผิดพลาดที่บันทึกไว้"
                     }.takeLast(1800)
                     val summary = when {
+                        "Unable to lock database" in technical ||
+                            "Failed to open apk database" in technical ->
+                            "ตัวจัดการแพ็กเกจ Linux กำลังถูกใช้งานอยู่\n" +
+                                "ระบบจะรอคิวติดตั้งให้อัตโนมัติ ไม่ต้องลบแอปหรือข้อมูล"
                         "Xvnc" in technical && ("Permission denied" in technical ||
                             ".X1-lock" in technical) ->
                             "Linux Desktop เปิดไม่ขึ้นเพราะสิทธิ์ไฟล์ชั่วคราว\n" +
@@ -1183,7 +1187,7 @@ class MainActivity : Activity() {
                         .setMessage(summary)
                         .setNeutralButton("ข้อมูลเทคนิค") { _, _ ->
                             android.app.AlertDialog.Builder(this@MainActivity)
-                                .setTitle("รายละเอียด Xvnc")
+                                .setTitle("รายละเอียด Linux Desktop")
                                 .setMessage(technical)
                                 .setPositiveButton("ปิด", null)
                                 .show()
