@@ -82,20 +82,21 @@ class MainActivity : Activity() {
         }
 
     private fun categorySelector(name: String, description: String, id: String, color: Int): TextView =
-        actionButton(name + "\n" + description) {
+        actionButton(name) {
             settingsCategory = id
             showTab("control")
         }.apply {
-            textSize = if (compactScreen()) 12.5f else 13f
+            textSize = if (compactScreen()) 12f else 13f
             gravity = Gravity.CENTER_VERTICAL
-            minHeight = dp(76)
-            setPadding(dp(11), dp(10), dp(10), dp(10))
+            minHeight = dp(49)
+            setPadding(dp(9), dp(6), dp(8), dp(6))
+            maxLines = 2
             setTextColor(if (settingsCategory == id) Color.WHITE else color)
             background = panel(
-                mixColor(cardDeep, color, if (settingsCategory == id) 0.26f else 0.12f),
-                15, mixColor(line, color, if (settingsCategory == id) 0.88f else 0.40f)
+                mixColor(cardDeep, color, if (settingsCategory == id) 0.28f else 0.12f),
+                13, mixColor(line, color, if (settingsCategory == id) 0.83f else 0.35f)
             )
-            contentDescription = name + ", " + description + if (settingsCategory == id) ", เลือกแล้ว" else ""
+            contentDescription = name + ". " + description + if (settingsCategory == id) ". เลือกแล้ว" else ""
         }
 
     private fun addCategoryMenu(parent: LinearLayout) {
@@ -107,19 +108,19 @@ class MainActivity : Activity() {
             arrayOf("⬇  ข้อมูลและอัปเดต", "สำรองและอัปเดตแอป", "data")
         )
         val colors = listOf(linuxGreen, aiPurple, desktopOrange, privacyBlue, dataPink)
-        val columns = if (resources.configuration.screenWidthDp < 360 ||
-            resources.configuration.fontScale >= 1.5f) 1 else 2
+        val columns = if (resources.configuration.screenWidthDp < 320 ||
+            resources.configuration.fontScale >= 1.7f) 1 else 2
         for (start in items.indices step columns) {
             val line = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.TOP
             }
-            parent.addView(line, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+            parent.addView(line, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
             for (index in start until minOf(start + columns, items.size)) {
                 val it = items[index]
                 val element = categorySelector(it[0], it[1], it[2], colors[index])
                 line.addView(element, LinearLayout.LayoutParams(0, -2, 1f).apply {
-                    if (index > start) leftMargin = dp(8)
+                    if (index > start) leftMargin = dp(6)
                 })
             }
             if (columns == 2 && start + 1 == items.size) {
@@ -132,12 +133,13 @@ class MainActivity : Activity() {
 
     private fun addSetupCheck(parent: LinearLayout, title: String, detail: String,
                               done: Boolean, color: Int, target: String) {
-        val box = LinearLayout(this).apply {
+        val item = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(10), dp(10), dp(10))
-            background = panel(mixColor(cardDeep, color, 0.10f), 13,
-                mixColor(line, color, 0.23f))
+            minimumHeight = dp(39)
+            setPadding(dp(9), dp(5), dp(9), dp(5))
+            background = panel(mixColor(cardDeep, color, 0.065f), 11,
+                mixColor(line, color, 0.18f))
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -145,19 +147,16 @@ class MainActivity : Activity() {
                 showTab("control")
             }
         }
-        box.addView(label(if (done) "✓" else "○", 22f, true, if (done) linuxGreen else color)
-            .apply { gravity = Gravity.CENTER },
-            LinearLayout.LayoutParams(dp(34), dp(34)))
-        val textGroup = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(7), 0, 0, 0)
-            addView(label(title, 13.5f, true))
-            addView(label(if (done) "ติดตั้ง/ตั้งค่าแล้ว • แตะเพื่อตรวจสอบ" else detail,
-                11.5f, false, sub))
-        }
-        box.addView(textGroup, LinearLayout.LayoutParams(0, -2, 1f))
-        box.contentDescription = (if (done) "ทำแล้ว" else "ยังไม่ทำ") + ": " + title + ". " + detail
-        parent.addView(box, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(7) })
+        item.addView(label(if (done) "✓" else "○", 17f, true,
+            if (done) linuxGreen else color).apply { gravity = Gravity.CENTER },
+            LinearLayout.LayoutParams(dp(27), -2))
+        item.addView(label(title, 12.5f, false, text),
+            LinearLayout.LayoutParams(0, -2, 1f))
+        item.addView(label(if (done) "พร้อม" else "ตั้งค่า ›", 11f, true,
+            if (done) linuxGreen else color))
+        item.contentDescription = (if (done) "เสร็จแล้ว: " else "ยังไม่เสร็จ: ") + title +
+            ". " + detail + ". แตะเพื่อเปิดเมนู"
+        parent.addView(item, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
     }
 
     private fun dp(n: Int): Int = (resources.displayMetrics.density * n + .5f).toInt()
@@ -224,6 +223,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         store = AppStore(this)
         imports = ImportRepository(this, store, ChatDatabase(this))
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = bg
         window.navigationBarColor = bg
         window.decorView.systemUiVisibility = 0
@@ -231,7 +231,14 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(bg)
         }
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(mainColumn) { view, insets ->
+            val safe = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                or androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+            view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+            insets
+        }
         setContentView(mainColumn)
+        androidx.core.view.ViewCompat.requestApplyInsets(mainColumn)
         buildShell()
         showTab(if (store.hasPassword() && AiForegroundService.running) "workspace" else "control")
     }
@@ -267,7 +274,7 @@ class MainActivity : Activity() {
 
         val nav = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(17), dp(2), dp(17), dp(10))
+            setPadding(dp(10), dp(2), dp(10), dp(7))
         }
         mainColumn.addView(nav)
         workspaceTab = actionButton("✦  แชท AI") { showTab("workspace") }
