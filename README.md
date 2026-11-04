@@ -1,42 +1,43 @@
-# Local AI Linux Desktop for Android (v0.13)
+# Local AI Linux Desktop — Android
 
-A Linux-only AI workstation running in a native ARM64 Android app. **No Termux. No root. No Android UI automation.**
+> **สถานะล่าสุด: โค้ด v0.18 คอมไพล์ผ่าน แต่ยังไม่มี APK v0.18 ที่เผยแพร่สำหรับผู้ใช้**  
+> วันที่ตรวจ: 4 พฤศจิกายน 2026 · Android ARM64 · ไม่ใช้ Root หรือ Termux
 
-**Read the development roadmap and missing features:** [DEVELOPMENT_PLAN_TH.md](DEVELOPMENT_PLAN_TH.md) (Thai).
+## 📥 ดาวน์โหลด APK (ไฟล์ .apk โดยตรง ไม่ใช่ ZIP)
 
-## Automatic updates (v0.13 source)
-The stable, owner-signed Android app can check GitHub Releases every ~12 hours via JobScheduler, automatically download a verified APK on an unmetered network, and show a notification prompting the Android installer. It keeps the same production application ID. Android still requires user confirmation for installation. **This is not active for old .test apps**, and production signing secrets have not yet been configured, so no verified v0.13 stable APK is published. See [auto-update setup](AUTO_UPDATE_TH.md).
+**[ดาวน์โหลด Local AI Linux Desktop v0.7 (APK · 11.1 MB)](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/releases/download/v0.7-linux-desktop/LocalAI-LinuxDesktop-v0.7-ARM64.apk)**
 
-## What is in the source
-- Embedded Alpine Linux ARM64 rootfs with PRoot, using Android's kernel and the app's private filesystem.
-- Optional graphical Linux desktop: Openbox + TigerVNC/Xvnc + tint2 + PCManFM + XTerm. Install packages on the first launch from Control Center.
-- Responsive **in-app noVNC** viewer for the *Linux* desktop, and private LAN/VPN VNC for a desktop PC.
-- On-device GGUF inference, model download/import, SQLite chat, Linux command planner with explicit user approval.
-- Local AI web dashboard plus a private-LAN web endpoint when the desktop service is running and a password is configured.
-- Foreground notifications and user-started Stop controls; a responsive native Control Center and mobile WebView UI.
-- **No Accessibility or MediaProjection permissions** in the current Android manifest.
+**คำเตือน:** v0.7 เป็นไฟล์รุ่นเก่า ไม่ใช่โค้ด v0.18 ที่แก้ UI/บั๊กแล้ว ถ้าเคยติดตั้ง Local AI ไว้ **อย่าเพิ่งติดตั้งไฟล์นี้เพิ่มหรือลบแอปเดิม** เพราะ Android อาจสร้างแอปที่สอง หรือติดตั้งทับไม่ได้จากลายเซ็นที่ต่างกัน
 
-## Getting started
-1. Install the app on an ARM64 phone, set the AI web password.
-2. Install Alpine Linux from the APK.
-3. Download/import a GGUF model if you want local AI chat and Linux task planning.
-4. Install graphical desktop packages (internet required for the first setup).
-5. Start Linux Desktop and set a VNC password (legacy VncAuth uses only the first 8 ASCII characters).
-6. Open Linux Desktop *inside the app*, or connect your PC's VNC Viewer to the private IP and port displayed in the app.
-7. To use web AI from a PC, open the private IP and port shown in Control Center and sign in.
+**[ดูไฟล์ที่เผยแพร่ทั้งหมด](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/releases)** — ไฟล์ทดสอบเก่าหลายรุ่นอยู่ในหน้านี้เพื่ออ้างอิงเท่านั้น ไม่ใช่รายการอัปเดตต่อเนื่องที่ติดตั้งทับกันได้
 
-## Security and limitations
-- Android remains Android; PRoot is not a VM or strong security sandbox.
-- Do not expose VNC or HTTP ports to the public internet. They are **not encrypted**: use trusted LAN/private VPN only.
-- The app does not control Android. Browser automation **inside Linux** is still on the roadmap and not implemented.
-- Build success confirms compilation and packaged assets, **not device-level functionality**. Android 17 PRoot/VNC E2E tests remain outstanding.
-- Current GitHub Actions fall back to ephemeral **debug signing** when persistent release signing secrets are absent. APKs signed by different keys **cannot update one another in place**. Do not uninstall a version with valuable app data before backup/migration.
-- Model weights and the graphical desktop packages are not preinstalled in the ~11 MB APK.
+## ทำไมโทรศัพท์จึงมี Local AI สองแอป
 
-## Documentation
-- [Development plan (Thai)](DEVELOPMENT_PLAN_TH.md)
-- [Getting started: Linux desktop and PC VNC (Thai)](README_DESKTOP_TH.md)
-- [Build workflow](.github/workflows/build-apk.yml)
-- [Automatic signed updates and first-time setup (Thai)](AUTO_UPDATE_TH.md)
+APK เก่าถูกสร้างด้วยรหัสแพ็กเกจหรือลายเซ็นที่ต่างกัน Android จึงมองว่าเป็นคนละแอป ไม่สามารถรวมไอคอนหรือข้อมูลภายในสองแอปเข้าด้วยกันด้วยการเปลี่ยนชื่อไฟล์ APK
 
-This is an evolving prototype, not a verified production-ready remote desktop.
+เพื่อให้รุ่นหลังติดตั้งทับได้ ต้องมีทั้ง **applicationId `com.localai.linuxagent.desktop` เดิม**, **คีย์เซ็น Release เดิมทุกครั้ง** และ **versionCode เพิ่มขึ้น** ซึ่งระบบ CI ตรวจเงื่อนไขแล้ว แต่ยังไม่มีการตั้งค่า Release signing secrets โดยเจ้าของ GitHub
+
+**อย่าลบแอปที่เก็บ Linux, โมเดล หรือประวัติแชทอยู่** ก่อนสำรองและตรวจสอบการย้ายข้อมูล รุ่น v0.7 ไม่มีเมนูสำรองข้อมูลแบบใหม่
+
+## สถานะงาน
+
+| รายการ | สถานะ |
+|---|---|
+| โค้ด Android v0.18 | อยู่ใน `main` |
+| ทดสอบ Build APK | ผ่านบน GitHub Actions #201 |
+| APK v0.18 สำหรับดาวน์โหลดตรง | **ยังไม่มี** — งานเผยแพร่ถูกข้ามเพราะไม่มีคีย์เซ็นถาวร |
+| การอัปเดตทับแอปเดิม | มีโค้ดตรวจลายเซ็นและดาวน์โหลด แต่ยังไม่ทดสอบจริง |
+| Alpine Linux / VNC / AI บน Android 17 | ต้องทดสอบบนเครื่องจริง |
+| AI ควบคุม Android ทั้งเครื่อง | **ไม่รองรับ**; จำกัดงานใน Alpine Linux |
+
+ดู [Build #201](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/actions/runs/41839141059) และ [ขั้นตอนย้ายข้อมูล/ตั้งค่าคีย์สำหรับเจ้าของ](UPDATE_INSTALL_ONCE_TH.md)
+
+## สำหรับผู้พัฒนา
+
+แอป Native ฝัง Alpine Linux ARM64 ผ่าน PRoot, Desktop ใช้ Openbox/TigerVNC/noVNC, AI ใช้ GGUF บนมือถือ, ประวัติแชทเก็บใน SQLite และเครื่องมือ Linux Agent ต้องให้ผู้ใช้อนุมัติคำสั่งก่อนรัน ไม่มีการเรียก AI API ภายนอก แต่การดาวน์โหลดแพ็กเกจ/โมเดลต้องต่ออินเทอร์เน็ตครั้งแรก
+
+ขอบเขตแอปคือ **Linux ภายในมือถือ** ไม่ใช่รีโมทควบคุมหน้าจอ Android ทั้งเครื่อง บริการ LAN/VNC ไม่มีการเข้ารหัสในตัว ห้ามเปิดพอร์ตออกอินเทอร์เน็ตสาธารณะ
+
+เอกสาร: [แผนพัฒนา](DEVELOPMENT_PLAN_TH.md) · [คู่มือ Desktop](README_DESKTOP_TH.md) · [ระบบอัปเดต](AUTO_UPDATE_TH.md) · [Build workflow](.github/workflows/build-apk.yml)
+
+**การ Build ผ่านไม่ได้หมายความว่าผ่านทดสอบใช้งานบนโทรศัพท์จริง และห้ามเรียก v0.18 ว่าเป็นไฟล์พร้อมดาวน์โหลดก่อนมี APK ที่เซ็นถาวรเผยแพร่จริง**
