@@ -1280,6 +1280,24 @@ class MainActivity : Activity() {
                     }
                 }
 
+                if (desktopReady && !busy) {
+                    spacer(this, 9)
+                    if (LinuxDesktopService.fullInstalled(this@MainActivity)) {
+                        addView(label("✓ XFCE Desktop ติดตั้งแล้ว", 12f, true, linuxGreen))
+                    } else {
+                        addButton(this, "↓  ติดตั้ง XFCE Desktop แบบเต็ม") {
+                            if (LinuxDesktopService.running) {
+                                notifyUser("ปิดหน้าจอ Linux ก่อนติดตั้ง XFCE")
+                            } else {
+                                startForegroundService(Intent(this@MainActivity,
+                                    LinuxDesktopService::class.java)
+                                    .setAction(LinuxDesktopService.ACTION_INSTALL_FULL))
+                                notifyUser("กำลังติดตั้ง XFCE Desktop ผ่านอินเทอร์เน็ต")
+                                showTab("control")
+                            }
+                        }
+                    }
+                }
                 spacer(this, 8)
                 addButton(this, if (desktopAdvancedVisible)
                     "−  ซ่อนตัวเลือกเพิ่มเติม" else "＋  ตัวเลือกเพิ่มเติม") {

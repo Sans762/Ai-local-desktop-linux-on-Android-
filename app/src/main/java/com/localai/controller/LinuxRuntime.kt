@@ -232,7 +232,7 @@ class LinuxRuntime(private val context: Context) {
         logName: String
     ): Process {
         require(available()) { "Install Alpine Linux first" }
-        require(executable in setOf("/usr/bin/Xvnc", "/usr/bin/openbox", "/usr/bin/xterm", "/usr/bin/pcmanfm", "/usr/bin/lxpanel", "/usr/bin/tint2")) {
+        require(executable in setOf("/usr/bin/Xvnc", "/usr/bin/openbox", "/usr/bin/xterm", "/usr/bin/pcmanfm", "/usr/bin/lxpanel", "/usr/bin/tint2", "/usr/bin/dbus-run-session")) {
             "Unexpected desktop executable"
         }
         require(args.size < 40 && args.all { it.length < 256 }) { "Invalid argument" }

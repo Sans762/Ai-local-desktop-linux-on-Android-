@@ -24,6 +24,14 @@ assert 'completionNotification(true)' in service
 assert 'if (actionInstalling) installing = true' in service
 assert 'val ip = privateIp()' in service
 assert 'if (ip != null)' in service
+assert "ACTION_INSTALL_FULL" in service
+assert 'xfce4 xfce4-terminal dbus adwaita-icon-theme' in service
+assert 'fun fullInstalled(context: Context)' in service
+assert '"dbus-run-session"' in service
+assert '"xfce4-session"' in service
+assert 'if (!xfceStarted)' in service
+assert '"/usr/bin/dbus-run-session"' in runtime
+assert 'ติดตั้ง XFCE Desktop แบบเต็ม' in ui
 assert 'private fun startDesktop(linux: LinuxRuntime, password: String, ip: String?)' in service
 # Xvnc on Android PRoot must have an app-private writable /tmp.
 assert "fun prepareDesktopTemp()" in runtime

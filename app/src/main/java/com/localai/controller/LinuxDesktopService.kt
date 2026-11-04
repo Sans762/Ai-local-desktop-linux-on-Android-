@@ -19,6 +19,7 @@ class LinuxDesktopService : Service() {
     companion object {
         const val ACTION_INSTALL = "com.localai.controller.DESKTOP_INSTALL"
         const val ACTION_INSTALL_BROWSER = "com.localai.controller.BROWSER_INSTALL"
+        const val ACTION_INSTALL_FULL = "com.localai.controller.DESKTOP_XFCE_INSTALL"
         const val ACTION_START = "com.localai.controller.DESKTOP_START"
         const val ACTION_STOP = "com.localai.controller.DESKTOP_STOP"
         const val EXTRA_PASSWORD = "desktop_password"
@@ -45,6 +46,10 @@ class LinuxDesktopService : Service() {
 
         fun browserInstalled(context: Context): Boolean =
             File(context.filesDir, "embedded_linux/alpine-rootfs/usr/bin/chromium").isFile
+
+        fun fullInstalled(context: Context): Boolean =
+            listOf("xfce4-session", "xfdesktop", "xfce4-panel", "dbus-run-session")
+                .all { File(context.filesDir, "embedded_linux/alpine-rootfs/usr/bin/$it").isFile }
 
         fun installed(context: Context): Boolean =
             File(context.filesDir, "embedded_linux/alpine-rootfs/usr/bin/Xvnc").isFile &&
@@ -115,10 +120,11 @@ class LinuxDesktopService : Service() {
             return START_NOT_STICKY
         }
         val action = intent?.action ?: run { stopSelf(); return START_NOT_STICKY }
-        if (action !in setOf(ACTION_START, ACTION_INSTALL, ACTION_INSTALL_BROWSER)) { stopSelf(); return START_NOT_STICKY }
+        if (action !in setOf(ACTION_START, ACTION_INSTALL, ACTION_INSTALL_BROWSER, ACTION_INSTALL_FULL)) { stopSelf(); return START_NOT_STICKY }
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Linux Desktop and VNC", NotificationManager.IMPORTANCE_LOW))
-        val actionInstalling = action == ACTION_INSTALL || action == ACTION_INSTALL_BROWSER
+        val actionInstalling = action == ACTION_INSTALL || action == ACTION_INSTALL_BROWSER ||
+            action == ACTION_INSTALL_FULL
         if (actionInstalling) installing = true
         lastError = ""
         updateStatus(if (actionInstalling) "กำลังเตรียมติดตั้ง…" else "กำลังเปิด Linux Desktop…")
@@ -141,19 +147,33 @@ class LinuxDesktopService : Service() {
                 require(linux.available()) { "ติดตั้ง Linux พื้นฐานก่อนเปิดหน้าจอ" }
                 if (actionInstalling) {
                     require(!running) { "Stop the desktop before installing packages" }
-                    require(filesDir.usableSpace > if (action == ACTION_INSTALL_BROWSER) 1_600_000_000L else 600_000_000L) {
+                    require(filesDir.usableSpace > when (action) {
+                        ACTION_INSTALL_BROWSER -> 1_600_000_000L
+                        ACTION_INSTALL_FULL -> 1_000_000_000L
+                        else -> 600_000_000L
+                    }) {
                         "Not enough free storage for Linux packages"
                     }
                     val isBrowser = action == ACTION_INSTALL_BROWSER
+                    val isFull = action == ACTION_INSTALL_FULL
+                    if (isFull) require(installed(this)) {
+                        "ติดตั้งหน้าจอ Linux พื้นฐานก่อน"
+                    }
                     require(networkAvailable()) {
                         "ไม่มีอินเทอร์เน็ตที่ใช้งานได้ กรุณาเชื่อมต่อ Wi-Fi หรืออินเทอร์เน็ตมือถือแล้วลองใหม่"
                     }
                     updateStatus("กำลังเตรียมคลังโปรแกรม Linux…")
                     linux.ensureDesktopRepositories()
-                    val packages = if (isBrowser) "chromium xdotool" else
-                        "tigervnc openbox xterm pcmanfm tint2 font-dejavu xdotool"
-                    updateStatus(if (isBrowser) "กำลังดาวน์โหลด Chromium…" else
-                        "กำลังดาวน์โหลดหน้าจอ Linux…")
+                    val packages = when {
+                        isBrowser -> "chromium xdotool"
+                        isFull -> "xfce4 xfce4-terminal dbus adwaita-icon-theme"
+                        else -> "tigervnc openbox xterm pcmanfm tint2 font-dejavu xdotool"
+                    }
+                    updateStatus(when {
+                        isBrowser -> "กำลังดาวน์โหลด Chromium…"
+                        isFull -> "กำลังติดตั้ง XFCE Desktop แบบเต็ม…"
+                        else -> "กำลังดาวน์โหลดหน้าจอ Linux…"
+                    })
                     // No separate apk update: --no-cache resolves package metadata.
                     val setup = "apk add --no-cache $packages"
                     var lastNoticeAt = 0L
@@ -181,10 +201,16 @@ class LinuxDesktopService : Service() {
                             else -> "ติดตั้งไม่สำเร็จ: " + result.takeLast(700)
                         }
                     }
-                    if (isBrowser) require(browserInstalled(this)) { "ติดตั้ง Chromium ไม่ครบ" }
-                    else require(installed(this)) { "ติดตั้ง Xvnc/Openbox ไม่ครบ" }
-                    updateStatus(if (isBrowser) "✓ ติดตั้ง Chromium สำเร็จ" else
-                        "✓ ติดตั้งหน้าจอ Linux สำเร็จ · พร้อมเปิด")
+                    when {
+                        isBrowser -> require(browserInstalled(this)) { "ติดตั้ง Chromium ไม่ครบ" }
+                        isFull -> require(fullInstalled(this)) { "ติดตั้ง XFCE ไม่ครบ" }
+                        else -> require(installed(this)) { "ติดตั้ง Xvnc/Openbox ไม่ครบ" }
+                    }
+                    updateStatus(when {
+                        isBrowser -> "✓ ติดตั้ง Chromium สำเร็จ"
+                        isFull -> "✓ ติดตั้ง XFCE สำเร็จ · เปิดหน้าจอ Linux ใหม่"
+                        else -> "✓ ติดตั้งหน้าจอ Linux สำเร็จ · พร้อมเปิด"
+                    })
                     if (!closing) completionNotification(true)
                 } else {
                     require(installed(this)) { "Install desktop packages first" }
@@ -263,18 +289,47 @@ class LinuxDesktopService : Service() {
         require(socketReady) { "VNC could not start: " + linux.desktopLog("xvnc").takeLast(600) }
         notifyStatus("Opening Linux desktop windows…")
         val display = mapOf("DISPLAY" to ":1")
-        val apps = listOf(
-            Triple("/usr/bin/openbox", emptyList<String>(), "openbox"),
-            Triple("/usr/bin/pcmanfm", listOf("--desktop"), "pcmanfm"),
-            Triple("/usr/bin/tint2", emptyList<String>(), "tint2"),
-            Triple("/usr/bin/xterm", listOf("-geometry", "110x30+45+55"), "xterm")
-        )
-        for ((exe, args, log) in apps) {
-            try {
-                val process = linux.startDesktopProcess(exe, args, display, log)
-                synchronized(owned) { owned.add(process) }
-            } catch (e: Exception) {
-                if (exe.endsWith("openbox")) throw e
+        var xfceStarted = false
+        if (fullInstalled(this)) {
+            val prepared = linux.command(
+                "mkdir -p /tmp/runtime-root && chmod 700 /tmp/runtime-root",
+                timeoutSeconds = 20
+            )
+            if (prepared.trimEnd().endsWith("[exit 0]")) {
+                try {
+                    val session = linux.startDesktopProcess(
+                        "/usr/bin/dbus-run-session",
+                        listOf("--", "/usr/bin/xfce4-session"),
+                        display + mapOf(
+                            "XDG_RUNTIME_DIR" to "/tmp/runtime-root",
+                            "XDG_CURRENT_DESKTOP" to "XFCE",
+                            "XDG_SESSION_TYPE" to "x11",
+                            "NO_AT_BRIDGE" to "1"
+                        ), "xfce"
+                    )
+                    synchronized(owned) { owned.add(session) }
+                    Thread.sleep(1700L)
+                    xfceStarted = session.isAlive
+                } catch (_: Exception) {
+                    xfceStarted = false
+                }
+            }
+        }
+        if (!xfceStarted) {
+            // Retain a working lightweight Openbox desktop if XFCE cannot start.
+            val apps = listOf(
+                Triple("/usr/bin/openbox", emptyList<String>(), "openbox"),
+                Triple("/usr/bin/pcmanfm", listOf("--desktop"), "pcmanfm"),
+                Triple("/usr/bin/tint2", emptyList<String>(), "tint2"),
+                Triple("/usr/bin/xterm", listOf("-geometry", "84x26+24+34"), "xterm")
+            )
+            for ((exe, args, log) in apps) {
+                try {
+                    val process = linux.startDesktopProcess(exe, args, display, log)
+                    synchronized(owned) { owned.add(process) }
+                } catch (e: Exception) {
+                    if (exe.endsWith("openbox")) throw e
+                }
             }
         }
         desktopViewer = DesktopWebServer(this).also { it.start() }
