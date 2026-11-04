@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import java.io.File
 import java.net.*
 import java.util.concurrent.Executors
@@ -87,6 +88,7 @@ class LinuxDesktopService : Service() {
     private var lanWeb: LocalHttpServer? = null
     private var desktopViewer: DesktopWebServer? = null
     private var worker: Thread? = null
+    private var healthThread: Thread? = null
     @Volatile private var closing = false
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -122,7 +124,19 @@ class LinuxDesktopService : Service() {
         updateStatus(if (actionInstalling) "กำลังเตรียมติดตั้ง…" else "กำลังเปิด Linux Desktop…")
         val password = intent.getStringExtra(EXTRA_PASSWORD).orEmpty()
         worker = Thread({
+            var setupWakeLock: PowerManager.WakeLock? = null
             try {
+                if (actionInstalling) {
+                    // Keep CPU awake while the user-requested package installer is active.
+                    // A bounded wake lock is released on success, failure and cancellation.
+                    val power = getSystemService(Context.POWER_SERVICE) as PowerManager
+                    setupWakeLock = power.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK, "LocalAI:DesktopPackages"
+                    ).apply {
+                        setReferenceCounted(false)
+                        acquire(10L * 60_000L)
+                    }
+                }
                 val linux = LinuxRuntime(this)
                 require(linux.available()) { "ติดตั้ง Linux พื้นฐานก่อนเปิดหน้าจอ" }
                 if (actionInstalling) {
@@ -188,6 +202,8 @@ class LinuxDesktopService : Service() {
                 if (!closing) completionNotification(false)
                 if (!running) cleanup()
             } finally {
+                try { if (setupWakeLock?.isHeld == true) setupWakeLock.release() }
+                catch (_: Exception) { }
                 installing = false
                 if (!running) stopSelf()
             }
@@ -250,6 +266,19 @@ class LinuxDesktopService : Service() {
         running = true
         updateStatus(if (ip == null) "✓ หน้าจอ Linux พร้อมใช้บนมือถือ" else
             "✓ หน้าจอ Linux พร้อมใช้ · $ip:$VNC_PORT")
+        // If Android or Linux terminates Xvnc, do not leave the UI reporting
+        // a phantom running desktop. Preserve the tail of Xvnc's log.
+        healthThread = Thread({
+            try {
+                while (!closing && xvnc.isAlive) Thread.sleep(1500L)
+                if (!closing && !xvnc.isAlive) {
+                    updateStatus("หน้าจอ Linux หยุดทำงาน",
+                        "Xvnc exited: " + linux.desktopLog("xvnc").takeLast(600))
+                    completionNotification(false)
+                    stopSelf()
+                }
+            } catch (_: InterruptedException) { }
+        }, "linux-desktop-watchdog").apply { isDaemon = true; start() }
     }
 
     private fun completionNotification(success: Boolean) {
@@ -314,6 +343,8 @@ class LinuxDesktopService : Service() {
 
     override fun onDestroy() {
         closing = true
+        healthThread?.interrupt()
+        healthThread = null
         worker?.interrupt()
         cleanup()
         super.onDestroy()
