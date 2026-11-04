@@ -52,15 +52,18 @@
       <section id="chatTab" class="chat-tab">
         <div class="live-control" aria-label="Linux monitor and desktop">
           <div class="live-head">
-            <div><strong>สถานะมือถือ</strong><small>CPU · GPU · RAM · เครือข่าย</small></div>
+            <div><strong>แชท AI ในมือถือ</strong><small>เลือกดูสถานะหรือหน้าจอ Linux ได้</small></div>
             <button id="desktopToggle" class="subtle" type="button" aria-expanded="false" aria-controls="chatDesktopPanel">▣ ดูจอ Linux</button>
           </div>
-          <div class="monitor-grid">
+          <details id="monitorDetails" class="monitor-details" open>
+            <summary>ดูสถานะ CPU · GPU · RAM · เครือข่าย</summary>
+            <div class="monitor-grid">
             <div class="monitor-item monitor-cpu"><span>CPU</span><b id="liveCpu">กำลังตรวจ…</b><small id="liveCpuDetail">หน่วยประมวลผล</small></div>
             <div class="monitor-item monitor-gpu"><span>GPU</span><b id="liveGpu">ไม่มีข้อมูล</b><small>Android อาจไม่อนุญาตให้อ่าน</small></div>
             <div class="monitor-item monitor-ram"><span>RAM</span><b id="liveRam">—</b><small>หน่วยความจำว่าง</small></div>
             <div class="monitor-item monitor-net"><span>เครือข่าย</span><b id="liveNetwork">กำลังตรวจ…</b><small id="liveNetworkDetail">การรับ–ส่งข้อมูลของแอป</small></div>
-          </div>
+            </div>
+          </details>
           <div id="chatDesktopPanel" class="chat-desktop-panel" hidden>
             <div class="live-screen-title">
               <strong>Linux Desktop แบบโต้ตอบ</strong>

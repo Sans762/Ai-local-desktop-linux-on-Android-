@@ -214,3 +214,25 @@ html, body { min-width:0; max-width:100%; overflow-x:clip; }
   .messages{padding:11px;gap:11px}
 }
 @media(max-width:345px){.monitor-item b{font-size:10px}.monitor-item{padding:6px 4px}}
+
+
+/* Focus on chat on phones. Monitoring remains one tap away; desktop keeps it open. */
+.monitor-details{display:block;min-width:0;max-width:100%;margin:0}
+.monitor-details>summary{display:flex;align-items:center;gap:8px;min-height:32px;
+  color:#b7c8ea;font-size:11px;font-weight:650;cursor:pointer;list-style:none;
+  outline-offset:3px;padding:5px 2px;user-select:none}
+.monitor-details>summary::-webkit-details-marker{display:none}
+.monitor-details>summary::after{content:"⌄";margin-left:auto;color:#c4b5ff;font-size:15px}
+.monitor-details[open]>summary::after{content:"⌃"}
+.monitor-details .monitor-grid{padding-top:3px}
+@media(max-width:850px){
+  .live-control{padding:5px 10px 4px}
+  .live-head{margin-bottom:1px}
+  .live-head button{min-height:35px}
+  .monitor-details>summary{min-height:28px;padding:3px 2px;font-size:10.5px}
+  .monitor-details .monitor-grid{padding-top:4px;padding-bottom:3px}
+}
+@media(max-height:520px){
+  .live-control{padding:3px 8px}
+  .monitor-details>summary{min-height:23px;padding:1px}
+}

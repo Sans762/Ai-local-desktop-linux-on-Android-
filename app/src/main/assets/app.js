@@ -71,6 +71,11 @@ async function refresh() {
     return null;
   }
 }
+// On a narrow phone the conversation has priority over telemetry.
+const monitorDetails = $('monitorDetails');
+if (monitorDetails && window.matchMedia('(max-width:850px)').matches) {
+  monitorDetails.open = false;
+}
 let linuxDesktopActive = false;
 let desktopExpanded = false;
 const shortNum = (value, suffix='') =>
@@ -178,7 +183,9 @@ async function chat() {
     addMessage('assistant', data.reply || '(ไม่มีคำตอบ)');
   } catch (e) {
     indicator.remove();
-    addMessage('assistant', 'ไม่สำเร็จ: ' + e.message);
+    addMessage('assistant', 'ส่งไม่สำเร็จ: ' + e.message + ' · ลองกดส่งอีกครั้ง');
+    // Do not lose a failed message; also do not overwrite a new draft.
+    if (!textarea.value.trim()) textarea.value = content;
   } finally {
     busy = false;
     $('send').disabled = false;

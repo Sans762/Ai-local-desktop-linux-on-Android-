@@ -21,6 +21,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -394,7 +395,41 @@ class MainActivity : Activity() {
         screenHost.addView(desktop, FrameLayout.LayoutParams(-1, -1))
         if (desktop.url == null || !desktop.url.orEmpty().startsWith("http://127.0.0.1:6080/")) {
             desktop.loadUrl("http://127.0.0.1:6080/")
+        } else desktop.reload()
+    }
+
+    /** Keep a failed localhost WebView from becoming a blank browser error screen. */
+    private fun showWebFailure(view: WebView?) {
+        val failedTab = when {
+            currentTab == "workspace" && view === webView -> "workspace"
+            currentTab == "desktop" && view === desktopWebView -> "desktop"
+            else -> return // stale error from a background tab
         }
+        view?.stopLoading()
+        screenHost.removeAllViews()
+        val panel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(22), dp(25), dp(22), dp(25))
+            addView(label("เชื่อมต่อบริการในเครื่องไม่ได้", 19f, true).apply {
+                gravity = Gravity.CENTER
+            })
+            spacer(this, 9)
+            addView(label(
+                if (failedTab == "desktop")
+                    "หน้าจอ Linux อาจหยุดทำงาน ลองเปิดใหม่ได้โดยไม่ต้องลบแอป"
+                else "AI อาจยังเริ่มบริการไม่เสร็จ ข้อความและโมเดลเดิมยังอยู่",
+                13f, false, sub
+            ).apply { gravity = Gravity.CENTER })
+            spacer(this, 18)
+            addButton(this, "↻  ลองเปิดอีกครั้ง", true) { showTab(failedTab) }
+            spacer(this, 8)
+            addButton(this, "ไปตั้งค่าและตรวจสอบ") {
+                settingsCategory = if (failedTab == "desktop") "desktop" else "start"
+                showTab("control")
+            }
+        }
+        screenHost.addView(panel, FrameLayout.LayoutParams(-1, -1))
     }
 
     private fun createWebView(): WebView = WebView(this).apply {
@@ -422,6 +457,15 @@ class MainActivity : Activity() {
             @Deprecated("Compatibility for old Android WebView URL callbacks")
             override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean =
                 url?.let { !allowed(it) } ?: true
+
+            override fun onReceivedError(
+                view: WebView?, request: WebResourceRequest?, error: WebResourceError?
+            ) {
+                super.onReceivedError(view, request, error)
+                if (request?.isForMainFrame == true) {
+                    ui.post { showWebFailure(view) }
+                }
+            }
         }
     }
 
