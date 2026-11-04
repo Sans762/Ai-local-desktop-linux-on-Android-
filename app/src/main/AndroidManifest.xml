@@ -9,7 +9,7 @@
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
-        android:label="Local AI Linux"
+        android:label="${appLabel}"
         android:icon="@drawable/ic_launcher_local_ai"
         android:roundIcon="@drawable/ic_launcher_local_ai"
         android:theme="@android:style/Theme.Material.NoActionBar"
