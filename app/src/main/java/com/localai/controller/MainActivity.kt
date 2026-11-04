@@ -53,6 +53,10 @@ class MainActivity : Activity() {
     private var settingsCategory = "start"
     private var advancedSettingsVisible = false
     private var desktopAdvancedVisible = false
+    private var setupChecklistExpanded = false
+    private var aiOptionsExpanded = false
+    private var aiNameExpanded = false
+    private var dataAdvancedExpanded = false
     private var desktopRefreshToken = 0
     private val ui = Handler(Looper.getMainLooper())
 
@@ -106,11 +110,11 @@ class MainActivity : Activity() {
 
     private fun addCategoryMenu(parent: LinearLayout) {
         val items = listOf(
-            arrayOf("🐧  Linux พื้นฐาน", "ติดตั้งและตรวจสอบ", "linux"),
-            arrayOf("✦  AI ของฉัน", "ดาวน์โหลดและพูดคุย", "ai"),
-            arrayOf("▣  หน้าจอ Linux", "เปิดโปรแกรมและรีโมท", "desktop"),
-            arrayOf("🔐  ความปลอดภัย", "รหัสผ่านและสิทธิ์", "privacy"),
-            arrayOf("⬇  ข้อมูลและอัปเดต", "สำรองและอัปเดตแอป", "data")
+            arrayOf("🐧  Linux", "ระบบพื้นฐาน", "linux"),
+            arrayOf("✦  สมอง AI", "เลือกและคุยกับ AI", "ai"),
+            arrayOf("▣  หน้าจอคอม", "หน้าจอ Linux", "desktop"),
+            arrayOf("🔐  รหัสผ่าน", "ป้องกันบัญชีของคุณ", "privacy"),
+            arrayOf("⬇  ข้อมูล/อัปเดต", "สำรองและอัปเดต", "data")
         )
         val colors = listOf(linuxGreen, aiPurple, desktopOrange, privacyBlue, dataPink)
         val columns = if (resources.configuration.screenWidthDp < 320 ||
@@ -275,9 +279,8 @@ class MainActivity : Activity() {
         val titleStack = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(if (compactScreen()) 8 else 12), 0, dp(3), 0)
-            addView(label("LOCAL AI · LINUX", if (compactScreen()) 14f else 17f, true))
-            addView(label(if (compactScreen()) "DESKTOP" else "DESKTOP · " +
-                AppUpdateManager(this@MainActivity).currentVersion(), 10f, true, sub))
+            addView(label("Local AI", if (compactScreen()) 17f else 19f, true))
+            addView(label("แชท • Linux", 10f, false, sub))
         }
         header.addView(titleStack, LinearLayout.LayoutParams(0, -2, 1f))
         serviceChip = label("", 11f, true).apply {
@@ -292,7 +295,7 @@ class MainActivity : Activity() {
             setPadding(dp(10), dp(2), dp(10), dp(7))
         }
         mainColumn.addView(nav)
-        workspaceTab = actionButton("✦  แชท AI") { showTab("workspace") }
+        workspaceTab = actionButton("✦  แชท") { showTab("workspace") }
         controlsTab = actionButton("⚙  ตั้งค่า") { showTab("control") }
         nav.addView(workspaceTab, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
         nav.addView(controlsTab, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
@@ -421,63 +424,85 @@ class MainActivity : Activity() {
         val completed = listOf(store.hasPassword(), alpineReady,
             modelFile != null, desktopReady).count { it }
         if (settingsCategory == "start") {
+            val nextCategory = when {
+                !store.hasPassword() -> "privacy"
+                modelFile == null -> "ai"
+                !alpineReady -> "linux"
+                !desktopReady -> "desktop"
+                else -> "workspace"
+            }
+            val nextAction = when (nextCategory) {
+                "privacy" -> "ตั้งรหัสผ่าน"
+                "ai" -> "ดาวน์โหลด AI"
+                "linux" -> "ติดตั้ง Linux"
+                "desktop" -> "ติดตั้งหน้าจอคอม"
+                else -> "เปิดแชท AI"
+            }
             cardBlock(content, 5) {
-                setPadding(dp(11), dp(10), dp(11), dp(10))
-                background = panel(mixColor(card, accent, 0.10f), 15,
-                    mixColor(line, accent, 0.38f))
-                val quick = LinearLayout(this@MainActivity).apply {
+                setPadding(dp(14), dp(13), dp(14), dp(13))
+                background = panel(mixColor(card, accent, 0.11f), 17,
+                    mixColor(line, accent, 0.29f))
+                addView(label(if (completed == 4) "✓  พร้อมใช้งานแล้ว" else
+                    "เริ่มต้นใช้งาน", 14f, true, if (completed == 4) linuxGreen else aiPurple))
+                spacer(this, 4)
+                addView(label(if (AiForegroundService.running)
+                    "AI กำลังทำงาน" else if (completed == 4) "ทุกอย่างพร้อมแล้ว" else
+                    "เหลืออีก " + (4 - completed) + " ขั้นตอน",
+                    12f, false, sub))
+                spacer(this, 11)
+                addButton(this, if (AiForegroundService.running) "✦  เปิดแชท AI" else
+                    if (completed == 4) "▶  เปิด AI" else "ต่อไป: " + nextAction + "  ›", true) {
+                    if (AiForegroundService.running) showTab("workspace")
+                    else if (nextCategory == "workspace") startAi()
+                    else {
+                        settingsCategory = nextCategory
+                        showTab("control")
+                    }
+                }
+            }
+            cardBlock(content, 7) {
+                setPadding(dp(12), dp(11), dp(12), dp(11))
+                val progressRow = LinearLayout(this@MainActivity).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                 }
-                addView(quick)
-                val status = LinearLayout(this@MainActivity).apply {
-                    orientation = LinearLayout.VERTICAL
-                    addView(label("ตั้งค่าและเริ่มใช้งาน", 15f, true))
-                    addView(label("พร้อมแล้ว $completed/4 ขั้นตอน", 11f, false, sub))
-                }
-                quick.addView(status, LinearLayout.LayoutParams(0, -2, 1f))
-                val action = actionButton(
-                    if (AiForegroundService.running) "เปิดแชท ›" else "เริ่ม AI ›",
-                    true) {
-                    if (AiForegroundService.running) showTab("workspace")
-                    else if (modelFile == null) {
-                        settingsCategory = "ai"; showTab("control")
-                    } else if (!store.hasPassword()) {
-                        settingsCategory = "privacy"; showTab("control")
-                    } else startAi()
+                addView(progressRow)
+                progressRow.addView(label("ความพร้อม  $completed/4", 12.5f, true),
+                    LinearLayout.LayoutParams(0, -2, 1f))
+                progressRow.addView(actionButton(if (setupChecklistExpanded)
+                    "ซ่อนขั้นตอน  ⌃" else "ดูขั้นตอน  ⌄") {
+                    setupChecklistExpanded = !setupChecklistExpanded
+                    showTab("control")
                 }.apply {
-                    minHeight = dp(42)
-                    setPadding(dp(10), dp(7), dp(10), dp(7))
-                    textSize = 12f
-                }
-                quick.addView(action, LinearLayout.LayoutParams(-2, -2))
-            }
-            cardBlock(content, 7) {
-                setPadding(dp(10), dp(11), dp(10), dp(11))
-                addView(label("เช็กลิสต์", 14f, true))
-                spacer(this, 7)
+                    minHeight = dp(34)
+                    textSize = 11.5f
+                    setPadding(dp(9), dp(5), dp(9), dp(5))
+                })
+                spacer(this, 6)
                 val progressBar = android.widget.ProgressBar(this@MainActivity, null,
                     android.R.attr.progressBarStyleHorizontal).apply {
                     max = 4
                     progress = completed
                     progressTintList = android.content.res.ColorStateList.valueOf(linuxGreen)
                     progressBackgroundTintList = android.content.res.ColorStateList.valueOf(line)
-                    contentDescription = "พร้อม $completed จาก 4 ขั้นตอน"
+                    contentDescription = "พร้อม " + completed + " จาก 4 ขั้นตอน"
                 }
                 addView(progressBar, LinearLayout.LayoutParams(-1, dp(5)))
-                spacer(this, 5)
-                addSetupCheck(this, "รหัสผ่าน", "ตั้งรหัสผ่านเข้า AI",
-                    store.hasPassword(), privacyBlue, "privacy")
-                addSetupCheck(this, "Linux", "ติดตั้ง Alpine Linux",
-                    alpineReady, linuxGreen, "linux")
-                addSetupCheck(this, "สมอง AI", "ดาวน์โหลดโมเดล AI",
-                    modelFile != null, aiPurple, "ai")
-                addSetupCheck(this, "หน้าจอ Linux", "ติดตั้ง Linux Desktop",
-                    desktopReady, desktopOrange, "desktop")
+                if (setupChecklistExpanded) {
+                    spacer(this, 8)
+                    addSetupCheck(this, "รหัสผ่าน", "ตั้งรหัสผ่านเข้า AI",
+                        store.hasPassword(), privacyBlue, "privacy")
+                    addSetupCheck(this, "Linux", "ติดตั้ง Alpine Linux",
+                        alpineReady, linuxGreen, "linux")
+                    addSetupCheck(this, "สมอง AI", "ดาวน์โหลดโมเดล AI",
+                        modelFile != null, aiPurple, "ai")
+                    addSetupCheck(this, "หน้าจอคอม", "ติดตั้ง Linux Desktop",
+                        desktopReady, desktopOrange, "desktop")
+                }
             }
             cardBlock(content, 7) {
-                setPadding(dp(10), dp(11), dp(10), dp(11))
-                addView(label("เมนูตั้งค่า", 14f, true))
+                setPadding(dp(12), dp(9), dp(12), dp(11))
+                addView(label("เมนู", 14f, true))
                 addCategoryMenu(this)
             }
         } else {
