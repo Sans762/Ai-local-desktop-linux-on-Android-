@@ -33,6 +33,12 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-started Linux graphical desktop VNC server, local Linux applications and authenticated private-LAN AI workspace" />
         </service>
+        <service android:name=".LinuxInstallService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started local Alpine Linux rootfs extraction from bundled APK with a persistent progress notification" />
+        </service>
         <service android:name=".BackupService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
