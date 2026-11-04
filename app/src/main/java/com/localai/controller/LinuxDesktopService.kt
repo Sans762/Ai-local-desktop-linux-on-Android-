@@ -47,7 +47,11 @@ class LinuxDesktopService : Service() {
                         (a[0] == 172 && a[1] in 16..31) ||
                         (a[0] == 192 && a[1] == 168) ||
                         (a[0] == 100 && a[1] in 64..127)
-                    if (!local) continue
+                    val allowedInterface = nic.name.startsWith("wlan") ||
+                        nic.name.startsWith("ap") || nic.name.startsWith("eth") ||
+                        nic.name.startsWith("tun") || nic.name.startsWith("wg") ||
+                        nic.name.startsWith("tailscale")
+                    if (!local || !allowedInterface) continue
                     val weight = when {
                         nic.name.startsWith("wlan") -> 0
                         nic.name.startsWith("ap") -> 1
@@ -71,6 +75,10 @@ class LinuxDesktopService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
         if (worker?.isAlive == true) return START_NOT_STICKY
+        if (running && intent?.action == ACTION_START) {
+            notifyStatus(message)
+            return START_NOT_STICKY
+        }
         val action = intent?.action ?: run { stopSelf(); return START_NOT_STICKY }
         if (action !in setOf(ACTION_START, ACTION_INSTALL)) { stopSelf(); return START_NOT_STICKY }
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
@@ -86,7 +94,7 @@ class LinuxDesktopService : Service() {
                     require(!running) { "Stop the desktop before installing packages" }
                     installing = true
                     notifyStatus("Installing Linux graphical packages (first time only)…")
-                    val setup = "grep -qxF 'https://dl-cdn.alpinelinux.org/alpine/v3.23/community' /etc/apk/repositories || printf '%s\\n' 'https://dl-cdn.alpinelinux.org/alpine/v3.23/community' >> /etc/apk/repositories; apk update && apk add --no-cache tigervnc openbox xterm pcmanfm font-dejavu"
+                    val setup = "grep -qxF 'https://dl-cdn.alpinelinux.org/alpine/v3.23/community' /etc/apk/repositories || printf '%s\\n' 'https://dl-cdn.alpinelinux.org/alpine/v3.23/community' >> /etc/apk/repositories; apk update && apk add --no-cache tigervnc openbox xterm pcmanfm tint2 font-dejavu"
                     val result = linux.command(setup, timeoutSeconds = 900)
                     require(result.trimEnd().endsWith("[exit 0]")) { "Desktop package install failed: " + result.takeLast(550) }
                     require(installed(this)) { "Xvnc or Openbox missing after installation" }
@@ -142,6 +150,7 @@ class LinuxDesktopService : Service() {
         val apps = listOf(
             Triple("/usr/bin/openbox", emptyList<String>(), "openbox"),
             Triple("/usr/bin/pcmanfm", listOf("--desktop"), "pcmanfm"),
+            Triple("/usr/bin/tint2", emptyList<String>(), "tint2"),
             Triple("/usr/bin/xterm", listOf("-geometry", "110x30+45+55"), "xterm")
         )
         for ((exe, args, log) in apps) {
