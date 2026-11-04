@@ -57,6 +57,9 @@ jobs:
             echo "AI_APK_KIND=debug" >> "$GITHUB_ENV"
             echo "::warning::No persistent release signing secrets. This debug APK may NOT update prior APKs in place; do not uninstall an app containing data without first backing it up."
           fi
+      - name: Check swipe Back navigation contract
+        shell: bash
+        run: python3 tests/test_back_navigation_contract.py
       - name: Check safe automatic update contracts
         shell: bash
         run: python3 tests/test_auto_update_contract.py
@@ -101,13 +104,13 @@ jobs:
           if [[ "$AI_APK_KIND" == release ]]; then
             "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop'"
           else
-            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test.v012'"
+            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test.v014'"
           fi
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAI-LinuxDesktop-v0.13-APK
+          name: LocalAI-LinuxDesktop-v0.14-APK
           path: ${{ env.AI_APK }}
           if-no-files-found: error
 
@@ -123,18 +126,18 @@ jobs:
             echo "Stale workflow commit; do not publish an older APK over the latest build."
             exit 0
           fi
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.13-signed-ARM64.apk
-          if gh release view v0.13-linux-desktop >/dev/null 2>&1; then
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.14-signed-ARM64.apk
+          if gh release view v0.14-linux-desktop >/dev/null 2>&1; then
             echo "::error::Refusing to overwrite an already published signed APK. Bump versionCode and versionName for the next update."
             exit 1
           fi
-          gh release create v0.13-linux-desktop LocalAI-LinuxDesktop-v0.13-signed-ARM64.apk \
+          gh release create v0.14-linux-desktop LocalAI-LinuxDesktop-v0.14-signed-ARM64.apk \
             --target "$GITHUB_SHA" \
-            --title "Local AI Linux Desktop v0.13 - automatic signed updates" \
+            --title "Local AI Linux Desktop v0.14 - automatic signed updates" \
             --notes "Owner-signed stable Android app. Checks for verified updates and downloads automatically on unmetered Wi-Fi via Android JobScheduler. A user must approve the Android system installer prompt. No silent installs, no app-ID changes, no user-data deletion. Older APKs with different signing keys are not updatable in-place. Runtime on Android 17 still requires device testing."
           EXPECTED="sha256:$(sha256sum "$AI_APK" | awk '{print $1}')"
-          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.13-linux-desktop" \
-            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.13-signed-ARM64.apk") | .digest')"
+          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.14-linux-desktop" \
+            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.14-signed-ARM64.apk") | .digest')"
           test "$EXPECTED" == "$ACTUAL"
           echo "Verified signed release APK digest: $ACTUAL"
       - name: Remove temporary keystore
