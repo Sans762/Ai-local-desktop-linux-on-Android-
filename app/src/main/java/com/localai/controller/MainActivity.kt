@@ -487,8 +487,9 @@ class MainActivity : Activity() {
                 }
             }
         }
-        cardBlock(content) {
-            addView(label("01  /  โมเดลออฟไลน์", 12f, true, mint))
+        if (settingsCategory == "ai") {
+        categoryCard(content, aiPurple) {
+            addView(label("✦  เลือกสมอง AI", 14f, true, aiPurple))
             spacer(this, 10)
             addView(label(modelFile?.name ?: "ยังไม่ได้เลือกโมเดล GGUF", 17f, true))
             spacer(this, 4)
@@ -505,8 +506,10 @@ class MainActivity : Activity() {
             spacer(this, 7)
             addView(label("ดาวน์โหลดครั้งแรกเท่านั้น • มี SHA-256 ตรวจสอบไฟล์ • จากนั้น AI ทำงานออฟไลน์ • ไม่ใช้ AI API", 12f, false, sub))
         }
-        cardBlock(content) {
-            addView(label("02  /  ชื่อ AI และความจำ", 12f, true, mint))
+        }
+        if (settingsCategory == "ai") {
+        categoryCard(content, aiPurple) {
+            addView(label("✎  ชื่อ AI และข้อมูลที่จำ", 14f, true, aiPurple))
             spacer(this, 8)
             val name = field("ตั้งชื่อ AI (ไม่บังคับ)").apply { setText(store.aiName()) }
             addView(name)
@@ -522,8 +525,10 @@ class MainActivity : Activity() {
             spacer(this, 7)
             addView(label("นำเข้าข้อมูลเป็นสำเนา ไม่ลบไฟล์และโมเดลต้นฉบับ • ไม่ต้องใช้ Termux", 12f, false, sub))
         }
-        cardBlock(content) {
-            addView(label("03  /  ความปลอดภัย", 12f, true, mint))
+        }
+        if (settingsCategory == "privacy") {
+        categoryCard(content, privacyBlue) {
+            addView(label("🔐  รหัสผ่านสำหรับใช้งาน", 14f, true, privacyBlue))
             spacer(this, 7)
             addView(label(if (store.hasPassword()) "● ตั้งรหัสผ่านเว็บแล้ว" else "● ต้องตั้งรหัสผ่านก่อนเปิดบริการ", 14f, true))
             spacer(this, 10)
@@ -542,8 +547,10 @@ class MainActivity : Activity() {
             spacer(this, 7)
             addView(label("เว็บรับการเชื่อมต่อเฉพาะ 127.0.0.1 ไม่เปิดพอร์ตสาธารณะ", 12f, false, sub))
         }
-        cardBlock(content) {
-            addView(label("04  /  Linux AI Agent", 12f, true, mint))
+        }
+        if (settingsCategory == "ai") {
+        categoryCard(content, aiPurple) {
+            addView(label("✧  ให้ AI ช่วยทำงาน Linux", 14f, true, aiPurple))
             spacer(this, 9)
             addView(label("ให้ AI วางแผน รันคำสั่ง ติดตั้งแพ็กเกจ และจัดการไฟล์ภายใน Alpine Linux เท่านั้น", 14f, true))
             spacer(this, 8)
@@ -555,15 +562,19 @@ class MainActivity : Activity() {
                 } else showTab("workspace")
             }
         }
-        cardBlock(content) {
-            addView(label("05  /  Linux Environment", 12f, true, mint))
+        }
+        if (settingsCategory == "linux") {
+        categoryCard(content, linuxGreen) {
+            addView(label("🐧  รู้จัก Linux ในแอป", 14f, true, linuxGreen))
             spacer(this, 8)
             addView(label("Alpine Linux ARM64 + PRoot ทำงานบน kernel ของ Android โดยไม่ใช้ Termux หรือ Root", 13f, false, sub))
             spacer(this, 8)
             addView(label("ไม่มี Accessibility หรือการควบคุม Android • Linux GUI ต้องติดตั้งโปรแกรมเพิ่มในขั้นตอน 07 และเริ่มจากแอป", 12f, false, sub))
         }
-        cardBlock(content) {
-            addView(label("06  /  Linux built-in · Alpine ARM64", 12f, true, mint))
+        }
+        if (settingsCategory == "linux") {
+        categoryCard(content, linuxGreen) {
+            addView(label("📦  ติดตั้ง Linux และใช้คำสั่ง", 14f, true, linuxGreen))
             spacer(this, 8)
             val linux = LinuxRuntime(this@MainActivity)
             val status = label(if (linux.installed()) "●  Linux installed" else "○  Linux not unpacked yet", 13f, true, if (linux.installed()) mint else sub)
@@ -624,8 +635,10 @@ class MainActivity : Activity() {
             spacer(this, 8)
             addView(label("โปรดระวัง: คำสั่ง Linux สามารถแก้ไฟล์ใน rootfs ของแอปได้ อย่ารันคำสั่งที่ไม่รู้จัก", 11.5f, false, sub))
         }
-        cardBlock(content) {
-            addView(label("07  /  Linux Desktop · Remote จากคอม", 12f, true, mint))
+        }
+        if (settingsCategory == "desktop") {
+        categoryCard(content, desktopOrange) {
+            addView(label("▣  หน้าจอ Linux และคอมรีโมท", 14f, true, desktopOrange))
             spacer(this, 10)
             val desktopReady = LinuxDesktopService.installed(this@MainActivity)
             val desktopStatus = label(
@@ -747,8 +760,10 @@ class MainActivity : Activity() {
             spacer(this, 10)
             addView(label("ความปลอดภัย: เปิดรีโมทเมื่อใช้จริงเท่านั้น • VNC และ HTTP ไม่เข้ารหัส ต้องใช้ Wi-Fi ส่วนตัวหรือ VPN เท่านั้น ห้ามส่งพอร์ต 5902/18789 ออกอินเทอร์เน็ต", 11.5f, false, sub))
         }
-        cardBlock(content) {
-            addView(label("08  /  ระบบและข้อจำกัด", 12f, true, mint))
+        }
+        if (settingsCategory == "data") {
+        categoryCard(content, dataPink) {
+            addView(label("⬇  สำรองข้อมูลและอัปเดตแอป", 14f, true, dataPink))
             spacer(this, 8)
             addView(label("Android Native • Loopback Server 18788 • SQLite Memory • GGUF CPU", 12.5f, false, sub))
             spacer(this, 9)
@@ -814,6 +829,7 @@ class MainActivity : Activity() {
 
             spacer(this, 10)
             addView(label("Linux AI Agent ขออนุมัติก่อนรันคำสั่ง • เดสก์ท็อปเปิดจากแอปและให้คอมเชื่อมผ่าน VNC ได้ • ยังไม่ได้ทดสอบบน Android 17 • PRoot ไม่ใช่ VM", 12f, false, sub))
+        }
         }
         spacer(content, 26)
     }
