@@ -12,8 +12,8 @@ android {
         manifestPlaceholders["appLabel"] = "Local AI Linux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10
-        versionName = "0.10.0-easy-settings"
+        versionCode = 11
+        versionName = "0.11.0-monitor-and-updates"
         ndk { abiFilters += "arm64-v8a" }
     }
 
