@@ -3,12 +3,15 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
         android:label="Local AI Native"
+        android:icon="@drawable/ic_launcher_local_ai"
+        android:roundIcon="@drawable/ic_launcher_local_ai"
         android:theme="@android:style/Theme.Material.NoActionBar"
         android:extractNativeLibs="true">
         <activity android:name=".MainActivity" android:exported="true">
@@ -24,6 +27,9 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-started on-device offline AI inference and localhost dashboard with a visible persistent notification" />
         </service>
+        <service android:name=".ScreenShareService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
         <service android:name=".AutomationAccessibilityService"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">

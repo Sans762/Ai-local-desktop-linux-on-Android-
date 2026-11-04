@@ -3,72 +3,100 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b1022">
-  <title>Local AI Native</title>
+  <meta name="theme-color" content="#070c1a">
+  <title>Local AI · Native Workspace</title>
   <link rel="stylesheet" href="/app.css">
   <script src="/app.js" defer></script>
 </head>
 <body>
   <div id="login" class="auth-page" hidden>
+    <div class="auth-glow" aria-hidden="true"></div>
     <div class="auth-card">
-      <div class="logo">◈</div>
-      <h1>Local AI</h1>
-      <p>Android Native · Offline first</p>
+      <div class="auth-top"><div class="logo large">✦</div><span class="eyebrow">PRIVATE BY DESIGN</span></div>
+      <h1>AI ของคุณ<br><span class="gradient-text">อยู่ในมือคุณ</span></h1>
+      <p>เข้าสู่พื้นที่ AI ส่วนตัวที่ทำงานออฟไลน์บนมือถือ ไม่ต้องมีบัญชีคลาวด์</p>
       <form id="loginForm">
-        <label for="password">รหัสผ่านที่ตั้งในแอป</label>
-        <input id="password" type="password" autocomplete="current-password" minlength="8" required>
-        <button type="submit" class="primary full">เข้าสู่ระบบ</button>
+        <label for="password">รหัสผ่านที่ตั้งไว้ในแอป</label>
+        <input id="password" type="password" autocomplete="current-password" minlength="8" placeholder="รหัสผ่านของคุณ" required>
+        <button type="submit" class="primary full">เข้าสู่ Workspace <span aria-hidden="true">↗</span></button>
       </form>
       <p id="loginError" class="error" role="alert"></p>
-      <small>การเชื่อมต่อนี้จำกัดที่มือถือเครื่องเดียว: 127.0.0.1</small>
+      <div class="auth-footer"><span class="dot"></span> Private • Localhost 127.0.0.1 • Offline-ready</div>
     </div>
   </div>
   <div id="dashboard" class="shell" hidden>
-    <aside class="sidebar">
-      <div class="brand"><div class="logo small">◈</div><div><strong id="aiName">Local AI</strong><span>ON-DEVICE ASSISTANT</span></div></div>
-      <div class="section-label">สถานะเครื่อง</div>
-      <div class="metric"><span>เซิร์ฟเวอร์</span><b id="service">ทำงาน</b></div>
-      <div class="metric"><span>โมเดล</span><b id="model" class="cut">กำลังตรวจ</b></div>
-      <div class="metric"><span>RAM ที่ว่าง</span><b id="ram">—</b></div>
-      <div class="metric"><span>การควบคุมมือถือ</span><b id="control">ปิด</b></div>
-      <p class="aside-help">โมเดล GGUF และการตั้งค่าความปลอดภัยจัดการผ่านแอป Android Native</p>
-      <button id="refresh" class="subtle full">ตรวจสถานะใหม่</button>
-      <button id="logout" class="subtle full">ออกจากระบบ</button>
+    <aside class="sidebar" aria-label="สถานะ AI">
+      <div class="brand"><div class="logo">✦</div><div><strong id="aiName">Local AI</strong><span>PERSONAL INTELLIGENCE</span></div></div>
+      <div class="rail-divider"></div>
+      <div class="section-label">WORKSPACE STATUS</div>
+      <div class="online-card"><span class="online-icon">◉</span><div><strong id="service">พร้อมใช้งาน</strong><small>On-device service</small></div></div>
+      <div class="section-label space-top">DEVICE TELEMETRY</div>
+      <div class="metric"><span>◈ โมเดลที่ใช้งาน</span><b id="model" class="cut">กำลังตรวจสอบ…</b></div>
+      <div class="metric"><span>◫ หน่วยความจำที่ว่าง</span><b id="ram">—</b></div>
+      <div class="metric"><span>⌘ สิทธิ์ควบคุม Android</span><b id="control">ปิดอยู่</b></div>
+      <div class="sidebar-bottom"><div class="local-card"><span>✧</span><div><strong>100% Local Inference</strong><small>ไม่มี AI API ภายนอก</small></div></div>
+        <button id="refresh" class="text-button" type="button">↻ <span>รีเฟรชสถานะ</span></button>
+        <button id="logout" class="text-button" type="button">↪ <span>ออกจากระบบ</span></button>
+      </div>
     </aside>
     <main class="main">
       <header class="topbar">
-        <div><h1>AI Workspace</h1><p>สนทนาและสั่งงานออฟไลน์บนมือถือ</p></div>
-        <span class="status"><i></i> Local only</span>
+        <div><div class="eyebrow">LOCAL AI / WORKSPACE <span class="line-accent">02</span></div><h1>AI Workspace<span class="heading-star">✦</span></h1><p>พูดคุย คิด และสั่งงานได้ในเครื่องของคุณ</p></div>
+        <div class="top-actions"><span class="status"><span class="dot"></span> <span id="onlineLabel">Local only</span></span></div>
       </header>
-      <nav class="tabs" aria-label="โหมด">
-        <button class="tab active" data-tab="chat">แชท AI</button>
-        <button class="tab" data-tab="device">ควบคุมอุปกรณ์</button>
-        <button class="tab" data-tab="about">ระบบ</button>
+      <nav class="tabs" aria-label="โหมดทำงาน">
+        <button class="tab active" type="button" data-tab="chat"><span class="tab-icon">◉</span><span>แชท AI</span></button>
+        <button class="tab" type="button" data-tab="device"><span class="tab-icon">⌘</span><span>ควบคุมเครื่อง</span></button>
+        <button class="tab" type="button" data-tab="about"><span class="tab-icon">◫</span><span>ระบบ</span></button>
       </nav>
       <section id="chatTab" class="chat-tab">
-        <div id="messages" class="messages" aria-live="polite">
-          <div class="intro"><div class="logo">◈</div><h2>พร้อมรับคำสั่ง</h2><p>AI ทำงานในเครื่องเมื่อเลือกโมเดล GGUF แล้ว ไม่ใช้ API ภายนอก</p></div>
+        <div id="messages" class="messages" aria-live="polite" aria-label="ประวัติสนทนา">
+          <div class="intro">
+            <div class="intro-mark"><span>✦</span><i></i></div>
+            <span class="eyebrow">INTELLIGENCE, ON YOUR DEVICE</span>
+            <h2>เริ่มต้นด้วยไอเดียของคุณ</h2>
+            <p>ถามได้ทั้งภาษาไทยและภาษาอังกฤษ ข้อความจะถูกประมวลผลในมือถือเมื่อเลือกโมเดล GGUF แล้ว</p>
+            <div class="quick-prompts">
+              <button data-prompt="ช่วยวางแผนงานของฉันวันนี้" type="button">✧ วางแผนงานวันนี้</button>
+              <button data-prompt="ช่วยอธิบายเรื่อง AI ออฟไลน์อย่างเข้าใจง่าย" type="button">◈ ทำความเข้าใจ AI</button>
+              <button data-prompt="Hello! Please introduce yourself in English." type="button">↗ Practice English</button>
+            </div>
+          </div>
         </div>
         <div class="composer">
-          <div class="input-area"><textarea id="message" rows="2" placeholder="พิมพ์ข้อความภาษาไทยหรืออังกฤษ…" maxlength="3500"></textarea><button id="send" class="primary">ส่ง</button></div>
-          <small id="chatHint">โมเดลจะถูกโหลดเมื่อส่งคำถาม เพื่อประหยัด RAM</small>
+          <div class="composer-inner">
+            <div class="input-area"><textarea id="message" rows="2" placeholder="พิมพ์ข้อความหรือคำสั่งของคุณ…" maxlength="3500" aria-label="ข้อความถึง AI"></textarea><button id="send" class="send" type="button" aria-label="ส่งข้อความ"><span>➤</span></button></div>
+            <div class="composer-meta"><span id="chatHint">โหลดโมเดลเมื่อส่งข้อความ เพื่อประหยัด RAM</span><span>ON DEVICE <i class="tiny-dot"></i></span></div>
+          </div>
         </div>
       </section>
       <section id="deviceTab" class="info-tab" hidden>
-        <h2>ควบคุมอุปกรณ์</h2>
-        <p>การคลิกและพิมพ์ใช้ Accessibility Service ที่คุณเปิดอนุญาตเองในแอป Android ไม่ใช่การควบคุมแบบ Root</p>
-        <div class="toolbar"><button id="observe" class="subtle">อ่านองค์ประกอบหน้าจอ</button><button data-action="back" class="subtle">ย้อนกลับ</button><button data-action="home" class="subtle">หน้าโฮม</button></div>
-        <div class="toolbar"><input id="tapX" type="number" min="0" max="5000" placeholder="X"><input id="tapY" type="number" min="0" max="5000" placeholder="Y"><button data-action="tap" class="subtle">แตะพิกัด</button></div>
-        <div class="toolbar"><input id="typeText" type="text" maxlength="800" placeholder="พิมพ์ในช่องที่กำลังโฟกัส"><button data-action="type" class="subtle">พิมพ์</button></div>
-        <pre id="snapshot">ไม่มีข้อมูล — ต้องเปิดสิทธิ์ Accessibility และอนุญาตการควบคุมในแอปก่อน</pre>
-        <p class="footnote">* ขณะนี้ยังไม่ใช่การสตรีมภาพสดแบบ VNC และไม่ได้อ่านข้อความรหัสผ่าน</p>
+        <div class="page-heading"><div class="eyebrow">ANDROID ACCESSIBILITY</div><h2>ควบคุมอุปกรณ์</h2><p>แตะ พิมพ์ และอ่านองค์ประกอบหน้าจอได้เฉพาะเมื่อคุณอนุญาต Accessibility ผ่านระบบ Android</p></div>
+        <div class="notice"><span>◇</span><div><b>สิทธิ์ใช้งานจำกัดตามที่คุณเลือก</b><p>นี่ไม่ใช่จอสดหรือรีโมท VNC และคำสั่งที่ส่งสำเร็จยังไม่ได้ยืนยันผลลัพธ์จากแอปปลายทาง</p></div></div>
+        <div class="content-grid">
+          <div class="surface"><div class="surface-heading"><div><span class="eyebrow">QUICK ACTIONS</span><h3>แผงคำสั่ง</h3></div><span class="surface-icon">⌘</span></div>
+            <div class="action-row"><button id="observe" class="subtle" type="button">◫ อ่านหน้าจอ</button><button data-action="back" class="subtle" type="button">↶ ย้อนกลับ</button><button data-action="home" class="subtle" type="button">⌂ หน้าโฮม</button></div>
+            <div class="field-label">แตะตำแหน่งบนหน้าจอ</div>
+            <div class="action-row"><input id="tapX" type="number" min="0" max="5000" placeholder="พิกัด X"><input id="tapY" type="number" min="0" max="5000" placeholder="พิกัด Y"><button data-action="tap" class="subtle" type="button">แตะ ↗</button></div>
+            <div class="field-label">พิมพ์ในช่องที่กำลังโฟกัส</div>
+            <div class="action-row"><input id="typeText" type="text" maxlength="800" placeholder="ข้อความที่ต้องการพิมพ์"><button data-action="type" class="subtle" type="button">พิมพ์ ↗</button></div>
+          </div>
+          <div class="surface"><div class="surface-heading"><div><span class="eyebrow">ACCESSIBILITY OUTPUT</span><h3>ผลการสังเกต</h3></div><span class="surface-icon">◈</span></div>
+            <pre id="snapshot">ยังไม่มีข้อมูล — เปิดสิทธิ์ Accessibility และอนุญาตการควบคุมผ่าน Control Center ของแอปก่อน</pre>
+          </div>
+        </div>
       </section>
       <section id="aboutTab" class="info-tab" hidden>
-        <h2>ระบบ Android Native</h2>
-        <p>Foreground Service + เว็บในเครื่อง + โมเดล GGUF ผ่าน llama.cpp + SQLite ความจำบนมือถือ</p>
-        <p>เปิดผ่าน <code>http://127.0.0.1:18788</code> ได้เมื่อบริการทำงาน</p>
-        <p>โมเดล Ollama เดิมใน Termux ไม่ถูกลบหรือแก้ไข สามารถส่งออกไฟล์ GGUF แล้วเลือก Import ในแอปใหม่ได้</p>
-        <p class="footnote">Android สามารถปิด Foreground Service ได้เมื่อ RAM ไม่พอ แอปนี้ไม่ได้รับประกันการทำงาน 24 ชั่วโมง</p>
+        <div class="page-heading"><div class="eyebrow">DEVICE OVERVIEW</div><h2>ระบบของฉัน</h2><p>ภาพรวมบริการ AI ออฟไลน์และความปลอดภัยบนมือถือของคุณ</p></div>
+        <div class="overview-grid">
+          <div class="overview-tile"><span>✦ AI MODEL</span><strong id="sysModel">—</strong><small>โมเดล GGUF ในเครื่อง</small></div>
+          <div class="overview-tile"><span>◫ MEMORY</span><strong id="sysRam">—</strong><small>RAM ที่ว่าง</small></div>
+          <div class="overview-tile"><span>⌘ CONTROL</span><strong id="sysControl">—</strong><small>การเข้าถึงหน้าจอ</small></div>
+        </div>
+        <div class="surface about-panel"><div class="eyebrow">PRIVACY FIRST</div><h3>สร้างมาให้ทำงานแบบ Local</h3><p>ใช้ Foreground Service, เซิร์ฟเวอร์ในเครื่องที่ <code>127.0.0.1:18788</code>, โมเดล GGUF และประวัติ SQLite ภายในแอป</p>
+          <div class="about-actions"><button class="subtle" type="button" data-refresh>↻ ตรวจสถานะ</button><button class="subtle" type="button" data-logout>↪ ออกจากระบบ</button></div>
+        </div>
+        <div class="notice secondary"><span>ⓘ</span><p>จอสด MediaProjection, เสียงสนทนาแบบเรียลไทม์, LINE และ Windows Remote ยังไม่ได้รวมในรุ่นนี้ Android อาจหยุดบริการเมื่อหน่วยความจำไม่เพียงพอ</p></div>
       </section>
     </main>
   </div>
