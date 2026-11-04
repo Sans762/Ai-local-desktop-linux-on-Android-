@@ -32,7 +32,7 @@ class LinuxRuntime(private val context: Context) {
         var count = 0
         var extracted = 0L
         try {
-            context.assets.open("alpine-minirootfs.tar.gz").use { raw ->
+            context.assets.open("alpine-rootfs.bundle").use { raw ->
                 TarArchiveInputStream(GZIPInputStream(raw, 64 * 1024)).use { tar ->
                     while (true) {
                         val entry: TarArchiveEntry = tar.nextTarEntry ?: break
