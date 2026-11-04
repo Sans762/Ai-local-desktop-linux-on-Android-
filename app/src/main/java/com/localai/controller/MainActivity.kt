@@ -45,6 +45,7 @@ class MainActivity : Activity() {
     private lateinit var controlsTab: TextView
     private lateinit var serviceChip: TextView
     private var webView: WebView? = null
+    private var desktopWebView: WebView? = null
     private var currentTab = "control"
     private val ui = Handler(Looper.getMainLooper())
 
@@ -182,7 +183,11 @@ class MainActivity : Activity() {
         workspaceTab.background = if (target == "workspace") gradient(14) else panel(cardDeep, 14)
         controlsTab.background = if (target == "control") gradient(14) else panel(cardDeep, 14)
         screenHost.removeAllViews()
-        if (target == "workspace") showWorkspace() else showControls()
+        when (target) {
+            "workspace" -> showWorkspace()
+            "desktop" -> showDesktop()
+            else -> showControls()
+        }
     }
 
     private fun showWorkspace() {
@@ -210,6 +215,29 @@ class MainActivity : Activity() {
         } else web.reload()
     }
 
+    private fun showDesktop() {
+        if (!LinuxDesktopService.running) {
+            val outer = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(28), dp(28), dp(28), dp(28))
+                addView(label("▣  Linux Desktop ยังไม่เปิด", 22f, true))
+                spacer(this, 11)
+                addView(label("เปิด Linux Desktop ใน Control Center แล้วลองอีกครั้ง", 13f, false, sub))
+                spacer(this, 16)
+                addButton(this, "ไปหน้า Control Center", true) { showTab("control") }
+            }
+            screenHost.addView(outer, FrameLayout.LayoutParams(-1, -1))
+            return
+        }
+        val desktop = desktopWebView ?: createWebView().also { desktopWebView = it }
+        (desktop.parent as? ViewGroup)?.removeView(desktop)
+        screenHost.addView(desktop, FrameLayout.LayoutParams(-1, -1))
+        if (desktop.url == null || !desktop.url.orEmpty().startsWith("http://127.0.0.1:6080/")) {
+            desktop.loadUrl("http://127.0.0.1:6080/")
+        }
+    }
+
     private fun createWebView(): WebView = WebView(this).apply {
         setBackgroundColor(bg)
         settings.javaScriptEnabled = true
@@ -228,7 +256,7 @@ class MainActivity : Activity() {
         webViewClient = object : WebViewClient() {
             private fun allowed(url: String): Boolean {
                 val uri = Uri.parse(url)
-                return uri.scheme == "http" && uri.host == "127.0.0.1" && uri.port == AiForegroundService.PORT
+                return uri.scheme == "http" && uri.host == "127.0.0.1" && uri.port in setOf(AiForegroundService.PORT, DesktopWebServer.PORT)
             }
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean =
                 request?.url?.toString()?.let { !allowed(it) } ?: true
@@ -466,6 +494,11 @@ class MainActivity : Activity() {
                 addView(label(LinuxDesktopService.lastError.take(340), 11f, false, Color.rgb(255, 177, 183)))
             }
             spacer(this, 11)
+            addButton(this, "▣  เปิด Linux Desktop บนมือถือ", true) {
+                if (LinuxDesktopService.running) showTab("desktop")
+                else notifyUser("เริ่ม Linux Desktop ก่อนเข้าใช้งาน")
+            }
+            spacer(this, 7)
             addButton(this, "↻  อัปเดตสถานะ Desktop") { showTab("control") }
             spacer(this, 10)
             addView(label("ความปลอดภัย: เปิดรีโมทเมื่อใช้จริงเท่านั้น • VNC และ HTTP ไม่เข้ารหัส ต้องใช้ Wi-Fi ส่วนตัวหรือ VPN เท่านั้น ห้ามส่งพอร์ต 5902/18789 ออกอินเทอร์เน็ต", 11.5f, false, sub))
@@ -564,7 +597,7 @@ class MainActivity : Activity() {
 
     @Deprecated("Back behavior for native tab navigation")
     override fun onBackPressed() {
-        if (currentTab == "workspace") showTab("control") else super.onBackPressed()
+        if (currentTab == "workspace" || currentTab == "desktop") showTab("control") else super.onBackPressed()
     }
 
     override fun onDestroy() {
@@ -575,6 +608,12 @@ class MainActivity : Activity() {
             web.stopLoading()
             web.destroy()
         }
+        desktopWebView?.let { viewer ->
+            (viewer.parent as? ViewGroup)?.removeView(viewer)
+            viewer.stopLoading()
+            viewer.destroy()
+        }
+        desktopWebView = null
         ui.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
