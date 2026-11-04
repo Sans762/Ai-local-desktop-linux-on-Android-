@@ -790,76 +790,50 @@ class MainActivity : Activity() {
             spacer(this, 9)
             addView(label("เวอร์ชันแอป: " + AppUpdateManager(this@MainActivity).currentVersion(), 13f, true))
             spacer(this, 9)
-            val updateStatus = label(
-                if (packageName.contains(".test"))
-                    "รุ่น TEST ยังอัปเดตทับกันไม่ได้ จนกว่าจะมีลายเซ็นถาวรที่ตรงกัน"
-                else AppUpdateDownloadService.progress, 12f, false, sub
-            )
-            addView(updateStatus)
-            spacer(this, 8)
-            addButton(this, "↻  ตรวจหาอัปเดตในแอป", true) {
-                updateStatus.text = "กำลังตรวจหารุ่นใหม่…"
-                Thread({
-                    try {
-                        val release = AppUpdateManager(this@MainActivity).checkLatest()
-                        runOnUiThread {
-                            when {
-                                !release.newer -> updateStatus.text =
-                                    "คุณใช้แอปรุ่นล่าสุดที่รองรับแล้ว"
-                                packageName.contains(".test") -> {
-                                    updateStatus.text = "พบรุ่น " + release.version +
-                                        " แต่แอป TEST ไม่สามารถติดตั้งทับแอปหลักได้"
-                                    android.app.AlertDialog.Builder(this@MainActivity)
-                                        .setTitle("รุ่น TEST ยังอัปเดตทับไม่ได้")
-                                        .setMessage("รุ่นทดสอบใช้ลายเซ็น Debug ที่เปลี่ยนตาม Build " +
-                                            "ระบบไม่สามารถติดตั้ง APK ที่เซ็นไม่ตรงกันทับแอปนี้ได้ " +
-                                            "และจะไม่ลบไฟล์ Linux หรือโมเดลของคุณ")
-                                        .setPositiveButton("เข้าใจแล้ว", null).show()
-                                }
-                                else -> {
-                                    updateStatus.text = "มีเวอร์ชันใหม่ " + release.version +
-                                        " · ขนาดประมาณ " + (release.sizeBytes / 1048576) + " MB"
-                                    android.app.AlertDialog.Builder(this@MainActivity)
-                                        .setTitle("พบอัปเดต " + release.version)
-                                        .setMessage("แอปจะดาวน์โหลด APK จาก GitHub โดยตรง " +
-                                            "ตรวจ SHA-256 และลายเซ็นก่อนให้ Android ถามติดตั้ง\n\n" +
-                                            "ข้อมูล Linux/AI ของคุณจะไม่ถูกลบด้วยตัวดาวน์โหลดนี้")
-                                        .setNegativeButton("ภายหลัง", null)
-                                        .setPositiveButton("ดาวน์โหลดในแอป") { _, _ ->
-                                            if (AppUpdateDownloadService.downloading) {
-                                                notifyUser("กำลังดาวน์โหลดอัปเดตอยู่แล้ว")
-                                            } else {
-                                                startForegroundService(
-                                                    Intent(this@MainActivity, AppUpdateDownloadService::class.java)
-                                                        .setAction(AppUpdateDownloadService.ACTION_DOWNLOAD)
-                                                        .putExtra(AppUpdateDownloadService.EXTRA_URL, release.downloadUrl)
-                                                        .putExtra(AppUpdateDownloadService.EXTRA_SHA, release.sha256)
-                                                        .putExtra(AppUpdateDownloadService.EXTRA_SIZE, release.sizeBytes)
-                                                        .putExtra(AppUpdateDownloadService.EXTRA_VERSION, release.version)
-                                                )
-                                                updateStatus.text = "กำลังดาวน์โหลด ตรวจได้ในแถบแจ้งเตือน"
-                                            }
-                                        }.show()
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            updateStatus.text = "ตรวจไม่ได้: " + (e.message ?: "ไม่มีอินเทอร์เน็ตหรือไม่มีรุ่นอัปเดตที่เซ็นถูกต้อง")
+            if (AutoUpdateScheduler.canUpdate(this@MainActivity)) {
+                val toggle = android.widget.CheckBox(this@MainActivity).apply {
+                    text = "อัปเดตอัตโนมัติเมื่อใช้ Wi-Fi"
+                    textSize = 13.5f
+                    setTextColor(this@MainActivity.text)
+                    isChecked = AutoUpdateScheduler.enabled(this@MainActivity)
+                    setOnCheckedChangeListener { _, checked ->
+                        AutoUpdateScheduler.setEnabled(this@MainActivity, checked)
+                        notifyUser(if (checked) "เปิดอัปเดตอัตโนมัติแล้ว" else "ปิดอัปเดตอัตโนมัติแล้ว")
+                        if (checked) AutoUpdateScheduler.requestNow(this@MainActivity)
+                    }
+                }
+                addView(toggle)
+                spacer(this, 6)
+                addView(label("เมื่อมีรุ่นใหม่ แอปจะดาวน์โหลดให้เองบน Wi-Fi และแจ้งเมื่อพร้อมติดตั้ง",
+                    12f, false, sub))
+                spacer(this, 7)
+                val updateStatus = label(AutoUpdateScheduler.status(this@MainActivity),
+                    12f, false, sub)
+                addView(updateStatus)
+                spacer(this, 9)
+                if (AutoUpdateScheduler.readyFile(this@MainActivity) != null) {
+                    addButton(this, "✓  ติดตั้งอัปเดตที่ดาวน์โหลดแล้ว", true) {
+                        try {
+                            val apk = AutoUpdateScheduler.readyFile(this@MainActivity)
+                                ?: error("ไม่พบไฟล์อัปเดต")
+                            startActivity(VerifiedApkUpdate.installIntent(this@MainActivity, apk))
+                        } catch (e: Exception) {
+                            notifyUser("ติดตั้งไม่ได้: " + (e.message ?: "unknown"))
                         }
                     }
-                }, "local-ai-check-updates").start()
+                    spacer(this, 8)
+                }
+                addButton(this, "↻  ตรวจอัปเดตตอนนี้") {
+                    AutoUpdateScheduler.requestNow(this@MainActivity)
+                    updateStatus.text = "ระบบกำลังตรวจเมื่อเชื่อมต่อ Wi-Fi"
+                }
+            } else {
+                addView(label("รุ่น TEST ยังอัปเดตทับไม่ได้ เพราะลายเซ็นไม่ตรงกัน",
+                    12f, false, sub))
+                spacer(this, 5)
+                addView(label("ระบบอัปเดตอัตโนมัติใช้กับรุ่น Release ที่มีคีย์ถาวรเท่านั้น",
+                    11.5f, false, sub))
             }
-            spacer(this, 9)
-            addButton(this, "◉  ดูความคืบหน้าการอัปเดต") {
-                updateStatus.text = AppUpdateDownloadService.progress +
-                    if (AppUpdateDownloadService.lastError.isBlank()) ""
-                    else "\n" + AppUpdateDownloadService.lastError
-            }
-            spacer(this, 9)
-            addView(label("หลังดาวน์โหลดเสร็จ ให้แตะการแจ้งเตือนเพื่อเปิดตัวติดตั้ง Android แล้วกดยืนยัน " +
-                "แอปไม่สามารถแอบติดตั้งเองได้ • ถ้าลายเซ็นไม่ตรง ระบบจะหยุดก่อนติดตั้งและไม่ลบข้อมูลเก่า",
-                11.5f, false, sub))
             spacer(this, 11)
             addView(label("สำรอง Linux + AI ก่อนเปลี่ยน APK", 14f, true, mint))
             spacer(this, 7)
