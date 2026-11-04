@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit
 class LinuxDesktopService : Service() {
     companion object {
         const val ACTION_INSTALL = "com.localai.controller.DESKTOP_INSTALL"
+        const val ACTION_INSTALL_BROWSER = "com.localai.controller.BROWSER_INSTALL"
         const val ACTION_START = "com.localai.controller.DESKTOP_START"
         const val ACTION_STOP = "com.localai.controller.DESKTOP_STOP"
         const val EXTRA_PASSWORD = "desktop_password"
@@ -27,6 +28,9 @@ class LinuxDesktopService : Service() {
         @Volatile var message = "Linux desktop not started"
         @Volatile var lastError = ""
         @Volatile var ipAddress = ""
+
+        fun browserInstalled(context: Context): Boolean =
+            File(context.filesDir, "embedded_linux/alpine-rootfs/usr/bin/chromium").isFile
 
         fun installed(context: Context): Boolean =
             File(context.filesDir, "embedded_linux/alpine-rootfs/usr/bin/Xvnc").isFile &&
@@ -80,7 +84,7 @@ class LinuxDesktopService : Service() {
             return START_NOT_STICKY
         }
         val action = intent?.action ?: run { stopSelf(); return START_NOT_STICKY }
-        if (action !in setOf(ACTION_START, ACTION_INSTALL)) { stopSelf(); return START_NOT_STICKY }
+        if (action !in setOf(ACTION_START, ACTION_INSTALL, ACTION_INSTALL_BROWSER)) { stopSelf(); return START_NOT_STICKY }
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Linux Desktop and VNC", NotificationManager.IMPORTANCE_LOW))
         notifyStatus("Preparing Linux Desktop…")
@@ -90,15 +94,33 @@ class LinuxDesktopService : Service() {
                 lastError = ""
                 val linux = LinuxRuntime(this)
                 require(linux.available()) { "Install Alpine Linux first" }
-                if (action == ACTION_INSTALL) {
+                if (action == ACTION_INSTALL || action == ACTION_INSTALL_BROWSER) {
                     require(!running) { "Stop the desktop before installing packages" }
+                    require(filesDir.usableSpace > if (action == ACTION_INSTALL_BROWSER) 1_600_000_000L else 600_000_000L) {
+                        "Not enough free storage for Linux packages"
+                    }
                     installing = true
-                    notifyStatus("Installing Linux graphical packages (first time only)…")
-                    val setup = "grep -qxF 'https://dl-cdn.alpinelinux.org/alpine/v3.23/community' /etc/apk/repositories || printf '%s\\n' 'https://dl-cdn.alpinelinux.org/alpine/v3.23/community' >> /etc/apk/repositories; apk update && apk add --no-cache tigervnc openbox xterm pcmanfm tint2 font-dejavu"
-                    val result = linux.command(setup, timeoutSeconds = 900)
-                    require(result.trimEnd().endsWith("[exit 0]")) { "Desktop package install failed: " + result.takeLast(550) }
-                    require(installed(this)) { "Xvnc or Openbox missing after installation" }
-                    message = "Desktop installed · choose a VNC password to start"
+                    val isBrowser = action == ACTION_INSTALL_BROWSER
+                    notifyStatus(if (isBrowser) "Installing Chromium browser for Linux…" else
+                        "Installing Linux graphical desktop packages…")
+                    val packages = if (isBrowser) "chromium xdotool" else
+                        "tigervnc openbox xterm pcmanfm tint2 font-dejavu"
+                    val setup = "apk update && apk add --no-cache $packages"
+                    var lastNoticeAt = 0L
+                    val result = linux.command(setup, timeoutSeconds = 1200) { line ->
+                        val now = System.currentTimeMillis()
+                        if (now - lastNoticeAt > 3000L) {
+                            lastNoticeAt = now
+                            notifyStatus("Linux: " + line.replace(Regex("[\\r\\n]"), " ").take(85))
+                        }
+                    }
+                    require(result.trimEnd().endsWith("[exit 0]")) {
+                        "Linux package installation failed: " + result.takeLast(500)
+                    }
+                    if (isBrowser) require(browserInstalled(this)) { "Chromium not installed" }
+                    else require(installed(this)) { "Xvnc or Openbox missing after install" }
+                    message = if (isBrowser) "Linux Chromium installed. Launch from the Linux desktop."
+                        else "Desktop packages installed. Choose a VNC password and Start."
                     notifyStatus(message)
                 } else {
                     require(installed(this)) { "Install desktop packages first" }
