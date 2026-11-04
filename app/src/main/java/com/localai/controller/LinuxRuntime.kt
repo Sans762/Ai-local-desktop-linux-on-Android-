@@ -122,4 +122,45 @@ class LinuxRuntime(private val context: Context) {
         val result = synchronized(output) { output.toString() }
         return result.take(128_000) + if (finished) "\n[exit ${process.exitValue()}]" else "\n[timeout: process stopped]"
     }
+
+    /**
+     * Start a long-lived Linux GUI process inside the private Alpine PRoot.
+     * The Android foreground service owns and tears down the Process objects.
+     */
+    fun startDesktopProcess(
+        executable: String,
+        args: List<String> = emptyList(),
+        extraEnv: Map<String, String> = emptyMap(),
+        logName: String
+    ): Process {
+        require(available()) { "Install Alpine Linux first" }
+        require(executable in setOf("/usr/bin/Xvnc", "/usr/bin/openbox", "/usr/bin/xterm", "/usr/bin/pcmanfm", "/usr/bin/lxpanel")) {
+            "Unexpected desktop executable"
+        }
+        require(args.size < 40 && args.all { it.length < 256 }) { "Invalid argument" }
+        require(logName.matches(Regex("[a-z0-9-]{1,36}"))) { "Bad log file name" }
+        val argv = listOf(
+            proot.absolutePath, "-0", "-r", rootfs.absolutePath,
+            "-b", "/dev", "-b", "/proc", "-w", "/root",
+            executable
+        ) + args
+        val builder = ProcessBuilder(argv)
+            .redirectErrorStream(true)
+            .redirectInput(ProcessBuilder.Redirect.PIPE)
+            .redirectOutput(File(dir, "$logName.log"))
+        builder.environment().apply {
+            put("PROOT_LOADER", loader.absolutePath)
+            put("PROOT_NO_SECCOMP", "1")
+            put("PROOT_TMP_DIR", context.cacheDir.absolutePath)
+            put("HOME", "/root")
+            put("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")
+            put("TERM", "xterm-256color")
+            putAll(extraEnv)
+        }
+        return builder.start()
+    }
+
+    fun desktopLog(logName: String): String =
+        File(dir, "$logName.log").takeIf { it.isFile }?.readText()?.takeLast(5000) ?: ""
+
 }
