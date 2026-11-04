@@ -90,7 +90,11 @@ jobs:
             echo "Unexpected Android remote control declaration found"
             exit 1
           fi
-          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop'"
+          if [[ "$AI_APK_KIND" == release ]]; then
+            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop'"
+          else
+            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test'"
+          fi
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         if: success()
