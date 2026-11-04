@@ -8,11 +8,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.localai.controller"
+        applicationId = "com.localai.linuxagent"
         minSdk = 26
         targetSdk = 36
-        versionCode = 4
-        versionName = "0.4.0-native-linux-ai"
+        versionCode = 5
+        versionName = "0.5.0-linux-agent"
         ndk { abiFilters += "arm64-v8a" }
     }
 
