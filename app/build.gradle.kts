@@ -12,8 +12,8 @@ android {
         manifestPlaceholders["appLabel"] = "Local AI Linux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.11.0-monitor-and-updates"
+        versionCode = 12
+        versionName = "0.12.0-compact-ui"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -36,8 +36,8 @@ android {
         getByName("debug") {
             // Independent TEST installation: never overwrite a differently signed
             // existing user app and never require deleting Linux/model data.
-            applicationIdSuffix = ".test.v011"
-            versionNameSuffix = "-test-v011"
+            applicationIdSuffix = ".test.v012"
+            versionNameSuffix = "-test-v012"
             manifestPlaceholders["appLabel"] = "Local AI Linux TEST"
         }
         release {
