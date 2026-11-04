@@ -1,17 +1,17 @@
 # Local AI Linux Desktop — Android
 
-> **สถานะล่าสุด: APK v0.18 ที่เซ็นด้วยคีย์ถาวรเผยแพร่แล้ว · GitHub Actions #205 ผ่าน**  
+> **สถานะล่าสุด: APK v0.19 เซ็นด้วยคีย์เดิม เผยแพร่พร้อมแก้ปัญหา Xvnc /tmp/.X1-lock · GitHub Actions #207**  
 > วันที่ตรวจ: 4 พฤศจิกายน 2026 · Android ARM64 · ไม่ใช้ Root หรือ Termux
 
 ## 📥 ดาวน์โหลด APK (ไฟล์ .apk โดยตรง ไม่ใช่ ZIP)
 
-**[⬇ ดาวน์โหลด Local AI Linux Desktop v0.18 (APK · 10.3 MB)](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/releases/download/v0.18-linux-desktop/LocalAI-LinuxDesktop-v0.18-signed-ARM64.apk)**
+**[⬇ ดาวน์โหลด Local AI Linux Desktop v0.19 (APK · 10.3 MB)](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/releases/download/v0.19-linux-desktop/LocalAI-LinuxDesktop-v0.19-signed-ARM64.apk)**
 
-**คำเตือนการย้ายรุ่นครั้งแรก:** v0.18 เป็น APK Release ที่เซ็นด้วยคีย์ถาวรใหม่แล้ว แต่ถ้าแอปที่ติดตั้งอยู่ใช้แพ็กเกจหรือลายเซ็นเก่า Android จะไม่สามารถติดตั้งทับได้ทันที และบางกรณีจะเป็นอีกแอปหนึ่ง **อย่าลบแอปเก่าที่มี Linux / โมเดล / ประวัติแชทอยู่ก่อนสำรองข้อมูล** การอัปเดตภายหลังของรุ่น Release ที่ใช้แพ็กเกจและคีย์นี้เหมือนเดิมจึงจะติดตั้งทับได้
+**คำเตือนการย้ายรุ่นครั้งแรก:** v0.19 เป็น APK Release ที่เซ็นด้วยคีย์ถาวรใหม่แล้ว แต่ถ้าแอปที่ติดตั้งอยู่ใช้แพ็กเกจหรือลายเซ็นเก่า Android จะไม่สามารถติดตั้งทับได้ทันที และบางกรณีจะเป็นอีกแอปหนึ่ง **อย่าลบแอปเก่าที่มี Linux / โมเดล / ประวัติแชทอยู่ก่อนสำรองข้อมูล** การอัปเดตภายหลังของรุ่น Release ที่ใช้แพ็กเกจและคีย์นี้เหมือนเดิมจึงจะติดตั้งทับได้
 
 **[ดูไฟล์ที่เผยแพร่ทั้งหมด](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/releases)** — ไฟล์ทดสอบเก่าหลายรุ่นอยู่ในหน้านี้เพื่ออ้างอิงเท่านั้น ไม่ใช่รายการอัปเดตต่อเนื่องที่ติดตั้งทับกันได้
 
-## ทำไมโทรศัพท์จึงมี Local AI สองแอป
+**แก้ไขใน v0.19:** เตรียมโฟลเดอร์ /tmp สำหรับ X11 พร้อมสิทธิ์ sticky directory, ใช้ `-nolock` สำหรับปัญหา hard-link ของ PRoot และย่อข้อความผิดพลาดให้ดูรายละเอียดแยกได้ (ยังต้องทดสอบจริงบนมือถือ)\n\n## ทำไมโทรศัพท์จึงมี Local AI สองแอป
 
 APK เก่าถูกสร้างด้วยรหัสแพ็กเกจหรือลายเซ็นที่ต่างกัน Android จึงมองว่าเป็นคนละแอป ไม่สามารถรวมไอคอนหรือข้อมูลภายในสองแอปเข้าด้วยกันด้วยการเปลี่ยนชื่อไฟล์ APK
 
@@ -23,14 +23,14 @@ APK เก่าถูกสร้างด้วยรหัสแพ็กเ�
 
 | รายการ | สถานะ |
 |---|---|
-| โค้ด Android v0.18 | อยู่ใน `main` |
-| ทดสอบ Build APK | ผ่านบน GitHub Actions #205 |
-| APK v0.18 สำหรับดาวน์โหลดตรง | **มีแล้ว** — APK Release ลง GitHub Releases สำเร็จ |
+| โค้ด Android v0.19 | อยู่ใน `main` |
+| ทดสอบ Build APK | ผ่านบน GitHub Actions #207 |
+| APK v0.19 สำหรับดาวน์โหลดตรง | **มีแล้ว** — APK Release ลง GitHub Releases สำเร็จ |
 | การอัปเดตทับแอปเดิม | มีโค้ดตรวจลายเซ็นและดาวน์โหลด แต่ยังไม่ทดสอบจริง |
 | Alpine Linux / VNC / AI บน Android 17 | ต้องทดสอบบนเครื่องจริง |
 | AI ควบคุม Android ทั้งเครื่อง | **ไม่รองรับ**; จำกัดงานใน Alpine Linux |
 
-ดู [Build #205](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/actions/runs/41853176867) และ [ขั้นตอนย้ายข้อมูล/ตั้งค่าคีย์สำหรับเจ้าของ](UPDATE_INSTALL_ONCE_TH.md)
+ดู [Build #207](https://github.com/Sans762/Ai-local-desktop-linux-on-Android-/actions/runs/41858954162) และ [ขั้นตอนย้ายข้อมูล/ตั้งค่าคีย์สำหรับเจ้าของ](UPDATE_INSTALL_ONCE_TH.md)
 
 ## สำหรับผู้พัฒนา
 
@@ -40,4 +40,4 @@ APK เก่าถูกสร้างด้วยรหัสแพ็กเ�
 
 เอกสาร: [แผนพัฒนา](DEVELOPMENT_PLAN_TH.md) · [คู่มือ Desktop](README_DESKTOP_TH.md) · [ระบบอัปเดต](AUTO_UPDATE_TH.md) · [Build workflow](.github/workflows/build-apk.yml)
 
-**มี APK v0.18 ที่ดาวน์โหลดได้จริงแล้ว แต่ Build ผ่านไม่ได้หมายความว่าทดสอบบนมือถือ Android 17 ครบทุกฟีเจอร์แล้ว**
+**มี APK v0.19 ที่ดาวน์โหลดได้จริงแล้ว แต่ Build ผ่านไม่ได้หมายความว่าทดสอบบนมือถือ Android 17 ครบทุกฟีเจอร์แล้ว**
