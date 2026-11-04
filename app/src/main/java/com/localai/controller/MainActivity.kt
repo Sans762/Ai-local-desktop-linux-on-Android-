@@ -313,6 +313,31 @@ class MainActivity : Activity() {
             }
         }
         val modelFile = imports.modelFile()
+        val alpineReady = LinuxRuntime(this).installed()
+        val desktopReady = LinuxDesktopService.installed(this)
+        cardBlock(content, 10) {
+            addView(label("เริ่มใช้งานได้ใน 4 ขั้นตอน", 18f, true))
+            spacer(this, 9)
+            addView(label((if (alpineReady) "✓" else "1") +
+                "  ติดตั้ง Alpine Linux", 13f, alpineReady, if (alpineReady) mint else text))
+            spacer(this, 7)
+            addView(label((if (modelFile != null) "✓" else "2") +
+                "  ดาวน์โหลดโมเดล AI (ถ้าต้องการใช้ AI)", 13f, modelFile != null,
+                if (modelFile != null) mint else text))
+            spacer(this, 7)
+            addView(label((if (desktopReady) "✓" else "3") +
+                "  ติดตั้งหน้าจอ Linux Desktop", 13f, desktopReady, if (desktopReady) mint else text))
+            spacer(this, 7)
+            addView(label((if (LinuxDesktopService.running) "✓" else "4") +
+                "  เริ่ม Linux Desktop เพื่อเปิดจากมือถือหรือคอม", 13f,
+                LinuxDesktopService.running, if (LinuxDesktopService.running) mint else text))
+            spacer(this, 10)
+            addView(label("เลื่อนลงเพื่อทำขั้นตอนที่ยังไม่พร้อม • ระบบจะไม่ควบคุม Android", 12f, false, sub))
+            if (LinuxDesktopService.running) {
+                spacer(this, 11)
+                addButton(this, "▣  เปิดหน้าจอ Linux Desktop", true) { showTab("desktop") }
+            }
+        }
         cardBlock(content) {
             addView(label("01  /  โมเดลออฟไลน์", 12f, true, mint))
             spacer(this, 10)
