@@ -389,54 +389,102 @@ class MainActivity : Activity() {
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         scroll.addView(content)
         cardBlock(content, 5) {
-            background = gradient(24)
-            addView(label("✧  YOUR PRIVATE AI", 11f, true, Color.rgb(229, 229, 255)))
+            background = gradient(23)
+            addView(label("เริ่มต้นใช้งาน", 12f, true, Color.WHITE))
             spacer(this, 8)
-            addView(label("พื้นที่ทำงาน AI ของคุณ", 23f, true))
+            addView(label("ตั้งค่าง่าย ๆ ทีละขั้น", 23f, true))
             spacer(this, 6)
-            addView(label("โมเดลและแชททำงานบนมือถือ ไม่ส่งคำถามไปยัง AI API ภายนอก", 13.5f, false, Color.WHITE))
-            spacer(this, 16)
-            addView(label(if (AiForegroundService.running) "●  บริการ AI กำลังทำงาน" else "●  บริการ AI หยุดอยู่", 13f, true))
-            if (AiForegroundService.lastError.isNotBlank()) {
-                spacer(this, 6)
-                addView(label(AiForegroundService.lastError, 12f, false, Color.WHITE))
-            }
-            spacer(this, 14)
+            addView(label("เลือกสิ่งที่อยากทำ แล้วแอปจะพาไปยังเมนูที่เกี่ยวข้อง ไม่ต้องใช้ Termux และไม่ควบคุม Android", 13f, false, Color.WHITE))
+            spacer(this, 13)
             if (AiForegroundService.running) {
-                addButton(this, "เปิดแชทในแอป  ↗") { showTab("workspace") }
-                spacer(this, 9)
-                addButton(this, "หยุดบริการ AI") {
-                    stopService(Intent(this@MainActivity, AiForegroundService::class.java))
-                    ui.postDelayed({ showTab("control") }, 450)
-                }
+                addView(label("✓  AI กำลังทำงาน", 13f, true, Color.WHITE))
+                spacer(this, 8)
+                addButton(this, "✦  ไปคุยกับ AI") { showTab("workspace") }
             } else {
-                addButton(this, "▶  เริ่มบริการ AI", true) { startAi() }
+                addView(label("○  AI ยังไม่ได้เริ่ม", 13f, true, Color.WHITE))
+                spacer(this, 8)
+                addButton(this, "▶  เปิด AI") {
+                    if (imports.modelFile() == null) {
+                        settingsCategory = "ai"
+                        showTab("control")
+                        notifyUser("ต้องดาวน์โหลดโมเดล AI ก่อน")
+                    } else if (!store.hasPassword()) {
+                        settingsCategory = "privacy"
+                        showTab("control")
+                        notifyUser("กรุณาตั้งรหัสผ่านก่อน")
+                    } else startAi()
+                }
             }
         }
         val modelFile = imports.modelFile()
         val alpineReady = LinuxRuntime(this).installed()
         val desktopReady = LinuxDesktopService.installed(this)
         cardBlock(content, 10) {
-            addView(label("เริ่มใช้งานได้ใน 4 ขั้นตอน", 18f, true))
-            spacer(this, 9)
-            addView(label((if (alpineReady) "✓" else "1") +
-                "  ติดตั้ง Alpine Linux", 13f, alpineReady, if (alpineReady) mint else text))
-            spacer(this, 7)
-            addView(label((if (modelFile != null) "✓" else "2") +
-                "  ดาวน์โหลดโมเดล AI (ถ้าต้องการใช้ AI)", 13f, modelFile != null,
-                if (modelFile != null) mint else text))
-            spacer(this, 7)
-            addView(label((if (desktopReady) "✓" else "3") +
-                "  ติดตั้งหน้าจอ Linux Desktop", 13f, desktopReady, if (desktopReady) mint else text))
-            spacer(this, 7)
-            addView(label((if (LinuxDesktopService.running) "✓" else "4") +
-                "  เริ่ม Linux Desktop เพื่อเปิดจากมือถือหรือคอม", 13f,
-                LinuxDesktopService.running, if (LinuxDesktopService.running) mint else text))
+            background = panel(mixColor(card, privacyBlue, 0.07f), 20,
+                mixColor(line, privacyBlue, 0.3f))
+            val completed = listOf(store.hasPassword(), alpineReady, modelFile != null,
+                desktopReady).count { it }
+            addView(label("เช็กลิสต์การเริ่มใช้งาน", 18f, true))
+            spacer(this, 5)
+            addView(label("ทำแล้ว " + completed + " จาก 4 ขั้นตอน • แตะรายการที่ยังไม่ทำเพื่อไปตั้งค่า",
+                12f, false, sub))
             spacer(this, 10)
-            addView(label("เลื่อนลงเพื่อทำขั้นตอนที่ยังไม่พร้อม • ระบบจะไม่ควบคุม Android", 12f, false, sub))
-            if (LinuxDesktopService.running) {
+            addSetupCheck(this, "1. ตั้งรหัสผ่าน",
+                "ปกป้องหน้าเว็บและแชท AI", store.hasPassword(), privacyBlue, "privacy")
+            addSetupCheck(this, "2. ติดตั้ง Linux",
+                "ติดตั้งระบบ Linux จากในแอป ไม่ต้องใช้อินเทอร์เน็ต", alpineReady, linuxGreen, "linux")
+            addSetupCheck(this, "3. ดาวน์โหลดสมอง AI",
+                "เลือกโมเดลที่ต้องการ แล้วใช้งานออฟไลน์", modelFile != null, aiPurple, "ai")
+            addSetupCheck(this, "4. ติดตั้งหน้าจอ Linux",
+                "เปิดโปรแกรม Linux และเชื่อมต่อจากคอม", desktopReady, desktopOrange, "desktop")
+            spacer(this, 14)
+            addView(label("เลือกหมวดการตั้งค่า", 17f, true))
+            spacer(this, 4)
+            addView(label("แยกสีให้จำง่าย เมนูที่เกี่ยวข้องอยู่ด้วยกัน", 11.5f, false, sub))
+            addCategoryMenu(this)
+        }
+        if (settingsCategory == "start") {
+            cardBlock(content) {
+                addView(label("ควรทำอะไรต่อ?", 17f, true, privacyBlue))
+                spacer(this, 8)
+                val next = when {
+                    !store.hasPassword() -> "ตั้งรหัสผ่านก่อน เพื่อเปิด AI และป้องกันคนอื่นเข้าใช้งาน"
+                    !alpineReady -> "ติดตั้ง Linux ที่อยู่ในแอป ใช้งานได้โดยไม่ต้องใช้ Termux"
+                    modelFile == null -> "ดาวน์โหลดสมอง AI หากอยากแชทหรือสั่ง AI ให้ช่วยงาน"
+                    !desktopReady -> "ติดตั้งหน้าจอ Linux เพื่อเปิดโปรแกรมและรีโมทจากคอม"
+                    else -> "ตั้งค่าพื้นฐานแล้ว เลือกหน้าจอ Linux เพื่อเริ่มใช้งาน"
+                }
+                addView(label(next, 13f, false, sub))
                 spacer(this, 11)
-                addButton(this, "▣  เปิดหน้าจอ Linux Desktop", true) { showTab("desktop") }
+                val target = when {
+                    !store.hasPassword() -> "privacy"
+                    !alpineReady -> "linux"
+                    modelFile == null -> "ai"
+                    else -> "desktop"
+                }
+                addButton(this, "ไปทำขั้นตอนถัดไป  →", true) {
+                    settingsCategory = target
+                    showTab("control")
+                }
+            }
+        } else {
+            cardBlock(content) {
+                val section = when (settingsCategory) {
+                    "linux" -> "🐧  Linux พื้นฐาน" to linuxGreen
+                    "ai" -> "✦  AI ของฉัน" to aiPurple
+                    "desktop" -> "▣  หน้าจอ Linux และรีโมท" to desktopOrange
+                    "privacy" -> "🔐  ความปลอดภัย" to privacyBlue
+                    else -> "⬇  ข้อมูลและการอัปเดต" to dataPink
+                }
+                addView(label(section.first, 19f, true, section.second))
+                spacer(this, 5)
+                addView(label("แสดงเฉพาะเมนูในหมวดนี้ เพื่อลดความสับสน",
+                    12f, false, sub))
+                spacer(this, 9)
+                addButton(this, "←  กลับไปดูเช็กลิสต์") {
+                    settingsCategory = "start"
+                    showTab("control")
+                }
             }
         }
         cardBlock(content) {
