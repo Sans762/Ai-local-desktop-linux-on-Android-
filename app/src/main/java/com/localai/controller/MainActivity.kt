@@ -643,84 +643,103 @@ class MainActivity : Activity() {
         }
         }
         if (settingsCategory == "linux") {
-        categoryCard(content, linuxGreen) {
-            addView(label("🐧  รู้จัก Linux ในแอป", 14f, true, linuxGreen))
-            spacer(this, 8)
-            addView(label("Linux คือพื้นที่ทำงานคล้ายคอมที่อยู่ในแอปนี้ ไม่ต้องติดตั้ง Termux หรือรูทเครื่อง", 13f, false, sub))
-            spacer(this, 8)
-            addView(label("แอปจะไม่ควบคุมมือถือ Android ของคุณ • หน้าจอ Linux ติดตั้งแยกได้ในหมวดสีส้ม", 12f, false, sub))
-        }
-        }
-        if (settingsCategory == "linux") {
-        categoryCard(content, linuxGreen) {
-            addView(label("📦  ติดตั้ง Linux และใช้คำสั่ง", 14f, true, linuxGreen))
-            spacer(this, 8)
-            val linux = LinuxRuntime(this@MainActivity)
-            val status = label(if (linux.installed()) "✓  ติดตั้ง Linux แล้ว" else "○  ยังไม่ได้ติดตั้ง Linux", 13f, true, if (linux.installed()) mint else sub)
-            addView(status)
-            spacer(this, 6)
-            addView(label("กดปุ่มด้านล่างเพื่อติดตั้งระบบ Linux ที่มีอยู่ในแอป ไม่ต้องใช้อินเทอร์เน็ต", 12f, false, sub))
-            spacer(this, 9)
-            addButton(this, "▣  ติดตั้ง Alpine Linux (ออฟไลน์)", true) {
-                if (linux.installed()) {
-                    notifyUser("Alpine Linux ติดตั้งแล้ว")
-                } else if (LinuxInstallService.running) {
-                    notifyUser("กำลังติดตั้ง Linux อยู่แล้ว ตรวจแจ้งเตือน")
+            categoryCard(content, linuxGreen) {
+                setPadding(dp(12), dp(13), dp(12), dp(13))
+                val linux = LinuxRuntime(this@MainActivity)
+                val ready = linux.installed()
+                val status = label(if (ready) "✓  Linux พร้อมแล้ว" else
+                    if (LinuxInstallService.running) "◉  กำลังติดตั้ง Linux…" else
+                    "○  ยังไม่ได้ติดตั้ง Linux", 16f, true,
+                    if (ready) linuxGreen else sub)
+                addView(status)
+                spacer(this, 5)
+                addView(label("พื้นที่เปิดโปรแกรมและจัดการไฟล์ภายในแอป",
+                    12f, false, sub))
+                spacer(this, 12)
+                if (ready) {
+                    addButton(this, "▣  ไปตั้งค่าหน้าจอคอม", true) {
+                        settingsCategory = "desktop"
+                        showTab("control")
+                    }
                 } else {
-                    try {
-                        if (Build.VERSION.SDK_INT >= 33 &&
-                            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 91)
-                        }
-                        startForegroundService(Intent(this@MainActivity, LinuxInstallService::class.java))
-                        status.text = "กำลังเตรียม Linux… ดูความคืบหน้าในแจ้งเตือน"
-                        val watch = object : Runnable {
-                            override fun run() {
-                                if (currentTab != "control") return
-                                status.text = LinuxInstallService.progress
-                                status.setTextColor(if (linux.installed()) mint else sub)
-                                if (LinuxInstallService.running) ui.postDelayed(this, 1800)
+                    addButton(this, if (LinuxInstallService.running)
+                        "◉  กำลังติดตั้ง…" else "↓  ติดตั้ง Linux (ไม่ใช้เน็ต)", true) {
+                        if (LinuxInstallService.running) {
+                            notifyUser("กำลังติดตั้ง Linux อยู่แล้ว")
+                        } else {
+                            try {
+                                if (Build.VERSION.SDK_INT >= 33 &&
+                                    checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+                                    PackageManager.PERMISSION_GRANTED) {
+                                    requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 91)
+                                }
+                                startForegroundService(Intent(this@MainActivity,
+                                    LinuxInstallService::class.java))
+                                status.text = "◉  กำลังติดตั้ง Linux…"
+                            } catch (e: Exception) {
+                                status.text = "✕  ติดตั้งไม่ได้"
+                                notifyUser(e.message ?: "ติดตั้ง Linux ไม่สำเร็จ")
                             }
                         }
-                        ui.postDelayed(watch, 1000)
-                    } catch (e: Exception) {
-                        status.text = "เริ่มติดตั้งไม่ได้: " + (e.message ?: "unknown")
                     }
                 }
+                val activeCategory = "linux"
+                var wasInstalling = LinuxInstallService.running
+                val watch = object : Runnable {
+                    override fun run() {
+                        if (currentTab != "control" || settingsCategory != activeCategory) return
+                        status.text = when {
+                            linux.installed() -> "✓  Linux พร้อมแล้ว"
+                            LinuxInstallService.running -> "◉  " +
+                                LinuxInstallService.progress.take(54)
+                            else -> LinuxInstallService.progress.take(65)
+                                .ifBlank { "○  ยังไม่ได้ติดตั้ง Linux" }
+                        }
+                        status.setTextColor(if (linux.installed()) linuxGreen else sub)
+                        if (wasInstalling && !LinuxInstallService.running) {
+                            showTab("control")
+                            return
+                        }
+                        wasInstalling = LinuxInstallService.running
+                        ui.postDelayed(this, 1600)
+                    }
+                }
+                ui.postDelayed(watch, 800)
+                spacer(this, 10)
+                addButton(this, if (advancedSettingsVisible)
+                    "−  ซ่อนเครื่องมือขั้นสูง" else "＋  เครื่องมือขั้นสูง") {
+                    advancedSettingsVisible = !advancedSettingsVisible
+                    showTab("control")
+                }
+                if (advancedSettingsVisible) {
+                    spacer(this, 10)
+                    addView(label("คำสั่ง Linux (Terminal)", 12f, true, linuxGreen))
+                    spacer(this, 6)
+                    val command = field("คำสั่ง เช่น uname -a")
+                        .apply { setText("uname -a && cat /etc/alpine-release") }
+                    addView(command)
+                    spacer(this, 8)
+                    val output = label("ผลลัพธ์จะแสดงตรงนี้", 11.5f, false, sub).apply {
+                        setPadding(dp(10), dp(10), dp(10), dp(10))
+                        background = panel(cardDeep, 13)
+                        setTextIsSelectable(true)
+                    }
+                    addButton(this, "รันคำสั่ง") {
+                        output.text = "กำลังทำงาน…"
+                        val value = command.text.toString()
+                        Thread({
+                            val result = try { linux.command(value) }
+                                catch (e: Exception) { "Linux: " + (e.message ?: "error") }
+                            runOnUiThread { output.text = result }
+                        }, "advanced-linux-command").start()
+                    }
+                    spacer(this, 8)
+                    addView(output)
+                    spacer(this, 5)
+                    addView(label("คำสั่งอาจแก้ไฟล์ Linux ได้ ใช้เฉพาะคำสั่งที่เข้าใจ",
+                        11f, false, sub))
+                }
             }
-            spacer(this, 12)
-            addButton(this, if (advancedSettingsVisible) "−  ซ่อนเครื่องมือขั้นสูง" else "＋  เปิดเครื่องมือขั้นสูง (Terminal)") {
-                advancedSettingsVisible = !advancedSettingsVisible
-                showTab("control")
-            }
-            if (advancedSettingsVisible) {
-            spacer(this, 12)
-            addView(label("คำสั่ง Linux (สำหรับผู้ใช้ขั้นสูง)", 11.5f, true, sub))
-            spacer(this, 8)
-            val command = field("เช่น uname -a หรือ apk --version").apply {
-                setText("uname -a && cat /etc/alpine-release")
-            }
-            addView(command)
-            spacer(this, 9)
-            val output = label("ผลลัพธ์คำสั่งจะแสดงที่นี่", 12f, false, mint).apply {
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                background = panel(cardDeep, 13)
-                setTextIsSelectable(true)
-            }
-            addButton(this, "▶  รันคำสั่งใน Linux") {
-                val value = command.text.toString()
-                output.text = "กำลังรัน…"
-                Thread {
-                    val result = try { linux.command(value) } catch (e: Exception) { "Linux: ${e.message}" }
-                    runOnUiThread { output.text = result }
-                }.start()
-            }
-            spacer(this, 8)
-            addView(output)
-            spacer(this, 8)
-            addView(label("โปรดระวัง: คำสั่ง Linux สามารถแก้ไฟล์ใน rootfs ของแอปได้ อย่ารันคำสั่งที่ไม่รู้จัก", 11.5f, false, sub))
-            }
-        }
         }
         if (settingsCategory == "desktop") {
             categoryCard(content, desktopOrange) {
