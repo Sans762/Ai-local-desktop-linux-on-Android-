@@ -236,3 +236,12 @@ html, body { min-width:0; max-width:100%; overflow-x:clip; }
   .live-control{padding:3px 8px}
   .monitor-details>summary{min-height:23px;padding:1px}
 }
+
+/* v0.21 - conversation only; Linux desktop stays on its own native tab. */
+@media(max-width:850px){
+  .topbar,.tabs{display:none!important}
+  .chat-tab{height:100%;min-height:0}
+  .messages{padding:12px 12px 9px;gap:12px;flex:1 1 auto}
+  .composer{padding:8px 10px max(10px,env(safe-area-inset-bottom))}
+  .composer-meta{display:none}
+}

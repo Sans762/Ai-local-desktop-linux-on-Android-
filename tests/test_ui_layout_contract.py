@@ -47,9 +47,10 @@ assert not app.duplicates and not vnc.duplicates, "Duplicate UI IDs found"
 assert "width=device-width" in html and "width=device-width" in desktop
 assert "วันนี้ให้ช่วยอะไรดี?" in html, "Chat welcome copy should be friendly and short"
 assert "advanced-console" in html, "Manual Linux terminal must be collapsed for new users"
-assert 'id="monitorDetails"' in html, "Phone telemetry should be collapsible"
-assert "monitor-details>summary" in css, "Monitoring toggle must be styled"
-assert "monitorDetails.open = false" in js, "Collapse telemetry by default on narrow phones"
+assert 'id="chatDesktopPanel"' not in html, "Do not embed VNC controls in chat"
+assert 'id="desktopToggle"' not in html, "Chat must be conversation-only"
+assert 'id="monitorDetails"' not in html, "Monitoring belongs in the dedicated system screen"
+assert ".topbar,.tabs{display:none!important}" in css, "No duplicate Android/WebView headers on phones"
 assert "if (!textarea.value.trim()) textarea.value = content;" in js, "Failed chat must preserve draft"
 assert "private fun showWebFailure(view: WebView?)" in native, "Localhost WebView failure needs native retry"
 assert "request?.isForMainFrame == true" in native, "Avoid overlays from subresource errors"
@@ -101,7 +102,7 @@ required_app = {
     "linuxPlanCommands","linuxExecute","linuxCancel","linuxCommand",
     "linuxRun","linuxCheck","linuxOutput","linuxReady","model","ram",
 }
-required_app |= {"liveCpu","liveGpu","liveRam","liveNetwork","desktopToggle","desktopHide","chatDesktopPanel","desktopFrameHost","desktopHint"}
+assert "desktopToggle" not in js and "refreshMonitor()" not in js, "Removed chat controls must not leave JS handlers"
 required_vnc = {"status","connect","disconnect","password","viewport","screen","cover"}
 assert required_app <= app.ids, f"Missing app UI ids: {required_app - app.ids}"
 assert required_vnc <= vnc.ids, f"Missing desktop UI ids: {required_vnc - vnc.ids}"
