@@ -422,16 +422,32 @@ class MainActivity : Activity() {
             spacer(this, 6)
             addView(label("Linux userland ผ่าน PRoot ภายใน APK ไม่ต้อง Root/Termux • ใช้ kernel Android • เก็บไฟล์ Linux ในพื้นที่แอปแยกจากไฟล์อื่น", 12f, false, sub))
             spacer(this, 9)
-            addButton(this, "▣  ติดตั้ง Linux จาก APK (ใช้แบบออฟไลน์)", true) {
-                status.text = "กำลังแตกไฟล์ Linux…"
-                Thread {
+            addButton(this, "▣  ติดตั้ง Alpine Linux (ออฟไลน์)", true) {
+                if (linux.installed()) {
+                    notifyUser("Alpine Linux ติดตั้งแล้ว")
+                } else if (LinuxInstallService.running) {
+                    notifyUser("กำลังติดตั้ง Linux อยู่แล้ว ตรวจแจ้งเตือน")
+                } else {
                     try {
-                        linux.install { value -> runOnUiThread { status.text = value } }
-                        runOnUiThread { status.setTextColor(mint) }
+                        if (Build.VERSION.SDK_INT >= 33 &&
+                            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 91)
+                        }
+                        startForegroundService(Intent(this@MainActivity, LinuxInstallService::class.java))
+                        status.text = "กำลังเตรียม Linux… ดูความคืบหน้าในแจ้งเตือน"
+                        val watch = object : Runnable {
+                            override fun run() {
+                                if (currentTab != "control") return
+                                status.text = LinuxInstallService.progress
+                                status.setTextColor(if (linux.installed()) mint else sub)
+                                if (LinuxInstallService.running) ui.postDelayed(this, 1800)
+                            }
+                        }
+                        ui.postDelayed(watch, 1000)
                     } catch (e: Exception) {
-                        runOnUiThread { status.text = "Linux error: ${e.message}" }
+                        status.text = "เริ่มติดตั้งไม่ได้: " + (e.message ?: "unknown")
                     }
-                }.start()
+                }
             }
             spacer(this, 12)
             addView(label("LINUX CONSOLE", 11.5f, true, sub))
