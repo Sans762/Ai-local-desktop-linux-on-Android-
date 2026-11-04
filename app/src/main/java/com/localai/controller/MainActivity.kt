@@ -47,6 +47,9 @@ class MainActivity : Activity() {
     private var webView: WebView? = null
     private var desktopWebView: WebView? = null
     private var currentTab = "control"
+    private var tabBeforeDesktop = "control"
+    private var lastBackAtMs = 0L
+    private var platformBackCallback: android.window.OnBackInvokedCallback? = null
     private var settingsCategory = "start"
     private var advancedSettingsVisible = false
     private val ui = Handler(Looper.getMainLooper())
@@ -240,6 +243,7 @@ class MainActivity : Activity() {
         setContentView(mainColumn)
         androidx.core.view.ViewCompat.requestApplyInsets(mainColumn)
         buildShell()
+        installGestureBackHandler()
         showTab(if (store.hasPassword() && AiForegroundService.running) "workspace" else "control")
         AutoUpdateScheduler.sync(this)
         if (AutoUpdateScheduler.enabled(this) && Build.VERSION.SDK_INT >= 33 &&
@@ -307,6 +311,9 @@ class MainActivity : Activity() {
     }
 
     private fun showTab(target: String) {
+        if (target == "desktop" && currentTab != "desktop") {
+            tabBeforeDesktop = currentTab
+        }
         currentTab = target
         refreshChip()
         workspaceTab.background = if (target == "workspace") gradient(14) else panel(cardDeep, 14)
@@ -982,12 +989,63 @@ class MainActivity : Activity() {
         }
     }
 
-    @Deprecated("Back behavior for native tab navigation")
+    private fun installGestureBackHandler() {
+        // Android 13+ predictive back may not invoke Activity.onBackPressed().
+        // Register with the platform dispatcher; keep the legacy override below
+        // for Android 8-12 and hardware Back buttons.
+        if (Build.VERSION.SDK_INT >= 33) {
+            val callback = android.window.OnBackInvokedCallback { navigateBackWithinApp() }
+            platformBackCallback = callback
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, callback)
+        }
+    }
+
+    private fun navigateBackWithinApp() {
+        // The operating system handles IME dismissal and dialogs first.
+        when {
+            currentTab == "desktop" -> {
+                showTab(if (tabBeforeDesktop == "workspace") "workspace" else "control")
+            }
+            currentTab == "workspace" -> {
+                settingsCategory = "start"
+                showTab("control")
+            }
+            currentTab == "control" && settingsCategory != "start" -> {
+                settingsCategory = "start"
+                showTab("control")
+            }
+            currentTab != "control" -> {
+                settingsCategory = "start"
+                showTab("control")
+            }
+            else -> {
+                // On root, never accidentally destroy a running Linux/AI session.
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - lastBackAtMs <= 2200L) {
+                    lastBackAtMs = 0L
+                    moveTaskToBack(true)
+                } else {
+                    lastBackAtMs = now
+                    Toast.makeText(this, "ปัดย้อนกลับอีกครั้งเพื่อไปหน้าโฮม",
+                        Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    @Deprecated("Support hardware and legacy Android Back")
     override fun onBackPressed() {
-        if (currentTab == "workspace" || currentTab == "desktop") showTab("control") else super.onBackPressed()
+        navigateBackWithinApp()
     }
 
     override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            platformBackCallback?.let {
+                onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it)
+            }
+            platformBackCallback = null
+        }
         val web = webView
         webView = null
         if (web != null) {
