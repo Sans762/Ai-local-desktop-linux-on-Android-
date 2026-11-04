@@ -2,17 +2,10 @@ package com.localai.controller
 
 import android.app.*
 import android.content.Intent
-import android.content.pm.PackageInfo
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
-import android.net.Uri
 import android.os.Build
 import android.os.IBinder
-import androidx.core.content.FileProvider
-import java.io.File
-import java.net.HttpURLConnection
 import java.net.URL
-import java.security.MessageDigest
 
 /** Download only owner-signed APK updates. Never remove data or install silently. */
 class AppUpdateDownloadService : Service() {
@@ -60,15 +53,17 @@ class AppUpdateDownloadService : Service() {
         notifyUpdate(progress, true, null)
         Thread({
             try {
-                val apk = fetchAndVerify(url, sha, size)
-                val fileUri = FileProvider.getUriForFile(this, packageName + ".updates", apk)
-                val installer = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(fileUri, "application/vnd.android.package-archive")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                var lastNoticeAt = 0L
+                val apk = VerifiedApkUpdate.download(this, url, sha, size) { amount, total ->
+                    val now = System.currentTimeMillis()
+                    if (now - lastNoticeAt > 1500L) {
+                        lastNoticeAt = now
+                        progress = "กำลังดาวน์โหลดอัปเดต " + (amount * 100 / total) + "%"
+                        notifyUpdate(progress, true, null)
+                    }
                 }
-                // Android will resolve the system installer when the user taps
-                // the finished notification. Do not hide this behind package
-                // visibility queries, which vary between Android builds.
+                val installer = VerifiedApkUpdate.installIntent(this, apk)
+                AutoUpdateScheduler.rememberReady(this, version)
                 progress = "ดาวน์โหลดและตรวจสอบผ่าน · แตะเพื่อติดตั้ง " + version
                 notifyUpdate(progress, false, installer)
             } catch (e: Exception) {
@@ -82,95 +77,6 @@ class AppUpdateDownloadService : Service() {
             }
         }, "local-ai-update").apply { isDaemon = true; start() }
         return START_NOT_STICKY
-    }
-
-    private fun digest(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256")
-        .digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
-
-    private fun certHashes(info: PackageInfo): Set<String> {
-        @Suppress("DEPRECATION")
-        val signatures = if (Build.VERSION.SDK_INT >= 28) {
-            val signing = info.signingInfo ?: error("ไม่มีข้อมูลลายเซ็น APK")
-            if (signing.hasMultipleSigners()) signing.apkContentsSigners
-            else signing.signingCertificateHistory
-        } else info.signatures
-        require(!signatures.isNullOrEmpty()) { "ไม่พบใบรับรองลายเซ็น" }
-        return signatures.map { digest(it.toByteArray()) }.toSet()
-    }
-
-    private fun verifyInstallCompatibility(apk: File) {
-        @Suppress("DEPRECATION")
-        val flags = if (Build.VERSION.SDK_INT >= 28)
-            PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-        val installed = packageManager.getPackageInfo(packageName, flags)
-        val candidate = packageManager.getPackageArchiveInfo(apk.absolutePath, flags)
-            ?: error("Android อ่าน APK ที่ดาวน์โหลดไม่ได้")
-        require(candidate.packageName == packageName) {
-            "ไฟล์อัปเดตเป็นคนละแอป จึงไม่สามารถรักษาข้อมูลเดิมได้"
-        }
-        require(candidate.longVersionCode > installed.longVersionCode) {
-            "ไฟล์อัปเดตไม่ใช่เวอร์ชันใหม่กว่า"
-        }
-        require(certHashes(installed).intersect(certHashes(candidate)).isNotEmpty()) {
-            "ลายเซ็น APK ไม่ตรงกับแอปเก่า ห้ามถอนแอปเพื่ออัปเดต เพราะข้อมูลจะหาย"
-        }
-    }
-
-    private fun fetchAndVerify(link: String, expectedHash: String, expectedSize: Long): File {
-        val root = File(cacheDir, "updates").apply { mkdirs() }
-        val stage = File(root, "update.part")
-        val target = File(root, "update.apk")
-        stage.delete()
-        target.delete()
-        try {
-            val connection = (URL(link).openConnection() as HttpURLConnection).apply {
-                connectTimeout = 20_000
-                readTimeout = 30_000
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "LocalAI-Android-Update")
-            }
-            try {
-                require(connection.responseCode == 200 && connection.url.protocol == "https") {
-                    "การดาวน์โหลด HTTPS ไม่สำเร็จ: " + connection.responseCode
-                }
-                require(connection.contentLengthLong < 0 || connection.contentLengthLong == expectedSize) {
-                    "ขนาดไฟล์ไม่ตรงกับ GitHub Releases"
-                }
-                val md = MessageDigest.getInstance("SHA-256")
-                var amount = 0L
-                var lastNotify = 0L
-                connection.inputStream.use { input ->
-                    stage.outputStream().buffered().use { output ->
-                        val buffer = ByteArray(65536)
-                        while (true) {
-                            if (Thread.currentThread().isInterrupted) error("การดาวน์โหลดถูกยกเลิก")
-                            val n = input.read(buffer)
-                            if (n < 0) break
-                            amount += n
-                            require(amount <= expectedSize) { "ไฟล์ดาวน์โหลดเกินขนาดที่ยืนยัน" }
-                            md.update(buffer, 0, n)
-                            output.write(buffer, 0, n)
-                            val now = System.currentTimeMillis()
-                            if (now - lastNotify > 1800) {
-                                lastNotify = now
-                                progress = "กำลังโหลดอัปเดต " + (amount * 100 / expectedSize) + "%"
-                                notifyUpdate(progress, true, null)
-                            }
-                        }
-                    }
-                }
-                require(amount == expectedSize) { "ดาวน์โหลดไฟล์ไม่ครบ" }
-                val actual = md.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
-                require(actual == expectedHash) { "SHA-256 ไม่ตรง จึงไม่ติดตั้ง" }
-                require(stage.renameTo(target)) { "ไม่สามารถบันทึก APK" }
-                verifyInstallCompatibility(target)
-                return target
-            } finally { connection.disconnect() }
-        } catch (e: Exception) {
-            stage.delete()
-            target.delete()
-            throw e
-        }
     }
 
     private fun notifyUpdate(message: String, working: Boolean, installer: Intent?) {
