@@ -36,8 +36,8 @@ android {
         getByName("debug") {
             // Independent TEST installation: never overwrite a differently signed
             // existing user app and never require deleting Linux/model data.
-            applicationIdSuffix = ".test"
-            versionNameSuffix = "-test"
+            applicationIdSuffix = ".test.v011"
+            versionNameSuffix = "-test-v011"
             manifestPlaceholders["appLabel"] = "Local AI Linux TEST"
         }
         release {
