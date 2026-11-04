@@ -87,6 +87,7 @@ class LinuxDesktopService : Service() {
     private var lanWeb: LocalHttpServer? = null
     private var desktopViewer: DesktopWebServer? = null
     private var worker: Thread? = null
+    @Volatile private var closing = false
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun updateStatus(value: String, failure: String = "") {
@@ -94,7 +95,7 @@ class LinuxDesktopService : Service() {
         if (failure.isNotEmpty()) lastError = failure.take(1600)
         getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
             .edit().putString("message", message).putString("error", lastError).apply()
-        notifyStatus(message)
+        if (!closing) try { notifyStatus(message) } catch (_: Exception) { }
     }
 
     private fun networkAvailable(): Boolean {
@@ -146,7 +147,17 @@ class LinuxDesktopService : Service() {
                         val now = System.currentTimeMillis()
                         if (now - lastNoticeAt > 2000L && line.isNotBlank()) {
                             lastNoticeAt = now
-                            updateStatus("Linux: " + line.replace(Regex("[\r\n]"), " ").take(80))
+                            val step = Regex("""\(([0-9]+)/([0-9]+)\)""").find(line)
+                            val userMessage = when {
+                                step != null -> "กำลังติดตั้งไฟล์ " +
+                                    step.groupValues[1] + "/" + step.groupValues[2]
+                                line.startsWith("fetch ", ignoreCase = true) ->
+                                    "กำลังดาวน์โหลดไฟล์โปรแกรม Linux…"
+                                line.startsWith("ERROR", ignoreCase = true) ->
+                                    "พบปัญหาระหว่างติดตั้ง · กำลังตรวจรายละเอียด"
+                                else -> "กำลังติดตั้งโปรแกรม Linux…"
+                            }
+                            updateStatus(userMessage)
                         }
                     }
                     require(result.trimEnd().endsWith("[exit 0]")) {
@@ -160,6 +171,7 @@ class LinuxDesktopService : Service() {
                     else require(installed(this)) { "ติดตั้ง Xvnc/Openbox ไม่ครบ" }
                     updateStatus(if (isBrowser) "✓ ติดตั้ง Chromium สำเร็จ" else
                         "✓ ติดตั้งหน้าจอ Linux สำเร็จ · พร้อมเปิด")
+                    if (!closing) completionNotification(true)
                 } else {
                     require(installed(this)) { "Install desktop packages first" }
                     require(password.matches(Regex("[A-Za-z0-9]{8,16}"))) {
@@ -173,6 +185,7 @@ class LinuxDesktopService : Service() {
             } catch (e: Exception) {
                 val reason = (e.message ?: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ").take(1200)
                 updateStatus("ติดตั้งหรือเปิด Linux ไม่สำเร็จ", reason)
+                if (!closing) completionNotification(false)
                 if (!running) cleanup()
             } finally {
                 installing = false
@@ -239,6 +252,26 @@ class LinuxDesktopService : Service() {
             "✓ หน้าจอ Linux พร้อมใช้ · $ip:$VNC_PORT")
     }
 
+    private fun completionNotification(success: Boolean) {
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val channel = "linux_desktop_install_results"
+        manager.createNotificationChannel(
+            NotificationChannel(channel, "ผลการติดตั้ง Linux", NotificationManager.IMPORTANCE_DEFAULT))
+        val open = PendingIntent.getActivity(this, 394,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val note = Notification.Builder(this, channel)
+            .setSmallIcon(if (success) android.R.drawable.stat_sys_download_done
+                else android.R.drawable.stat_notify_error)
+            .setContentTitle(if (success) "ติดตั้งหน้าจอ Linux สำเร็จ" else "ติดตั้งหน้าจอ Linux ไม่สำเร็จ")
+            .setContentText(if (success) "เปิดแอปแล้วแตะหน้าจอ Linux" else
+                "เปิดแอปเพื่อดูสาเหตุและลองใหม่")
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+        manager.notify(394, note)
+    }
+
     private fun notifyStatus(info: String) {
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(NotificationChannel(CHANNEL, "Linux Desktop and VNC", NotificationManager.IMPORTANCE_LOW))
@@ -280,6 +313,7 @@ class LinuxDesktopService : Service() {
     }
 
     override fun onDestroy() {
+        closing = true
         worker?.interrupt()
         cleanup()
         super.onDestroy()
