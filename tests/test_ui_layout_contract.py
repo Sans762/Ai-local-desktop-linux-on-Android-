@@ -55,12 +55,19 @@ assert "NATIVE WORKSPACE  •  V0.4" not in native
 assert 'addCategoryMenu(this)' in native, "Missing settings category menu"
 assert 'addSetupCheck(this' in native, "Missing guided checklist"
 assert 'progressBar' in native, "Missing checklist progress indicator"
-assert native.count('categoryCard(content,') == 8, "Expected eight categorized setting cards"
-assert native.count('if (settingsCategory == "ai")') >= 3
-assert native.count('if (settingsCategory == "linux")') >= 2
+assert native.count('categoryCard(content,') == 6, "Expected six compact setting panels across five categories"
+assert native.count('if (settingsCategory == "ai")') >= 1
+assert native.count('if (settingsCategory == "linux")') >= 1
 for color in ('linuxGreen', 'aiPurple', 'desktopOrange', 'privacyBlue', 'dataPink'):
     assert color in native, f"Missing color category {color}"
 assert 'advancedSettingsVisible' in native, "Advanced controls must not overwhelm new users"
+assert 'setupChecklistExpanded' in native, "Onboarding checklist must be collapsible"
+assert 'aiOptionsExpanded' in native, "Optional AI models should not crowd the default screen"
+assert 'dataAdvancedExpanded' in native, "Advanced data actions should not crowd the default screen"
+assert 'ต่อไป: ' in native, "Users need a clear next-step action"
+assert 'ซ่อนขั้นตอน' in native, "Checklist should expand only when requested"
+assert 'arrayOf("▣  หน้าจอคอม"' in native
+
 assert "AccessibilityService" not in manifest and "mediaProjection" not in manifest
 assert "AppUpdateDownloadService" in manifest, "Missing in-app updater service"
 assert "FileProvider" in manifest, "Missing restricted APK FileProvider"
