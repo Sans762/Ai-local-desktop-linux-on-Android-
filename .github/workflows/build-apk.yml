@@ -35,14 +35,46 @@ jobs:
         run: bash tools/fetch-embedded-linux.sh
       - name: Embed noVNC 1.7.0 in the Android APK
         run: bash tools/fetch-novnc.sh
-      - name: Build debug APK
-        run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Configure persistent APK signing when release secrets are available
+        shell: bash
+        env:
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$SIGNING_KEYSTORE_BASE64" && -n "$SIGNING_STORE_PASSWORD" && -n "$SIGNING_KEY_ALIAS" && -n "$SIGNING_KEY_PASSWORD" ]]; then
+            printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/localai-release.jks"
+            chmod 600 "$RUNNER_TEMP/localai-release.jks"
+            echo "AI_RELEASE_KEYSTORE=$RUNNER_TEMP/localai-release.jks" >> "$GITHUB_ENV"
+            echo "AI_RELEASE_KEYSTORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "AI_RELEASE_KEY_ALIAS=$SIGNING_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "AI_RELEASE_KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "AI_APK_KIND=release" >> "$GITHUB_ENV"
+            echo "Persistent release signing enabled"
+          else
+            echo "AI_APK_KIND=debug" >> "$GITHUB_ENV"
+            echo "::warning::No persistent release signing secrets. This debug APK may NOT update prior APKs in place; do not uninstall an app containing data without first backing it up."
+          fi
+      - name: Build Android APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$AI_APK_KIND" == release ]]; then
+            gradle --no-daemon --stacktrace :app:assembleRelease
+            echo "AI_APK=app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
+          else
+            gradle --no-daemon --stacktrace :app:assembleDebug
+            echo "AI_APK=app/build/outputs/apk/debug/app-debug.apk" >> "$GITHUB_ENV"
+          fi
       - name: Verify package is Linux-only
         shell: bash
         run: |
           set -euo pipefail
-          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APK="$AI_APK"
           test -s "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify "$APK"
           unzip -l "$APK" | grep -q 'assets/desktop.html'
           unzip -l "$APK" | grep -q 'assets/novnc/core/rfb.js'
           unzip -l "$APK" | grep -q 'assets/novnc/vendor/pako/lib/zlib/inflate.js'
@@ -54,12 +86,12 @@ jobs:
             exit 1
           fi
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop'"
-      - name: Upload debug APK
+      - name: Upload installable APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAI-LinuxDesktop-v0.6-debug-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: LocalAI-LinuxDesktop-v0.7-APK
+          path: ${{ env.AI_APK }}
           if-no-files-found: error
 
       - name: Publish direct-download standalone APK
@@ -69,12 +101,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp app/build/outputs/apk/debug/app-debug.apk LocalAI-LinuxDesktop-v0.6-ARM64.apk
-          if gh release view v0.6-linux-desktop >/dev/null 2>&1; then
-            gh release upload v0.6-linux-desktop LocalAI-LinuxDesktop-v0.6-ARM64.apk --clobber
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.7-ARM64.apk
+          if gh release view v0.7-linux-desktop >/dev/null 2>&1; then
+            gh release upload v0.7-linux-desktop LocalAI-LinuxDesktop-v0.7-ARM64.apk --clobber
           else
-            gh release create v0.6-linux-desktop LocalAI-LinuxDesktop-v0.6-ARM64.apk \
+            gh release create v0.7-linux-desktop LocalAI-LinuxDesktop-v0.7-ARM64.apk \
               --target "$GITHUB_SHA" \
-              --title "Local AI Linux Desktop v0.6 - ARM64" \
-              --notes "Alpine Linux graphical Openbox desktop in Android, built-in noVNC touch viewer, VNC for PCs over trusted LAN/VPN, authenticated local and LAN AI Web UI. Linux-only: no Android Accessibility or screen capture. Install Linux desktop packages and GGUF model separately. Runtime device testing is required."
+              --title "Local AI Linux Desktop v0.7 - ARM64" \
+              --notes "Linux Desktop v0.7: same Android package as v0.6, built-in check-for-updates, Openbox desktop, PC VNC and local AI web dashboard. The APK is debug-signed unless private release signing secrets are configured; differently signed old versions cannot be updated in-place. Do not uninstall with important data. Runtime Android device tests are still required."
           fi
+      - name: Remove temporary keystore
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/localai-release.jks"
