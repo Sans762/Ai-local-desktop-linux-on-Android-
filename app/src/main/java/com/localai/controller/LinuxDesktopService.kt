@@ -3,6 +3,8 @@ package com.localai.controller
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
@@ -28,6 +30,17 @@ class LinuxDesktopService : Service() {
         @Volatile var message = "Linux desktop not started"
         @Volatile var lastError = ""
         @Volatile var ipAddress = ""
+        private const val STATUS_PREFS = "linux_desktop_status"
+
+        fun status(context: Context): String =
+            if (installing || running) message else
+                context.getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
+                    .getString("message", "ยังไม่ได้ติดตั้งหน้าจอ Linux").orEmpty()
+
+        fun error(context: Context): String =
+            if (lastError.isNotBlank()) lastError else
+                context.getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
+                    .getString("error", "").orEmpty()
 
         fun browserInstalled(context: Context): Boolean =
             File(context.filesDir, "embedded_linux/alpine-rootfs/usr/bin/chromium").isFile
@@ -76,6 +89,21 @@ class LinuxDesktopService : Service() {
     private var worker: Thread? = null
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun updateStatus(value: String, failure: String = "") {
+        message = value.take(180)
+        if (failure.isNotEmpty()) lastError = failure.take(1600)
+        getSharedPreferences(STATUS_PREFS, Context.MODE_PRIVATE)
+            .edit().putString("message", message).putString("error", lastError).apply()
+        notifyStatus(message)
+    }
+
+    private fun networkAvailable(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val active = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return active.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            active.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
         if (worker?.isAlive == true) return START_NOT_STICKY
@@ -87,41 +115,51 @@ class LinuxDesktopService : Service() {
         if (action !in setOf(ACTION_START, ACTION_INSTALL, ACTION_INSTALL_BROWSER)) { stopSelf(); return START_NOT_STICKY }
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Linux Desktop and VNC", NotificationManager.IMPORTANCE_LOW))
-        notifyStatus("Preparing Linux Desktop…")
+        val actionInstalling = action == ACTION_INSTALL || action == ACTION_INSTALL_BROWSER
+        if (actionInstalling) installing = true
+        lastError = ""
+        updateStatus(if (actionInstalling) "กำลังเตรียมติดตั้ง…" else "กำลังเปิด Linux Desktop…")
         val password = intent.getStringExtra(EXTRA_PASSWORD).orEmpty()
         worker = Thread({
             try {
-                lastError = ""
                 val linux = LinuxRuntime(this)
-                require(linux.available()) { "Install Alpine Linux first" }
-                if (action == ACTION_INSTALL || action == ACTION_INSTALL_BROWSER) {
+                require(linux.available()) { "ติดตั้ง Linux พื้นฐานก่อนเปิดหน้าจอ" }
+                if (actionInstalling) {
                     require(!running) { "Stop the desktop before installing packages" }
                     require(filesDir.usableSpace > if (action == ACTION_INSTALL_BROWSER) 1_600_000_000L else 600_000_000L) {
                         "Not enough free storage for Linux packages"
                     }
-                    installing = true
                     val isBrowser = action == ACTION_INSTALL_BROWSER
-                    notifyStatus(if (isBrowser) "Installing Chromium browser for Linux…" else
-                        "Installing Linux graphical desktop packages…")
+                    require(networkAvailable()) {
+                        "ไม่มีอินเทอร์เน็ตที่ใช้งานได้ กรุณาเชื่อมต่อ Wi-Fi หรืออินเทอร์เน็ตมือถือแล้วลองใหม่"
+                    }
+                    updateStatus("กำลังเตรียมคลังโปรแกรม Linux…")
+                    linux.ensureDesktopRepositories()
                     val packages = if (isBrowser) "chromium xdotool" else
                         "tigervnc openbox xterm pcmanfm tint2 font-dejavu xdotool"
-                    val setup = "apk update && apk add --no-cache $packages"
+                    updateStatus(if (isBrowser) "กำลังดาวน์โหลด Chromium…" else
+                        "กำลังดาวน์โหลดหน้าจอ Linux…")
+                    // No separate apk update: --no-cache resolves package metadata.
+                    val setup = "apk add --no-cache $packages"
                     var lastNoticeAt = 0L
-                    val result = linux.command(setup, timeoutSeconds = 1200) { line ->
+                    val result = linux.command(setup, timeoutSeconds = 480) { line ->
                         val now = System.currentTimeMillis()
-                        if (now - lastNoticeAt > 3000L) {
+                        if (now - lastNoticeAt > 2000L && line.isNotBlank()) {
                             lastNoticeAt = now
-                            notifyStatus("Linux: " + line.replace(Regex("[\\r\\n]"), " ").take(85))
+                            updateStatus("Linux: " + line.replace(Regex("[\r\n]"), " ").take(80))
                         }
                     }
                     require(result.trimEnd().endsWith("[exit 0]")) {
-                        "Linux package installation failed: " + result.takeLast(500)
+                        when {
+                            "[timeout:" in result -> "ดาวน์โหลด Linux ใช้เวลานานเกินไป กรุณาตรวจ Wi-Fi แล้วลองใหม่"
+                            "UNTRUSTED" in result -> "ตรวจไฟล์แพ็กเกจไม่ผ่าน: " + result.takeLast(450)
+                            else -> "ติดตั้งไม่สำเร็จ: " + result.takeLast(700)
+                        }
                     }
-                    if (isBrowser) require(browserInstalled(this)) { "Chromium not installed" }
-                    else require(installed(this)) { "Xvnc or Openbox missing after install" }
-                    message = if (isBrowser) "Linux Chromium installed. Launch from the Linux desktop."
-                        else "Desktop packages installed. Choose a VNC password and Start."
-                    notifyStatus(message)
+                    if (isBrowser) require(browserInstalled(this)) { "ติดตั้ง Chromium ไม่ครบ" }
+                    else require(installed(this)) { "ติดตั้ง Xvnc/Openbox ไม่ครบ" }
+                    updateStatus(if (isBrowser) "✓ ติดตั้ง Chromium สำเร็จ" else
+                        "✓ ติดตั้งหน้าจอ Linux สำเร็จ · พร้อมเปิด")
                 } else {
                     require(installed(this)) { "Install desktop packages first" }
                     require(password.matches(Regex("[A-Za-z0-9]{8,16}"))) {
@@ -131,9 +169,8 @@ class LinuxDesktopService : Service() {
                     startDesktop(linux, password, ip)
                 }
             } catch (e: Exception) {
-                lastError = e.message ?: "Desktop error"
-                message = "Linux Desktop error: $lastError"
-                notifyStatus(message)
+                val reason = (e.message ?: "เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ").take(1200)
+                updateStatus("ติดตั้งหรือเปิด Linux ไม่สำเร็จ", reason)
                 if (!running) cleanup()
             } finally {
                 installing = false
@@ -239,8 +276,8 @@ class LinuxDesktopService : Service() {
     }
 
     override fun onDestroy() {
-        cleanup()
         worker?.interrupt()
+        cleanup()
         super.onDestroy()
     }
 }
