@@ -540,7 +540,8 @@ class MainActivity : Activity() {
             setPadding(dp(11), dp(10), dp(11), dp(10))
         }
         aiRow.addView(taskInput, LinearLayout.LayoutParams(0, -2, 1f))
-        val send = actionButton(if (desktopAiBusy) "กำลังคิด…" else "✦ สั่ง AI", true) {
+        lateinit var send: TextView
+        send = actionButton(if (desktopAiBusy) "กำลังคิด…" else "✦ สั่ง AI", true) {
             val task = taskInput.text.toString().trim()
             if (task.isBlank()) {
                 notifyUser("พิมพ์งานที่ต้องการให้ AI ทำ")
