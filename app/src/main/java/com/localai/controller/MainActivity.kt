@@ -418,6 +418,187 @@ class MainActivity : Activity() {
         }
     }
 
+    /**
+     * Embedded Alpine terminal; provides the useful shell workflow of Termux
+     * without embedding the separately signed Termux Android application.
+     * All commands stay inside this application's PRoot and are NEVER remote APIs.
+     */
+    private fun showTerminal() {
+        val linux = LinuxRuntime(this)
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(12), dp(9), dp(12), dp(11))
+        }
+        screenHost.addView(root, FrameLayout.LayoutParams(-1, -1))
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        root.addView(header, LinearLayout.LayoutParams(-1, -2))
+        val titleBlock = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(label("⌨  เทอร์มินัล Linux", 17f, true, linuxGreen))
+            addView(label("พิมพ์คำสั่งได้ในแอป ไม่ต้องเปิด Termux", 11f, false, sub))
+        }
+        header.addView(titleBlock, LinearLayout.LayoutParams(0, -2, 1f))
+        header.addView(actionButton("‹ กลับ") {
+            settingsCategory = "linux"
+            showTab("control")
+        }.apply {
+            textSize = 12f
+            minHeight = dp(40)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+        })
+        spacer(root, 10)
+        if (!linux.available()) {
+            cardBlock(root, 0) {
+                addView(label("ยังไม่ได้ติดตั้ง Linux", 16f, true, desktopOrange))
+                spacer(this, 6)
+                addView(label("ติดตั้ง Linux พื้นฐานก่อนใช้เทอร์มินัล",
+                    12f, false, sub))
+                spacer(this, 10)
+                addButton(this, "ไปติดตั้ง Linux", true) {
+                    settingsCategory = "linux"
+                    showTab("control")
+                }
+            }
+            return
+        }
+        val terminalScroll = ScrollView(this).apply {
+            isFillViewport = true
+            background = panel(cardDeep, 15)
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            clipToPadding = false
+        }
+        val output = label(terminalOutputText, 12f, false, linuxGreen).apply {
+            typeface = Typeface.MONOSPACE
+            setTextIsSelectable(true)
+            setTextColor(Color.rgb(205, 235, 222))
+            textSize = 12f
+        }
+        terminalOutputView = output
+        terminalScroll.addView(output, ScrollView.LayoutParams(-1, -2))
+        root.addView(terminalScroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        terminalScroll.post { terminalScroll.fullScroll(View.FOCUS_DOWN) }
+        spacer(root, 9)
+        val command = field("พิมพ์คำสั่ง Linux เช่น ls -la")
+        command.setText("")
+        command.inputType = InputType.TYPE_CLASS_TEXT or
+            InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+        root.addView(command, LinearLayout.LayoutParams(-1, -2))
+        spacer(root, 8)
+        val buttons = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        root.addView(buttons, LinearLayout.LayoutParams(-1, -2))
+        val run = actionButton("▶  รันคำสั่ง", true) {
+            val value = command.text.toString()
+            if (value.isBlank()) {
+                notifyUser("พิมพ์คำสั่งก่อน")
+            } else {
+                startTerminalCommand(value)
+                command.text.clear()
+            }
+        }
+        terminalRunButton = run
+        buttons.addView(run, LinearLayout.LayoutParams(0, -2, 1f))
+        val stop = actionButton("■  หยุด") {
+            terminalCommandThread?.interrupt()
+            notifyUser("กำลังหยุดคำสั่ง")
+        }.apply {
+            visibility = if (terminalBusy) View.VISIBLE else View.GONE
+            setTextColor(desktopOrange)
+        }
+        terminalStopButton = stop
+        buttons.addView(stop, LinearLayout.LayoutParams(0, -2, 0.60f).apply {
+            leftMargin = dp(7)
+        })
+        run.text = if (terminalBusy) "◉  กำลังทำงาน…" else "▶  รันคำสั่ง"
+        spacer(root, 9)
+        val shortcuts = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        root.addView(shortcuts)
+        val selfTest = actionButton("◎  ตรวจ Linux") {
+            startTerminalCommand("uname -m && cat /etc/alpine-release && df -h /root")
+        }.apply {
+            minHeight = dp(42)
+            textSize = 12f
+        }
+        shortcuts.addView(selfTest, LinearLayout.LayoutParams(0, -2, 1f))
+        val share = actionButton("↗  ส่งรายงานให้ ChatGPT") {
+            shareLinuxSupportReport()
+        }.apply {
+            minHeight = dp(42)
+            textSize = 12f
+        }
+        shortcuts.addView(share, LinearLayout.LayoutParams(0, -2, 1.2f).apply {
+            leftMargin = dp(7)
+        })
+        spacer(root, 5)
+        root.addView(label("ใช้ Alpine Linux: ติดตั้งโปรแกรมด้วย apk add แทน pkg " +
+            "• คำสั่งทำงานใน Linux ของแอป ไม่ใช่ระบบ Android", 10.5f, false, sub))
+    }
+
+    private fun startTerminalCommand(command: String) {
+        if (terminalBusy) { notifyUser("กำลังทำคำสั่งก่อนหน้าอยู่"); return }
+        if (command.length !in 1..1000) { notifyUser("คำสั่งยาวเกินไป"); return }
+        if (!LinuxRuntime(this).available()) { notifyUser("ติดตั้ง Linux ก่อน"); return }
+        terminalBusy = true
+        val prefix = terminalOutputText.takeLast(12_000) +
+            "\n$ " + command + "\n"
+        terminalOutputText = prefix + "กำลังทำงาน…"
+        terminalOutputView?.text = terminalOutputText
+        terminalRunButton?.text = "◉  กำลังทำงาน…"
+        terminalStopButton?.visibility = View.VISIBLE
+        val thread = Thread({
+            val result = try {
+                LinuxRuntime(this).command(command, timeoutSeconds = 90)
+            } catch (e: Exception) {
+                "คำสั่งหยุดหรือผิดพลาด: " + (e.message ?: "ไม่ทราบสาเหตุ")
+            }
+            ui.post {
+                terminalBusy = false
+                terminalCommandThread = null
+                terminalOutputText = (prefix + result).takeLast(18_000)
+                if (!isFinishing && !isDestroyed && currentTab == "terminal") {
+                    terminalOutputView?.text = terminalOutputText
+                    terminalRunButton?.text = "▶  รันคำสั่ง"
+                    terminalStopButton?.visibility = View.GONE
+                }
+            }
+        }, "local-embedded-terminal").apply { isDaemon = true }
+        terminalCommandThread = thread
+        thread.start()
+    }
+
+    private fun shareLinuxSupportReport() {
+        notifyUser("กำลังตรวจระบบเพื่อสร้างรายงาน…")
+        Thread({
+            val report = try {
+                LinuxSupportReport.snapshot(this, withLinuxCheck = true)
+            } catch (e: Exception) {
+                "ไม่สามารถสร้างรายงาน: " + (e.message ?: "unknown")
+            }
+            ui.post {
+                if (isFinishing || isDestroyed) return@post
+                // User decides which application receives these diagnostics.
+                // No shell logs, chat history, passwords or background upload.
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "Local AI Linux • Support report")
+                    putExtra(Intent.EXTRA_TEXT, report)
+                }
+                try {
+                    startActivity(Intent.createChooser(share,
+                        "เลือกแอปเพื่อส่งรายงาน (เช่น ChatGPT)"))
+                } catch (e: Exception) {
+                    val clipboard = getSystemService(CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText(
+                        "Local AI support report", report))
+                    notifyUser("คัดลอกรายงานแล้ว สามารถนำไปวางในแชทได้")
+                }
+            }
+        }, "linux-readonly-support-report").start()
+    }
+
     private fun showControls() {
         val scroll = ScrollView(this).apply {
             isFillViewport = true
@@ -1196,6 +1377,11 @@ class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        terminalCommandThread?.interrupt()
+        terminalCommandThread = null
+        terminalOutputView = null
+        terminalRunButton = null
+        terminalStopButton = null
         if (Build.VERSION.SDK_INT >= 33) {
             platformBackCallback?.let {
                 onBackInvokedDispatcher.unregisterOnBackInvokedCallback(it)
