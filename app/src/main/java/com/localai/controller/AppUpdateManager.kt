@@ -15,7 +15,9 @@ class AppUpdateManager(private val context: Context) {
         val version: String,
         val downloadUrl: String,
         val pageUrl: String,
-        val newer: Boolean
+        val newer: Boolean,
+        val sha256: String,
+        val sizeBytes: Long
     )
 
     private val repo = "Sans762/Ai-local-desktop-linux-on-Android-"
@@ -74,14 +76,22 @@ class AppUpdateManager(private val context: Context) {
             val expectedName = "LocalAI-LinuxDesktop-v${latest[0]}.${latest[1]}-signed-ARM64.apk"
             val assets = release.optJSONArray("assets") ?: error("No APK assets in release")
             var url: String? = null
+            var digest: String? = null
+            var bytes: Long = -1L
             for (i in 0 until assets.length()) {
                 val item = assets.getJSONObject(i)
                 if (item.optString("name") != expectedName) continue
                 val value = item.optString("browser_download_url")
                 if (value.startsWith(officialBase + tag + "/") &&
                     value.endsWith("/" + expectedName) && URL(value).protocol == "https") {
-                    url = value
-                    break
+                    val hash = item.optString("digest").removePrefix("sha256:").lowercase()
+                    if (hash.matches(Regex("[0-9a-f]{64}")) &&
+                        item.optLong("size", 0) in 1..150_000_000L) {
+                        url = value
+                        digest = hash
+                        bytes = item.optLong("size")
+                        break
+                    }
                 }
             }
             val verifiedUrl = url ?: error("ยังไม่มีไฟล์อัปเดตที่เซ็นด้วยคีย์ถาวรสำหรับติดตั้งทับแอปเดิม")
@@ -90,7 +100,8 @@ class AppUpdateManager(private val context: Context) {
                 "Unexpected release page URL"
             }
             val local = version(currentVersion(), currentPattern) ?: listOf(0, 0, 0)
-            return Release(tag, title, verifiedUrl, page, isNewer(latest, local))
+            return Release(tag, title, verifiedUrl, page,
+                isNewer(latest, local), digest ?: error("Missing verified SHA-256"), bytes)
         } finally {
             connection.disconnect()
         }
