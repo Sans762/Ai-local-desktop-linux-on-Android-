@@ -48,6 +48,7 @@ class MainActivity : Activity() {
     private var desktopWebView: WebView? = null
     private var currentTab = "control"
     private var settingsCategory = "start"
+    private var advancedSettingsVisible = false
     private val ui = Handler(Looper.getMainLooper())
 
     private val bg = Color.rgb(7, 12, 26)
@@ -491,27 +492,27 @@ class MainActivity : Activity() {
         categoryCard(content, aiPurple) {
             addView(label("✦  เลือกสมอง AI", 14f, true, aiPurple))
             spacer(this, 10)
-            addView(label(modelFile?.name ?: "ยังไม่ได้เลือกโมเดล GGUF", 17f, true))
+            addView(label(modelFile?.name ?: "ยังไม่ได้ติดตั้งสมอง AI", 17f, true))
             spacer(this, 4)
-            addView(label(if (modelFile != null) "พร้อมใช้เมื่อเปิดบริการ • โมเดลยังไม่ถูกลบจากที่เดิม" else "รองรับ GGUF ผ่านการนำเข้าโดยผู้ใช้", 12.5f, false, sub))
+            addView(label(if (modelFile != null) "มีไฟล์ AI แล้ว • กดเปิด AI ที่หน้าแรกเพื่อใช้งาน" else "ดาวน์โหลด AI ด้านล่างก่อนเริ่มแชท", 12.5f, false, sub))
             spacer(this, 13)
-            addButton(this, "＋  นำเข้าโมเดล .gguf", true) { pick(31, "*/*") }
+            addButton(this, "＋  ใช้โมเดล AI ที่มีอยู่ในเครื่อง", true) { pick(31, "*/*") }
             spacer(this, 10)
             val modelProgress = label(ModelDownloadService.progress, 12f, false, sub)
             addView(modelProgress)
             spacer(this, 8)
-            addButton(this, "↓  ติดตั้ง Qwen2.5 0.5B · 491 MB") { startModelDownload("small", modelProgress) }
+            addButton(this, "↓  ดาวน์โหลด AI ขนาดเล็ก (ประหยัดพื้นที่ · 491 MB)") { startModelDownload("small", modelProgress) }
             spacer(this, 8)
-            addButton(this, "↓  ติดตั้ง Qwen2.5 1.5B · 1.12 GB (คุณภาพดีกว่า)") { startModelDownload("balanced", modelProgress) }
+            addButton(this, "↓  ดาวน์โหลด AI คุณภาพสูงขึ้น (1.12 GB)") { startModelDownload("balanced", modelProgress) }
             spacer(this, 7)
-            addView(label("ดาวน์โหลดครั้งแรกเท่านั้น • มี SHA-256 ตรวจสอบไฟล์ • จากนั้น AI ทำงานออฟไลน์ • ไม่ใช้ AI API", 12f, false, sub))
+            addView(label("ต้องต่ออินเทอร์เน็ตตอนดาวน์โหลดครั้งแรก จากนั้นพูดคุยกับ AI แบบออฟไลน์ได้", 12f, false, sub))
         }
         }
         if (settingsCategory == "ai") {
         categoryCard(content, aiPurple) {
             addView(label("✎  ชื่อ AI และข้อมูลที่จำ", 14f, true, aiPurple))
             spacer(this, 8)
-            val name = field("ตั้งชื่อ AI (ไม่บังคับ)").apply { setText(store.aiName()) }
+            val name = field("อยากเรียก AI ว่าอะไร? (ข้ามได้)").apply { setText(store.aiName()) }
             addView(name)
             spacer(this, 10)
             addButton(this, "บันทึกชื่อ AI") {
@@ -545,18 +546,18 @@ class MainActivity : Activity() {
                 } catch (e: Exception) { notifyUser(e.message ?: "รหัสผ่านไม่ถูกต้อง") }
             }
             spacer(this, 7)
-            addView(label("เว็บรับการเชื่อมต่อเฉพาะ 127.0.0.1 ไม่เปิดพอร์ตสาธารณะ", 12f, false, sub))
+            addView(label("ต้องใช้รหัสผ่านเมื่อเปิดหน้า AI ผ่านเว็บ • หากเปิดให้คอมเชื่อมต่อ ให้ใช้เฉพาะ Wi-Fi ส่วนตัวหรือ VPN", 12f, false, sub))
         }
         }
         if (settingsCategory == "ai") {
         categoryCard(content, aiPurple) {
             addView(label("✧  ให้ AI ช่วยทำงาน Linux", 14f, true, aiPurple))
             spacer(this, 9)
-            addView(label("ให้ AI วางแผน รันคำสั่ง ติดตั้งแพ็กเกจ และจัดการไฟล์ภายใน Alpine Linux เท่านั้น", 14f, true))
+            addView(label("พิมพ์งานที่อยากให้ AI ช่วย เช่น สร้างโฟลเดอร์ เปิดโปรแกรม หรือจัดการไฟล์ Linux", 14f, true))
             spacer(this, 8)
-            addView(label("คำสั่ง AI จะแสดงให้ตรวจสอบก่อน แล้วต้องกดอนุมัติจึงจะรันจริง • ไม่แตะหน้าจอหรือข้อมูล Android", 12f, false, sub))
+            addView(label("AI จะบอกแผนให้คุณดูก่อน และทำงานใน Linux เมื่อคุณกดยืนยันเท่านั้น", 12f, false, sub))
             spacer(this, 11)
-            addButton(this, "✦  เปิด Linux Workspace", true) {
+            addButton(this, "✦  ไปหน้าพูดคุยและสั่ง AI", true) {
                 if (!AiForegroundService.running) {
                     notifyUser("เริ่มบริการ AI ก่อนเปิด Linux Workspace")
                 } else showTab("workspace")
@@ -567,9 +568,9 @@ class MainActivity : Activity() {
         categoryCard(content, linuxGreen) {
             addView(label("🐧  รู้จัก Linux ในแอป", 14f, true, linuxGreen))
             spacer(this, 8)
-            addView(label("Alpine Linux ARM64 + PRoot ทำงานบน kernel ของ Android โดยไม่ใช้ Termux หรือ Root", 13f, false, sub))
+            addView(label("Linux คือพื้นที่ทำงานคล้ายคอมที่อยู่ในแอปนี้ ไม่ต้องติดตั้ง Termux หรือรูทเครื่อง", 13f, false, sub))
             spacer(this, 8)
-            addView(label("ไม่มี Accessibility หรือการควบคุม Android • Linux GUI ต้องติดตั้งโปรแกรมเพิ่มในขั้นตอน 07 และเริ่มจากแอป", 12f, false, sub))
+            addView(label("แอปจะไม่ควบคุมมือถือ Android ของคุณ • หน้าจอ Linux ติดตั้งแยกได้ในหมวดสีส้ม", 12f, false, sub))
         }
         }
         if (settingsCategory == "linux") {
@@ -577,10 +578,10 @@ class MainActivity : Activity() {
             addView(label("📦  ติดตั้ง Linux และใช้คำสั่ง", 14f, true, linuxGreen))
             spacer(this, 8)
             val linux = LinuxRuntime(this@MainActivity)
-            val status = label(if (linux.installed()) "●  Linux installed" else "○  Linux not unpacked yet", 13f, true, if (linux.installed()) mint else sub)
+            val status = label(if (linux.installed()) "✓  ติดตั้ง Linux แล้ว" else "○  ยังไม่ได้ติดตั้ง Linux", 13f, true, if (linux.installed()) mint else sub)
             addView(status)
             spacer(this, 6)
-            addView(label("Linux userland ผ่าน PRoot ภายใน APK ไม่ต้อง Root/Termux • ใช้ kernel Android • เก็บไฟล์ Linux ในพื้นที่แอปแยกจากไฟล์อื่น", 12f, false, sub))
+            addView(label("กดปุ่มด้านล่างเพื่อติดตั้งระบบ Linux ที่มีอยู่ในแอป ไม่ต้องใช้อินเทอร์เน็ต", 12f, false, sub))
             spacer(this, 9)
             addButton(this, "▣  ติดตั้ง Alpine Linux (ออฟไลน์)", true) {
                 if (linux.installed()) {
@@ -651,9 +652,9 @@ class MainActivity : Activity() {
             )
             addView(desktopStatus)
             spacer(this, 6)
-            addView(label("เดสก์ท็อป Openbox พร้อมจัดการไฟล์และเปิด Terminal • คอมเชื่อมผ่าน VNC บน Wi-Fi/VPN ส่วนตัว", 12f, false, sub))
+            addView(label("เปิดหน้าจอ Linux พร้อมหน้าต่างโปรแกรมเหมือนคอม และเชื่อมต่อจากคอมอีกเครื่องได้เมื่ออยู่ในเครือข่ายส่วนตัว", 12f, false, sub))
             spacer(this, 12)
-            addButton(this, "↓  ติดตั้ง Linux Desktop (อินเทอร์เน็ตครั้งแรก)") {
+            addButton(this, "↓  ดาวน์โหลดหน้าจอ Linux (ครั้งแรก)") {
                 if (LinuxDesktopService.installing) {
                     notifyUser("มีการติดตั้งแพ็กเกจ Linux อยู่แล้ว")
                 } else if (!LinuxRuntime(this@MainActivity).available()) {
@@ -708,10 +709,10 @@ class MainActivity : Activity() {
             spacer(this, 12)
             addView(label("รหัสผ่าน VNC (8 ตัวแรกที่ใช้ยืนยันตัวตน)", 12f, false, sub))
             spacer(this, 7)
-            val vncPassword = field("ตั้งรหัสผ่าน 8–16 ตัวอักษรภาษาอังกฤษ/ตัวเลข", true)
+            val vncPassword = field("ตั้งรหัสสำหรับคอมที่เชื่อมต่อ (ภาษาอังกฤษ/ตัวเลข)", true)
             addView(vncPassword)
             spacer(this, 9)
-            addButton(this, "▶  เริ่ม Linux Desktop + เปิดให้คอมเชื่อม", true) {
+            addButton(this, "▶  เปิดหน้าจอ Linux และอนุญาตคอมเชื่อมต่อ", true) {
                 if (!LinuxDesktopService.installed(this@MainActivity)) {
                     notifyUser("ติดตั้งโปรแกรม Linux Desktop ก่อน")
                 } else if (!store.hasPassword()) {
@@ -731,7 +732,7 @@ class MainActivity : Activity() {
                 }
             }
             spacer(this, 9)
-            addButton(this, "■  หยุด Linux Desktop / รีโมท") {
+            addButton(this, "■  ปิดหน้าจอ Linux และหยุดการเชื่อมต่อ") {
                 stopService(Intent(this@MainActivity, LinuxDesktopService::class.java))
                 ui.postDelayed({ if (currentTab == "control") showTab("control") }, 600)
             }
@@ -751,7 +752,7 @@ class MainActivity : Activity() {
                 addView(label(LinuxDesktopService.lastError.take(340), 11f, false, Color.rgb(255, 177, 183)))
             }
             spacer(this, 11)
-            addButton(this, "▣  เปิด Linux Desktop บนมือถือ", true) {
+            addButton(this, "▣  ดูหน้าจอ Linux บนมือถือ", true) {
                 if (LinuxDesktopService.running) showTab("desktop")
                 else notifyUser("เริ่ม Linux Desktop ก่อนเข้าใช้งาน")
             }
@@ -765,9 +766,9 @@ class MainActivity : Activity() {
         categoryCard(content, dataPink) {
             addView(label("⬇  สำรองข้อมูลและอัปเดตแอป", 14f, true, dataPink))
             spacer(this, 8)
-            addView(label("Android Native • Loopback Server 18788 • SQLite Memory • GGUF CPU", 12.5f, false, sub))
+            addView(label("ดูแลข้อมูลและติดตั้งอัปเดตของแอปได้ที่นี่", 12.5f, false, sub))
             spacer(this, 9)
-            addButton(this, "เปิดเว็บ Dashboard ในเบราว์เซอร์") {
+            addButton(this, "เปิดหน้าแชท AI ผ่านเว็บเบราว์เซอร์") {
                 if (!AiForegroundService.running) notifyUser("กรุณาเริ่มบริการ AI ก่อนเปิดเว็บ")
                 else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("http://127.0.0.1:18788")))
             }
