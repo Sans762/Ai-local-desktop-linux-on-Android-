@@ -97,7 +97,7 @@ jobs:
           if [[ "$AI_APK_KIND" == release ]]; then
             "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop'"
           else
-            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test'"
+            "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test.v011'"
           fi
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
