@@ -80,6 +80,22 @@ main{width:100%;max-width:1400px;min-width:0;min-height:0;flex:1 1 auto;display:
   #cover .inside p{font-size:10px;line-height:1.3}
   #cover strong{font-size:13px;margin-bottom:3px}
 }
+
+/* Large, scroll-free Linux canvas and minimal mobile control strip. */
+#touchControls{display:flex;gap:5px;margin:0 0 6px;flex:0 0 auto}
+#touchControls button{flex:1 1 auto;padding:7px 5px;min-height:38px;font-size:12px;white-space:nowrap}
+#touchControls [aria-pressed="true"]{background:linear-gradient(100deg,#666cea,#7759be);border-color:#aaa8ff}
+#linuxKeyboard{display:none;flex:0 0 auto;min-height:44px;width:100%;border:1px solid #7774ce;border-radius:10px;background:#172443;color:#fff;margin:0 0 5px;padding:10px;font-size:16px;resize:none}
+#linuxKeyboard.visible{display:block}
+#touchpadArea{position:absolute;z-index:5;inset:0;display:none;touch-action:none;user-select:none;-webkit-user-select:none}
+#touchpadArea.active{display:block}
+#virtualCursor{position:absolute;left:50%;top:50%;width:17px;height:17px;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:50%;background:#736bdeba;pointer-events:none;box-shadow:0 0 5px #000}
+#exitFull{position:absolute;top:4px;right:4px;z-index:8;display:none;background:#202c58e8}
+body.immersive header,body.immersive .toolbar,body.immersive #hint{display:none}
+body.immersive main{padding:2px}
+body.immersive #viewport{border-radius:3px}
+body.immersive #exitFull{display:block}
+@media(max-width:630px){#touchControls{gap:3px}#touchControls button{padding:7px 3px;font-size:11px;min-width:0}}
 </style></head><body>
 <header><div class="brand"><span class="mark">✦</span><div><strong>Linux Desktop</strong><small>ALPINE · OPENBOX · LOCAL AI</small></div></div><span id="status">ไม่ได้เชื่อมต่อ</span></header>
 <main><div class="toolbar">
@@ -88,8 +104,18 @@ main{width:100%;max-width:1400px;min-width:0;min-height:0;flex:1 1 auto;display:
 <button id="disconnect">หยุดดู</button>
 <button id="cad">Ctrl+Alt+Del</button>
 <button id="full">เต็มจอ</button>
-</div><div id="viewport"><div id="screen"></div><div id="cover"><div class="inside"><strong>Linux Desktop ของคุณ</strong><p>เริ่ม Linux Desktop ใน Control Center ก่อน จากนั้นใส่รหัสผ่าน VNC และเชื่อมต่อเพื่อใช้งานหน้าจอ Linux ได้จริง</p></div></div></div>
-<p id="hint">สัมผัสหน้าจอเพื่อคลิกหรือใช้เมาส์และคีย์บอร์ดของอุปกรณ์ · หน้าจอนี้เป็น Linux ไม่ใช่ Android · เชื่อมต่อผ่าน localhost เท่านั้น</p>
+</div>
+<div id="touchControls" role="toolbar" aria-label="ควบคุม Linux Desktop">
+<button id="trackpad" aria-pressed="false">◉ Trackpad</button>
+<button id="keyboard">⌨ คีย์บอร์ด</button>
+<button id="rightClick">คลิกขวา</button>
+<button id="dragMode" aria-pressed="false">ลาก: ปิด</button>
+</div>
+<textarea id="linuxKeyboard" rows="1" placeholder="พิมพ์ข้อความลง Linux"
+autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="แป้นพิมพ์ Linux"></textarea>
+<div id="viewport"><button id="exitFull">ออกเต็มจอ</button>
+<div id="screen"></div><div id="touchpadArea" aria-label="พื้นที่ Trackpad"><div id="virtualCursor"></div></div><div id="cover"><div class="inside"><strong>Linux Desktop ของคุณ</strong><p>เริ่ม Linux Desktop ใน Control Center ก่อน จากนั้นใส่รหัสผ่าน VNC และเชื่อมต่อเพื่อใช้งานหน้าจอ Linux ได้จริง</p></div></div></div>
+<p id="hint">Linux ในมือถือ · แตะจอเพื่อคลิก หรือเลือก Trackpad/คีย์บอร์ด</p>
 </main>
 <script type="module">
 import RFB from '/novnc/core/rfb.js';
@@ -116,17 +142,143 @@ el('connect').addEventListener('click', () => {
   status('กำลังเชื่อมต่อ…');
   try {
     rfb = new RFB(el('screen'), 'ws://127.0.0.1:6080/ws', {credentials:{password}});
-    rfb.scaleViewport=true; rfb.resizeSession=false;
+    rfb.scaleViewport=true; rfb.resizeSession=false; rfb.focusOnClick=true;
     rfb.addEventListener('connect', () => {status('เชื่อมต่อ Linux แล้ว');el('cover').hidden=true;el('password').value='';});
-    rfb.addEventListener('disconnect', e => {status(e.detail.clean?'ตัดการเชื่อมต่อ':'เชื่อมต่อไม่ได้ ตรวจว่า Desktop เปิดอยู่');el('cover').hidden=false;});
+    rfb.addEventListener('disconnect', e => {status(e.detail.clean?'ตัดการเชื่อมต่อ':'เชื่อมต่อไม่ได้ ตรวจว่า Desktop เปิดอยู่');el('cover').hidden=false;setTrackpad(false);input.blur();input.classList.remove('visible');});
     rfb.addEventListener('credentialsrequired', () => {
       const credential=el('password').value || window.prompt('ใส่รหัส VNC') || '';
       rfb.sendCredentials({password:credential});
     });
   } catch(e){status(e.message);}
 });
+// The trackpad sends mouse input to noVNC's canvas at a relative cursor.
+let trackpadMode=false, holding=false, virtualX=0.50, virtualY=0.50;
+let previousX=0,previousY=0,tapDistance=0,twoFinger=false;
+const pad=el('touchpadArea'),dot=el('virtualCursor'),input=el('linuxKeyboard');
+function canvas(){return el('screen').querySelector('canvas');}
+function cursorPoint(){
+  const box=(canvas()||el('screen')).getBoundingClientRect();
+  return {x:box.left+box.width*virtualX,y:box.top+box.height*virtualY};
+}
+function mouse(type,button=0){
+  const node=canvas();if(!node||!rfb)return;
+  const p=cursorPoint();
+  const bit=button===2?2:1;
+  node.dispatchEvent(new MouseEvent(type,{bubbles:true,cancelable:true,
+    view:window,clientX:p.x,clientY:p.y,button,
+    buttons:type==='mouseup'?0:type==='mousedown'?bit:holding?1:0}));
+}
+function releaseCapture(){
+  const proxy=document.getElementById('noVNC_mouse_capture_elem');
+  if(proxy)proxy.style.display='none';
+}
+function click(button=0){
+  mouse('mousemove');mouse('mousedown',button);mouse('mouseup',button);releaseCapture();
+}
+function refreshCursor(){
+  dot.style.left=(virtualX*100)+'%';dot.style.top=(virtualY*100)+'%';
+}
+function setTrackpad(enabled){
+  if(holding){mouse('mouseup');holding=false;releaseCapture();}
+  trackpadMode=enabled;
+  pad.classList.toggle('active',enabled);
+  el('trackpad').setAttribute('aria-pressed',String(enabled));
+  el('trackpad').textContent=enabled?'✓ Trackpad':'◉ Trackpad';
+  el('dragMode').textContent='ลาก: ปิด';
+  el('dragMode').setAttribute('aria-pressed','false');
+  refreshCursor();
+}
+el('trackpad').addEventListener('click',()=>{
+  if(!rfb){status('เชื่อมต่อ Linux ก่อน');return;}
+  setTrackpad(!trackpadMode);
+});
+pad.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  if(!rfb)return;
+  const t=e.touches[0];if(!t)return;
+  previousX=t.clientX;previousY=t.clientY;tapDistance=0;
+  twoFinger=e.touches.length>1;
+},{passive:false});
+pad.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  if(!rfb)return;
+  const t=e.touches[0];if(!t)return;
+  const dx=t.clientX-previousX,dy=t.clientY-previousY;
+  previousX=t.clientX;previousY=t.clientY;
+  tapDistance+=Math.abs(dx)+Math.abs(dy);
+  if(e.touches.length>1){
+    twoFinger=true;
+    const node=canvas();
+    if(node){
+      const p=cursorPoint();
+      node.dispatchEvent(new WheelEvent('wheel',{
+        bubbles:true,cancelable:true,clientX:p.x,clientY:p.y,deltaY:-dy*2}));
+    }
+    return;
+  }
+  const box=(canvas()||pad).getBoundingClientRect();
+  if(box.width<1||box.height<1)return;
+  virtualX=Math.max(0.005,Math.min(0.995,virtualX+1.5*dx/box.width));
+  virtualY=Math.max(0.005,Math.min(0.995,virtualY+1.5*dy/box.height));
+  refreshCursor();
+  mouse('mousemove');
+},{passive:false});
+pad.addEventListener('touchend',e=>{
+  e.preventDefault();
+  if(!rfb||e.touches.length>0)return;
+  if(!holding&&tapDistance<12)click(twoFinger?2:0);
+},{passive:false});
+el('rightClick').addEventListener('click',()=>{if(rfb)click(2);});
+el('dragMode').addEventListener('click',()=>{
+  if(!rfb||!trackpadMode){status('เปิด Trackpad ก่อน');return;}
+  holding=!holding;
+  mouse(holding?'mousedown':'mouseup',0);
+  if(!holding)releaseCapture();
+  el('dragMode').textContent=holding?'ลาก: เปิด':'ลาก: ปิด';
+  el('dragMode').setAttribute('aria-pressed',String(holding));
+});
+let composing=false;
+function typeText(value){
+  if(!rfb||!value)return;
+  for(const char of value){
+    const cp=char.codePointAt(0);
+    rfb.sendKey(cp<=255?cp:0x01000000+cp,null);
+  }
+}
+function flush(){
+  if(composing||!input.value)return;
+  typeText(input.value);input.value='';
+}
+input.addEventListener('compositionstart',()=>{composing=true;});
+input.addEventListener('compositionend',()=>{composing=false;flush();});
+input.addEventListener('input',flush);
+input.addEventListener('beforeinput',e=>{
+  if(e.inputType==='deleteContentBackward'&&!input.value&&rfb){
+    e.preventDefault();rfb.sendKey(0xff08,'Backspace');
+  }
+});
+input.addEventListener('keydown',e=>{
+  if(!rfb)return;
+  if(e.key==='Enter'){e.preventDefault();flush();rfb.sendKey(0xff0d,'Enter');}
+  if(e.key==='Tab'){e.preventDefault();rfb.sendKey(0xff09,'Tab');}
+});
+el('keyboard').addEventListener('click',()=>{
+  if(!rfb){status('เชื่อมต่อ Linux ก่อน');return;}
+  const visible=input.classList.toggle('visible');
+  el('keyboard').textContent=visible?'ซ่อนคีย์บอร์ด':'⌨ คีย์บอร์ด';
+  if(visible)input.focus();else{input.blur();rfb.focus();}
+  fitViewer();
+});
+function fullScreenMode(off=false){
+  const enabled=!off&&!document.body.classList.contains('immersive');
+  document.body.classList.toggle('immersive',enabled);
+  el('full').textContent=enabled?'ออกเต็มจอ':'เต็มจอ';
+  fitViewer();
+}
 el('disconnect').addEventListener('click',()=>{if(rfb)rfb.disconnect();});
+
 el('cad').addEventListener('click',()=>{if(rfb)rfb.sendCtrlAltDel();});
-el('full').addEventListener('click',()=>{const v=el('viewport');if(!document.fullscreenElement)v.requestFullscreen?.();else document.exitFullscreen?.();});
+el('full').addEventListener('click',()=>fullScreenMode());
+el('exitFull').addEventListener('click',()=>fullScreenMode(true));
 window.addEventListener('pagehide',()=>{if(rfb)rfb.disconnect();});
 </script></body></html>
