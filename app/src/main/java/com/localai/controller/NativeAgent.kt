@@ -18,6 +18,9 @@ class NativeAgent(
     private val imports: ImportRepository
 ) {
     private val lock = Mutex()
+    private val han = Regex("[\u3400-\u9fff]")
+    private val thai = Regex("[ก-๙]")
+    private fun replyLanguage(text: String) = if (thai.containsMatchIn(text)) "Thai" else "English"
     private fun ramMb(): Long {
         val info = ActivityManager.MemoryInfo()
         (context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).getMemoryInfo(info)
@@ -47,30 +50,55 @@ class NativeAgent(
         val required = maxOf(1700L, ((model.length() / 1048576L) * 1.15).toLong() + 850)
         if (available < required) return@withLock JSONObject().put("ok", false)
             .put("error", "LOW_RAM: $available MB available; approximately $required MB required")
-        val history = db.recentMessages(6)
+        val history = db.recentMessages(12)
+        val responseLanguage = replyLanguage(text)
         val prior = buildString {
             for (i in 0 until history.length()) {
                 val item = history.getJSONObject(i)
+                val earlier = item.optString("content")
+                // Don't let mixed-language replies from small models contaminate history.
+                if (item.optString("role") == "assistant" && han.containsMatchIn(earlier)) continue
                 append(item.optString("role")).append(": ")
-                    .append(item.optString("content").take(400)).append("\n")
+                append(earlier.take(480)).append("\n")
             }
         }
-        val memories = db.recall(text)
+        val memories = db.recall(text, 4)
         val system = buildString {
             append("You are ").append(store.aiName())
             append(", a local offline assistant inside an Android app with a PRIVATE Alpine Linux userland. ")
-            append("Reply in Thai or English to match the user. Never claim you controlled Android. ")
-            append("You have NO Android screen, Accessibility, or phone control. ")
-            append("For actual Linux operations, direct the user to the Linux Agent panel: it creates commands for their approval. ")
-            append("Never invent completed commands or facts. ")
+            append("Reply STRICTLY in ").append(responseLanguage).append(" only. ")
+            append("For Thai requests, use natural Thai sentences, never Mandarin or Chinese Han characters. ")
+            append("For English requests, use English only. Do not switch languages. ")
+            append("Avoid canned replies. Answer concretely and concisely. ")
+            append("You have no Android screen control. Do not claim visual observation. ")
+            append("Linux desktop operations are performed through the local Linux Agent ")
+            append("with real xdotool mouse/keyboard events after approval. ")
+            append("Never claim an operation succeeded without actual tool evidence. ")
             if (memories.isNotEmpty()) append("Memories: ").append(memories.joinToString(" | "))
         }
         AiForegroundService.working = true
         try {
             val answer = withContext(Dispatchers.IO) {
-                val handle = Llama.loadModel(model.absolutePath, LlamaConfig(contextSize = 2048, threads = 4))
-                try { Llama.complete(handle, prompt = prior + "\nuser: " + text, systemPrompt = system, maxTokens = 310).text.trim() }
-                finally { Llama.releaseModel(handle) }
+                val handle = Llama.loadModel(model.absolutePath,
+                    LlamaConfig(contextSize = 3072, threads = 4))
+                try {
+                    var draft = Llama.complete(handle,
+                        prompt = prior + "\nuser: " + text +
+                            "\nassistant (" + responseLanguage + " only):",
+                        systemPrompt = system, maxTokens = 520).text.trim()
+                    if (han.containsMatchIn(draft)) {
+                        draft = Llama.complete(handle,
+                            prompt = "Discard your previous answer because it contains Chinese. " +
+                                "Respond only in " + responseLanguage +
+                                " to the user's original request: " + text,
+                            systemPrompt = system, maxTokens = 460).text.trim()
+                    }
+                    if (han.containsMatchIn(draft) || draft.isBlank()) {
+                        if (responseLanguage == "Thai")
+                            "โมเดลตอบผิดภาษา กรุณาลองใหม่หรือเปลี่ยนเป็นโมเดล Instruct ที่รองรับภาษาไทยดีกว่านี้"
+                        else "The local model replied in the wrong language. Please try again or use a stronger instruct model."
+                    } else draft
+                } finally { Llama.releaseModel(handle) }
             }
             db.addMessage("user", text)
             db.addMessage("assistant", answer, model.name)
