@@ -54,6 +54,8 @@ assert "@media (max-width:430px)" in css and "@media (max-width:330px)" in css
 assert "min-height:360px" not in desktop, "VNC viewport has a hard min-height"
 assert "min-height:0" in desktop and "--viewer-height" in desktop
 assert "compactScreen()" in native and "LinearLayout.LayoutParams(0, -2, 1f)" in native
+assert 'desktopTab = actionButton("▣  Linux")' in native
+assert 'desktopTab.background = if (target == "desktop")' in native
 assert "NATIVE WORKSPACE  •  V0.4" not in native
 assert 'addCategoryMenu(this)' in native, "Missing settings category menu"
 assert 'addSetupCheck(this' in native, "Missing guided checklist"
