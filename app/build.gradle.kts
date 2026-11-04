@@ -12,8 +12,8 @@ android {
         manifestPlaceholders["appLabel"] = "Local AI Linux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 17
-        versionName = "0.17.0-embedded-terminal"
+        versionCode = 18
+        versionName = "0.18.0-migration-ready"
         ndk { abiFilters += "arm64-v8a" }
     }
 
