@@ -28,7 +28,7 @@ assert 'private fun startDesktop(linux: LinuxRuntime, password: String, ip: Stri
 assert 'desktopAdvancedVisible' in ui
 assert '＋  ตัวเลือกเพิ่มเติม' in ui
 assert 'ui.postDelayed(ticker, 650)' in ui
-assert 'previousBusy && !nowBusy' in ui
+assert 'previousBusy != nowBusy' in ui
 assert 'LinuxDesktopService.status(this@MainActivity)' in ui
 assert 'LinuxDesktopService.error(this@MainActivity)' in ui
 assert 'ดูสาเหตุที่ติดตั้งไม่ได้' in ui
