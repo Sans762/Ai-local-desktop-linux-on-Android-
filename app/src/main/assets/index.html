@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#070c1a">
-  <title>Local AI · Native Workspace</title>
+  <title>Local AI · Linux Workspace</title>
   <link rel="stylesheet" href="/app.css">
   <script src="/app.js" defer></script>
 </head>
@@ -26,14 +26,14 @@
   </div>
   <div id="dashboard" class="shell" hidden>
     <aside class="sidebar" aria-label="สถานะ AI">
-      <div class="brand"><div class="logo">✦</div><div><strong id="aiName">Local AI</strong><span>PERSONAL INTELLIGENCE</span></div></div>
+      <div class="brand"><div class="logo">✦</div><div><strong id="aiName">Local AI</strong><span>ALPINE LINUX AGENT</span></div></div>
       <div class="rail-divider"></div>
       <div class="section-label">WORKSPACE STATUS</div>
       <div class="online-card"><span class="online-icon">◉</span><div><strong id="service">พร้อมใช้งาน</strong><small>On-device service</small></div></div>
       <div class="section-label space-top">DEVICE TELEMETRY</div>
       <div class="metric"><span>◈ โมเดลที่ใช้งาน</span><b id="model" class="cut">กำลังตรวจสอบ…</b></div>
       <div class="metric"><span>◫ หน่วยความจำที่ว่าง</span><b id="ram">—</b></div>
-      <div class="metric"><span>⌘ สิทธิ์ควบคุม Android</span><b id="control">ปิดอยู่</b></div>
+      <div class="metric"><span>⌘ Linux Environment</span><b id="control">ปิดอยู่</b></div>
       <div class="sidebar-bottom"><div class="local-card"><span>✧</span><div><strong>100% Local Inference</strong><small>ไม่มี AI API ภายนอก</small></div></div>
         <button id="refresh" class="text-button" type="button">↻ <span>รีเฟรชสถานะ</span></button>
         <button id="logout" class="text-button" type="button">↪ <span>ออกจากระบบ</span></button>
@@ -41,12 +41,12 @@
     </aside>
     <main class="main">
       <header class="topbar">
-        <div><div class="eyebrow">LOCAL AI / WORKSPACE <span class="line-accent">02</span></div><h1>AI Workspace<span class="heading-star">✦</span></h1><p>พูดคุย คิด และสั่งงานได้ในเครื่องของคุณ</p></div>
+        <div><div class="eyebrow">LOCAL AI / WORKSPACE <span class="line-accent">02</span></div><h1>Linux Workspace<span class="heading-star">✦</span></h1><p>พูดคุย วางแผน และจัดการ Alpine Linux ในแอป</p></div>
         <div class="top-actions"><span class="status"><span class="dot"></span> <span id="onlineLabel">Local only</span></span></div>
       </header>
       <nav class="tabs" aria-label="โหมดทำงาน">
         <button class="tab active" type="button" data-tab="chat"><span class="tab-icon">◉</span><span>แชท AI</span></button>
-        <button class="tab" type="button" data-tab="device"><span class="tab-icon">⌘</span><span>ควบคุมเครื่อง</span></button>
+        <button class="tab" type="button" data-tab="device"><span class="tab-icon">⌘</span><span>Linux Agent</span></button>
         <button class="tab" type="button" data-tab="about"><span class="tab-icon">◫</span><span>ระบบ</span></button>
       </nav>
       <section id="chatTab" class="chat-tab">
@@ -71,32 +71,48 @@
         </div>
       </section>
       <section id="deviceTab" class="info-tab" hidden>
-        <div class="page-heading"><div class="eyebrow">ANDROID ACCESSIBILITY</div><h2>ควบคุมอุปกรณ์</h2><p>แตะ พิมพ์ และอ่านองค์ประกอบหน้าจอได้เฉพาะเมื่อคุณอนุญาต Accessibility ผ่านระบบ Android</p></div>
-        <div class="notice"><span>◇</span><div><b>สิทธิ์ใช้งานจำกัดตามที่คุณเลือก</b><p>นี่ไม่ใช่จอสดหรือรีโมท VNC และคำสั่งที่ส่งสำเร็จยังไม่ได้ยืนยันผลลัพธ์จากแอปปลายทาง</p></div></div>
+        <div class="page-heading">
+          <div class="eyebrow">ON-DEVICE LINUX AGENT</div>
+          <h2>AI ควบคุม Linux</h2>
+          <p>รันคำสั่งและจัดการไฟล์ภายใน Alpine ARM64 โดยไม่ใช้ Termux และไม่เข้าถึงหน้าจอ Android</p>
+        </div>
+        <div class="notice"><span>◎</span><div><b>AI เสนอแผนก่อนลงมือ</b>
+          <p>AI สร้างคำสั่ง shell ให้ตรวจสอบ กดอนุมัติจึงจะรันจริงใน Linux • ไม่มีการควบคุม Android</p></div></div>
         <div class="content-grid">
-          <div class="surface"><div class="surface-heading"><div><span class="eyebrow">QUICK ACTIONS</span><h3>แผงคำสั่ง</h3></div><span class="surface-icon">⌘</span></div>
-            <div class="action-row"><button id="observe" class="subtle" type="button">◫ อ่านหน้าจอ</button><button data-action="back" class="subtle" type="button">↶ ย้อนกลับ</button><button data-action="home" class="subtle" type="button">⌂ หน้าโฮม</button></div>
-            <div class="field-label">แตะตำแหน่งบนหน้าจอ</div>
-            <div class="action-row"><input id="tapX" type="number" min="0" max="5000" placeholder="พิกัด X"><input id="tapY" type="number" min="0" max="5000" placeholder="พิกัด Y"><button data-action="tap" class="subtle" type="button">แตะ ↗</button></div>
-            <div class="field-label">พิมพ์ในช่องที่กำลังโฟกัส</div>
-            <div class="action-row"><input id="typeText" type="text" maxlength="800" placeholder="ข้อความที่ต้องการพิมพ์"><button data-action="type" class="subtle" type="button">พิมพ์ ↗</button></div>
+          <div class="surface">
+            <div class="surface-heading"><div><span class="eyebrow">ASK LINUX AGENT</span><h3>สั่งงานด้วยภาษาธรรมชาติ</h3></div><span class="surface-icon">✦</span></div>
+            <label class="field-label" for="linuxTask">งานที่ต้องการให้ AI ทำใน Linux</label>
+            <textarea id="linuxTask" class="linux-input" rows="4" maxlength="1600" placeholder="เช่น ตรวจเวอร์ชัน Alpine, ติดตั้ง Python3 และสร้างโฟลเดอร์โปรเจกต์"></textarea>
+            <div class="action-row"><button id="linuxPlan" type="button" class="primary">✧ สร้างแผน Linux</button></div>
+            <div id="linuxPlanView" hidden>
+              <p id="linuxSummary" class="field-label"></p>
+              <pre id="linuxPlanCommands" class="linux-terminal"></pre>
+              <p class="field-label">ตรวจคำสั่งทุกบรรทัดก่อนอนุมัติ โดยเฉพาะคำสั่งลบไฟล์หรือดาวน์โหลดโปรแกรม</p>
+              <div class="action-row"><button id="linuxExecute" class="primary" type="button">✓ อนุมัติและรันใน Linux</button><button id="linuxCancel" class="subtle" type="button">ยกเลิก</button></div>
+            </div>
           </div>
-          <div class="surface"><div class="surface-heading"><div><span class="eyebrow">ACCESSIBILITY OUTPUT</span><h3>ผลการสังเกต</h3></div><span class="surface-icon">◈</span></div>
-            <pre id="snapshot">ยังไม่มีข้อมูล — เปิดสิทธิ์ Accessibility และอนุญาตการควบคุมผ่าน Control Center ของแอปก่อน</pre>
+          <div class="surface">
+            <div class="surface-heading"><div><span class="eyebrow">ALPINE TERMINAL</span><h3>Linux Console</h3></div><span class="surface-icon">⌘</span></div>
+            <p id="linuxReady" class="field-label">ตรวจสถานะ Alpine…</p>
+            <label class="field-label" for="linuxCommand">รันคำสั่ง Linux เอง</label>
+            <input id="linuxCommand" value="uname -a &amp;&amp; cat /etc/alpine-release" autocomplete="off" maxlength="1000">
+            <div class="action-row"><button id="linuxRun" class="subtle" type="button">▶ รันใน Linux</button><button id="linuxCheck" class="subtle" type="button">↻ ตรวจ Linux</button></div>
+            <pre id="linuxOutput" class="linux-terminal" aria-live="polite">ผลลัพธ์ Linux จะแสดงที่นี่</pre>
           </div>
         </div>
+        <div class="notice secondary"><span>ⓘ</span><p>PRoot แชร์ kernel กับ Android จึงไม่ใช่ขอบเขตความปลอดภัยแบบ VM และยังไม่มีหน้าจอ Linux GUI/VNC ในรุ่นนี้</p></div>
       </section>
       <section id="aboutTab" class="info-tab" hidden>
         <div class="page-heading"><div class="eyebrow">DEVICE OVERVIEW</div><h2>ระบบของฉัน</h2><p>ภาพรวมบริการ AI ออฟไลน์และความปลอดภัยบนมือถือของคุณ</p></div>
         <div class="overview-grid">
           <div class="overview-tile"><span>✦ AI MODEL</span><strong id="sysModel">—</strong><small>โมเดล GGUF ในเครื่อง</small></div>
           <div class="overview-tile"><span>◫ MEMORY</span><strong id="sysRam">—</strong><small>RAM ที่ว่าง</small></div>
-          <div class="overview-tile"><span>⌘ CONTROL</span><strong id="sysControl">—</strong><small>การเข้าถึงหน้าจอ</small></div>
+          <div class="overview-tile"><span>⌘ LINUX</span><strong id="sysControl">—</strong><small>Alpine Linux in PRoot</small></div>
         </div>
         <div class="surface about-panel"><div class="eyebrow">PRIVACY FIRST</div><h3>สร้างมาให้ทำงานแบบ Local</h3><p>ใช้ Foreground Service, เซิร์ฟเวอร์ในเครื่องที่ <code>127.0.0.1:18788</code>, โมเดล GGUF และประวัติ SQLite ภายในแอป</p>
           <div class="about-actions"><button class="subtle" type="button" data-refresh>↻ ตรวจสถานะ</button><button class="subtle" type="button" data-logout>↪ ออกจากระบบ</button></div>
         </div>
-        <div class="notice secondary"><span>ⓘ</span><p>จอสด MediaProjection, เสียงสนทนาแบบเรียลไทม์, LINE และ Windows Remote ยังไม่ได้รวมในรุ่นนี้ Android อาจหยุดบริการเมื่อหน่วยความจำไม่เพียงพอ</p></div>
+        <div class="notice secondary"><span>ⓘ</span><p>Linux Agent สร้างคำสั่งให้อนุมัติและรันภายใน Alpine userland • ไม่มี Android Accessibility หรือ MediaProjection • ยังไม่มี GUI Linux/VNC</p></div>
       </section>
     </main>
   </div>
