@@ -12,8 +12,8 @@ android {
         manifestPlaceholders["appLabel"] = "Local AI Linux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 21
-        versionName = "0.21.0-clean-chat-linux-agent"
+        versionCode = 22
+        versionName = "0.22.0-lightweight-agent-learning"
         ndk { abiFilters += "arm64-v8a" }
     }
 

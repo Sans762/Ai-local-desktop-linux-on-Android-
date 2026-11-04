@@ -59,6 +59,7 @@ class MainActivity : Activity() {
     private var desktopAdvancedVisible = false
     private var setupChecklistExpanded = false
     private var aiOptionsExpanded = false
+    private var learningExpanded = false
     private var aiNameExpanded = false
     private var dataAdvancedExpanded = false
     private var desktopRefreshToken = 0
@@ -1060,6 +1061,38 @@ class MainActivity : Activity() {
                         addButton(this, "นำเข้าประวัติแชท .db") { pick(32, "*/*") }
                         spacer(this, 7)
                         addButton(this, "นำเข้าชื่อ AI .json") { pick(33, "application/json") }
+                    }
+                }
+                spacer(this, 9)
+                addButton(this, if (learningExpanded)
+                    "−  ซ่อนความจำที่ AI เรียนรู้" else "✦  ความจำ AI แบบประหยัดพื้นที่") {
+                    learningExpanded = !learningExpanded
+                    showTab("control")
+                }
+                if (learningExpanded) {
+                    val learningDb = ChatDatabase(this@MainActivity)
+                    val stats = try { learningDb.agentLearningStats() }
+                        finally { learningDb.close() }
+                    spacer(this, 7)
+                    addView(label("จำงานที่รันสำเร็จ: " + stats.optInt("successes") +
+                        " · ข้อผิดพลาด: " + stats.optInt("failures"), 12f, true, sub))
+                    addView(label("ใช้ข้อมูลข้อความประมาณ " +
+                        (stats.optLong("approxTextBytes") / 1024L) +
+                        " KB · จำกัดไม่เกิน 128 บทเรียน · ไม่มีการฝึกโมเดลใหม่",
+                        11f, false, sub))
+                    spacer(this, 8)
+                    addButton(this, "ลบเฉพาะบทเรียนที่ AI จดจำ") {
+                        android.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("ลบความจำที่เรียนรู้?")
+                            .setMessage("ลบเฉพาะบทเรียนอัตโนมัติ ไม่ลบประวัติแชท โมเดล หรือไฟล์ Linux")
+                            .setNegativeButton("ยกเลิก", null)
+                            .setPositiveButton("ลบเฉพาะบทเรียน") { _, _ ->
+                                val cleanup = ChatDatabase(this@MainActivity)
+                                val removed = try { cleanup.clearAgentLessons() }
+                                    finally { cleanup.close() }
+                                notifyUser("ลบบทเรียนอัตโนมัติ " + removed + " รายการ")
+                                showTab("control")
+                            }.show()
                     }
                 }
             }

@@ -116,7 +116,18 @@ assert "xdotool getmouselocation --shell" in agent
 assert "readVisibleText()" in agent, "Visual OCR observation needs to be available"
 assert "visionInstalled(context)" in agent
 assert "guiVerified" in agent, "Do not claim pixel verification just from command exit"
-assert "db.rememberLinuxSuccess(plan.summary)" in agent
+assert "db.rememberLinuxSuccess(plan.summary, plan.task)" in agent
+assert "db.rememberLinuxFailure(plan.task, failure)" in agent
+assert "db.recallAgentLessons(task, 3)" in agent
+database = (root / "java/com/localai/controller/ChatDatabase.kt").read_text()
+assert "MAX_SUCCEEDED = 96" in database
+assert "MAX_FAILED = 32" in database
+assert "clearAgentLessons()" in database
+assert "tags IN (?,?)" in database
+assert "Never delete user chat history" in database
+assert "agentLearningStats()" in database
+assert "ความจำ AI แบบประหยัดพื้นที่" in native
+assert "ลบเฉพาะบทเรียนที่ AI จดจำ" in native
 assert 'private val han' in assistant
 assert 'han.containsMatchIn(draft)' in assistant
 assert 'replyLanguage(text)' in assistant
