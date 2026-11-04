@@ -57,6 +57,9 @@ jobs:
             echo "AI_APK_KIND=debug" >> "$GITHUB_ENV"
             echo "::warning::No persistent release signing secrets. This debug APK may NOT update prior APKs in place; do not uninstall an app containing data without first backing it up."
           fi
+      - name: Verify embedded Linux terminal and safe support sharing
+        shell: bash
+        run: python3 tests/test_terminal_support_contract.py
       - name: Check Linux desktop installer and simplified UI
         shell: bash
         run: python3 tests/test_desktop_install_contract.py
@@ -113,7 +116,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAI-LinuxDesktop-v0.16-APK
+          name: LocalAI-LinuxDesktop-v0.17-APK
           path: ${{ env.AI_APK }}
           if-no-files-found: error
 
@@ -129,18 +132,18 @@ jobs:
             echo "Stale workflow commit; do not publish an older APK over the latest build."
             exit 0
           fi
-          cp "$AI_APK" LocalAI-LinuxDesktop-v0.16-signed-ARM64.apk
-          if gh release view v0.16-linux-desktop >/dev/null 2>&1; then
+          cp "$AI_APK" LocalAI-LinuxDesktop-v0.17-signed-ARM64.apk
+          if gh release view v0.17-linux-desktop >/dev/null 2>&1; then
             echo "::error::Refusing to overwrite an already published signed APK. Bump versionCode and versionName for the next update."
             exit 1
           fi
-          gh release create v0.16-linux-desktop LocalAI-LinuxDesktop-v0.16-signed-ARM64.apk \
+          gh release create v0.17-linux-desktop LocalAI-LinuxDesktop-v0.17-signed-ARM64.apk \
             --target "$GITHUB_SHA" \
-            --title "Local AI Linux Desktop v0.16 - automatic signed updates" \
+            --title "Local AI Linux Desktop v0.17 - automatic signed updates" \
             --notes "Owner-signed stable Android app. Checks for verified updates and downloads automatically on unmetered Wi-Fi via Android JobScheduler. A user must approve the Android system installer prompt. No silent installs, no app-ID changes, no user-data deletion. Older APKs with different signing keys are not updatable in-place. Runtime on Android 17 still requires device testing."
           EXPECTED="sha256:$(sha256sum "$AI_APK" | awk '{print $1}')"
-          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.16-linux-desktop" \
-            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.16-signed-ARM64.apk") | .digest')"
+          ACTUAL="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v0.17-linux-desktop" \
+            --jq '.assets[] | select(.name=="LocalAI-LinuxDesktop-v0.17-signed-ARM64.apk") | .digest')"
           test "$EXPECTED" == "$ACTUAL"
           echo "Verified signed release APK digest: $ACTUAL"
       # Debug builds remain CI artifacts only. Never publish new TEST APKs as
