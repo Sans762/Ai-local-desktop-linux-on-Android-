@@ -11,11 +11,12 @@ android {
         applicationId = "com.localai.controller"
         minSdk = 26
         targetSdk = 36
-        versionCode = 3
-        versionName = "0.3.0-native"
+        versionCode = 4
+        versionName = "0.4.0-native-linux-ai"
         ndk { abiFilters += "arm64-v8a" }
     }
 
+    packaging { jniLibs.useLegacyPackaging = true }
     buildTypes {
         release { isMinifyEnabled = false }
     }
@@ -29,4 +30,5 @@ android {
 dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("dev.ffmpegkit-maintained:llama-android:0.1.1")
+    implementation("org.apache.commons:commons-compress:1.27.1")
 }

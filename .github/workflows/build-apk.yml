@@ -7,7 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -16,32 +16,29 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      # ubuntu-latest already ships the Android command-line SDK.
-      # setup-android@v3 calls "sdkmanager tools", a removed package
-      # which fails the job before Gradle ever starts.
       - name: Install Android SDK platform
         shell: bash
         run: |
-          set -e
-          echo "ANDROID_HOME=${ANDROID_HOME}"
+          set -euo pipefail
           SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
           if [[ ! -x "$SDKMANAGER" ]]; then
             SDKMANAGER="$(find "${ANDROID_HOME}/cmdline-tools" -type f -path '*/bin/sdkmanager' | sort -V | tail -1)"
           fi
           test -x "$SDKMANAGER"
-          echo "Using SDK manager: $SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" --install "platforms;android-36" "build-tools;36.0.0"
           test -f "${ANDROID_HOME}/platforms/android-36/android.jar"
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.14.3'
+      - name: Bundle ARM64 Linux runtime and Alpine rootfs
+        run: bash tools/fetch-embedded-linux.sh
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace :app:assembleDebug
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAiNative-debug-APK
+          name: LocalAiNative-v0.4-Linux-AI-debug-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error

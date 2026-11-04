@@ -146,7 +146,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(12), 0, 0, 0)
             addView(label("LOCAL AI", 17f, true))
-            addView(label("NATIVE WORKSPACE  •  V0.2", 10f, true, sub))
+            addView(label("NATIVE WORKSPACE  •  V0.4", 10f, true, sub))
         }
         header.addView(titleStack, LinearLayout.LayoutParams(0, -2, 1f))
         serviceChip = label("", 11f, true).apply {
@@ -281,6 +281,15 @@ class MainActivity : Activity() {
             addView(label(if (modelFile != null) "พร้อมใช้เมื่อเปิดบริการ • โมเดลยังไม่ถูกลบจากที่เดิม" else "รองรับ GGUF ผ่านการนำเข้าโดยผู้ใช้", 12.5f, false, sub))
             spacer(this, 13)
             addButton(this, "＋  นำเข้าโมเดล .gguf", true) { pick(31, "*/*") }
+            spacer(this, 10)
+            val modelProgress = label(ModelDownloadService.progress, 12f, false, sub)
+            addView(modelProgress)
+            spacer(this, 8)
+            addButton(this, "↓  ติดตั้ง Qwen2.5 0.5B · 491 MB") { startModelDownload("small", modelProgress) }
+            spacer(this, 8)
+            addButton(this, "↓  ติดตั้ง Qwen2.5 1.5B · 1.12 GB (คุณภาพดีกว่า)") { startModelDownload("balanced", modelProgress) }
+            spacer(this, 7)
+            addView(label("ดาวน์โหลดครั้งแรกเท่านั้น • มี SHA-256 ตรวจสอบไฟล์ • จากนั้น AI ทำงานออฟไลน์ • ไม่ใช้ AI API", 12f, false, sub))
         }
         cardBlock(content) {
             addView(label("02  /  ชื่อ AI และความจำ", 12f, true, mint))
@@ -391,7 +400,53 @@ class MainActivity : Activity() {
             addView(label("เพื่อความปลอดภัย: เปิดเฉพาะเมื่อใช้จริง • จับคู่ด้วย PIN • ค่าเริ่มต้นดูได้อย่างเดียว • HTTP LAN ไม่เข้ารหัส จึงห้ามเปิดพอร์ตสู่อินเทอร์เน็ต", 12f, false, sub))
         }
         cardBlock(content) {
-            addView(label("06  /  ระบบและข้อจำกัด", 12f, true, mint))
+            addView(label("06  /  Linux built-in · Alpine ARM64", 12f, true, mint))
+            spacer(this, 8)
+            val linux = LinuxRuntime(this@MainActivity)
+            val status = label(if (linux.installed()) "●  Linux installed" else "○  Linux not unpacked yet", 13f, true, if (linux.installed()) mint else sub)
+            addView(status)
+            spacer(this, 6)
+            addView(label("Linux userland ผ่าน PRoot ภายใน APK ไม่ต้อง Root/Termux • ใช้ kernel Android • เก็บไฟล์ Linux ในพื้นที่แอปแยกจากไฟล์อื่น", 12f, false, sub))
+            spacer(this, 9)
+            addButton(this, "▣  ติดตั้ง Linux จาก APK (ใช้แบบออฟไลน์)", true) {
+                status.text = "กำลังแตกไฟล์ Linux…"
+                Thread {
+                    try {
+                        linux.install { value -> runOnUiThread { status.text = value } }
+                        runOnUiThread { status.setTextColor(mint) }
+                    } catch (e: Exception) {
+                        runOnUiThread { status.text = "Linux error: ${e.message}" }
+                    }
+                }.start()
+            }
+            spacer(this, 12)
+            addView(label("LINUX CONSOLE", 11.5f, true, sub))
+            spacer(this, 8)
+            val command = field("เช่น uname -a หรือ apk --version").apply {
+                setText("uname -a && cat /etc/alpine-release")
+            }
+            addView(command)
+            spacer(this, 9)
+            val output = label("Linux command output will appear here", 12f, false, mint).apply {
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = panel(cardDeep, 13)
+                setTextIsSelectable(true)
+            }
+            addButton(this, "▶  รันคำสั่งใน Linux") {
+                val value = command.text.toString()
+                output.text = "กำลังรัน…"
+                Thread {
+                    val result = try { linux.command(value) } catch (e: Exception) { "Linux: ${e.message}" }
+                    runOnUiThread { output.text = result }
+                }.start()
+            }
+            spacer(this, 8)
+            addView(output)
+            spacer(this, 8)
+            addView(label("โปรดระวัง: คำสั่ง Linux สามารถแก้ไฟล์ใน rootfs ของแอปได้ อย่ารันคำสั่งที่ไม่รู้จัก", 11.5f, false, sub))
+        }
+        cardBlock(content) {
+            addView(label("07  /  ระบบและข้อจำกัด", 12f, true, mint))
             spacer(this, 8)
             addView(label("Android Native • Loopback Server 18788 • SQLite Memory • GGUF CPU", 12.5f, false, sub))
             spacer(this, 9)
@@ -402,6 +457,27 @@ class MainActivity : Activity() {
             addView(label("จอสด Android ใช้ MediaProjection โดยต้องยืนยันทุกเซสชัน • Windows Remote, โทรเรียลไทม์ และการเชื่อมตรงกับ ChatGPT ยังไม่รองรับ • Android อาจหยุดบริการเมื่อ RAM ต่ำ", 12f, false, sub))
         }
         spacer(content, 26)
+    }
+
+    private fun startModelDownload(id: String, progressLabel: TextView) {
+        if (ModelDownloadService.running) {
+            notifyUser("กำลังดาวน์โหลดอยู่แล้ว")
+            return
+        }
+        try {
+            startForegroundService(Intent(this, ModelDownloadService::class.java).apply {
+                putExtra(ModelDownloadService.EXTRA_MODEL, id)
+            })
+            progressLabel.text = "Starting download…"
+            val updater = object : Runnable {
+                override fun run() {
+                    if (currentTab != "control") return
+                    progressLabel.text = ModelDownloadService.progress
+                    if (ModelDownloadService.running) ui.postDelayed(this, 1500)
+                }
+            }
+            ui.postDelayed(updater, 1000)
+        } catch (e: Exception) { notifyUser("Download failed: ${e.message}") }
     }
 
     private fun startAi() {
