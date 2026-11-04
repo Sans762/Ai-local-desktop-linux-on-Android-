@@ -32,6 +32,10 @@ assert 'Os.chmod(folder.absolutePath, 1023)' in runtime
 assert 'Files.isSymbolicLink(folder.toPath())' in runtime
 assert 'linux.prepareDesktopTemp()' in service
 assert 'listOf(":1", "-nolock", "-geometry"' in service
+assert '"900x1180" else "1280x800"' in service
+assert 'if (password.length >= 8) privateIp() else null' in service
+assert 'password.matches(Regex("[A-Za-z0-9]{6,8}"))' in service
+assert 'key.matches(Regex("[A-Za-z0-9]{6,8}"))' in ui
 assert 'LOCAL_VNC_PORT), 300' in service, "Do not replace an active local desktop"
 assert 'ดูสาเหตุที่เปิด Linux ไม่ได้' in ui
 assert 'setNeutralButton("ข้อมูลเทคนิค")' in ui

@@ -108,6 +108,17 @@ assert required_vnc <= vnc.ids, f"Missing desktop UI ids: {required_vnc - vnc.id
 for match in re.findall(r"\$\('([^']+)'\)", js):
     assert match in app.ids, f"app.js references missing id: {match}"
 
+assert 'id="manualOptions"' in desktop
+assert 'id="authBar"' in desktop
+assert 'id="linuxKeyboard"' in desktop
+assert 'id="trackpad"' in desktop
+assert 'id="keyboard"' in desktop
+assert "el('authBar').hidden=true" in desktop
+assert 'private fun requestDesktopAiPlan(' in native
+assert 'private fun executeDesktopAiPlan(' in native
+assert 'desktopLinuxAgent.propose(task)' in native
+assert 'desktopLinuxAgent.execute(planId)' in native
+assert 'อนุมัติและทำ' in native
 assert len(vnc.module_script) == 1
 with tempfile.TemporaryDirectory() as tmp:
     script_file = Path(tmp) / "desktop-viewer.mjs"

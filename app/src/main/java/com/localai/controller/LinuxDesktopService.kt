@@ -188,12 +188,14 @@ class LinuxDesktopService : Service() {
                     if (!closing) completionNotification(true)
                 } else {
                     require(installed(this)) { "Install desktop packages first" }
-                    require(password.matches(Regex("[A-Za-z0-9]{8,16}"))) {
-                        "VNC password must have 8–16 English letters or digits"
+                    require(password.matches(Regex("[A-Za-z0-9]{6,8}"))) {
+                        "รหัส VNC ต้องมี 6–8 ตัว"
                     }
                     // The desktop must work locally on the phone even without Wi-Fi.
                     // LAN relay is optional and exists only on private networks.
-                    val ip = privateIp()
+                    // A six- or seven-character PIN is for local phone use only.
+                    // Never expose its VNC service on LAN or VPN.
+                    val ip = if (password.length >= 8) privateIp() else null
                     startDesktop(linux, password, ip)
                 }
             } catch (e: Exception) {
@@ -234,7 +236,11 @@ class LinuxDesktopService : Service() {
         notifyStatus("กำลังเปิดหน้าจอ Linux…")
         val xvnc = linux.startDesktopProcess(
             "/usr/bin/Xvnc",
-            listOf(":1", "-nolock", "-geometry", "1280x720", "-depth", "24",
+            listOf(":1", "-nolock", "-geometry",
+                if (resources.configuration.orientation ==
+                    android.content.res.Configuration.ORIENTATION_PORTRAIT)
+                    "900x1180" else "1280x800",
+                "-depth", "24",
                 "-localhost", "yes", "-rfbport", LOCAL_VNC_PORT.toString(),
                 "-SecurityTypes", "VncAuth", "-rfbauth", "/root/.vnc/passwd",
                 "-AlwaysShared", "-nolisten", "tcp"),
