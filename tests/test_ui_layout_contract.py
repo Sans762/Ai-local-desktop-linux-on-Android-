@@ -52,6 +52,15 @@ assert "min-height:360px" not in desktop, "VNC viewport has a hard min-height"
 assert "min-height:0" in desktop and "--viewer-height" in desktop
 assert "compactScreen()" in native and "LinearLayout.LayoutParams(0, -2, 1f)" in native
 assert "NATIVE WORKSPACE  •  V0.4" not in native
+assert 'addCategoryMenu(this)' in native, "Missing settings category menu"
+assert 'addSetupCheck(this' in native, "Missing guided checklist"
+assert 'progressBar' in native, "Missing checklist progress indicator"
+assert native.count('categoryCard(content,') == 8, "Expected eight categorized setting cards"
+assert native.count('if (settingsCategory == "ai")') >= 3
+assert native.count('if (settingsCategory == "linux")') >= 2
+for color in ('linuxGreen', 'aiPurple', 'desktopOrange', 'privacyBlue', 'dataPink'):
+    assert color in native, f"Missing color category {color}"
+assert 'advancedSettingsVisible' in native, "Advanced controls must not overwhelm new users"
 assert "AccessibilityService" not in manifest and "mediaProjection" not in manifest
 
 required_app = {
