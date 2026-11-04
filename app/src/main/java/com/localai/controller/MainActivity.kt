@@ -476,13 +476,55 @@ class MainActivity : Activity() {
             addView(label("เดสก์ท็อป Openbox พร้อมจัดการไฟล์และเปิด Terminal • คอมเชื่อมผ่าน VNC บน Wi-Fi/VPN ส่วนตัว", 12f, false, sub))
             spacer(this, 12)
             addButton(this, "↓  ติดตั้ง Linux Desktop (อินเทอร์เน็ตครั้งแรก)") {
-                if (!LinuxRuntime(this@MainActivity).available()) {
+                if (LinuxDesktopService.installing) {
+                    notifyUser("มีการติดตั้งแพ็กเกจ Linux อยู่แล้ว")
+                } else if (!LinuxRuntime(this@MainActivity).available()) {
                     notifyUser("ติดตั้ง Alpine Linux จากขั้นตอน 06 ก่อน")
                 } else {
                     startForegroundService(Intent(this@MainActivity, LinuxDesktopService::class.java)
                         .setAction(LinuxDesktopService.ACTION_INSTALL))
                     desktopStatus.text = "กำลังติดตั้ง TigerVNC / Openbox / File Manager… ตรวจในแถบแจ้งเตือน"
                     notifyUser("กำลังติดตั้งเดสก์ท็อป Linux")
+                }
+            }
+            spacer(this, 9)
+            addView(label(if (LinuxDesktopService.browserInstalled(this@MainActivity))
+                "✓ Chromium ติดตั้งแล้ว" else "Chromium สำหรับ Linux: ยังไม่ติดตั้ง (ทางเลือก)",
+                12f, false, sub))
+            spacer(this, 8)
+            addButton(this, "↓  ติดตั้ง Chromium ใน Linux (ใช้พื้นที่มาก)") {
+                if (LinuxDesktopService.installing || LinuxDesktopService.running) {
+                    notifyUser("หยุด Desktop และรอการติดตั้งเดิมให้เสร็จก่อน")
+                } else if (!LinuxRuntime(this@MainActivity).available()) {
+                    notifyUser("ติดตั้ง Alpine Linux ก่อน")
+                } else {
+                    android.app.AlertDialog.Builder(this@MainActivity)
+                        .setTitle("ติดตั้ง Chromium ภายใน Alpine?")
+                        .setMessage("ต้องใช้อินเทอร์เน็ต พื้นที่และ RAM จำนวนมาก ระบบเปิดเบราว์เซอร์ผ่าน PRoot และ AI ควบคุมเว็บยังไม่ได้ผ่านการทดสอบจริง")
+                        .setNegativeButton("ยกเลิก", null)
+                        .setPositiveButton("ติดตั้ง") { _, _ ->
+                            startForegroundService(Intent(this@MainActivity, LinuxDesktopService::class.java)
+                                .setAction(LinuxDesktopService.ACTION_INSTALL_BROWSER))
+                            notifyUser("เริ่มติดตั้ง Chromium ดูสถานะในแถบแจ้งเตือน")
+                        }.show()
+                }
+            }
+            spacer(this, 9)
+            addButton(this, "◎  ตรวจสอบ Linux และ PRoot") {
+                if (!LinuxRuntime(this@MainActivity).available()) {
+                    notifyUser("Alpine ยังไม่พร้อม")
+                } else {
+                    notifyUser("กำลังตรวจ Linux…")
+                    Thread({
+                        val report = try { LinuxRuntime(this@MainActivity).diagnostics() }
+                            catch (e: Exception) { "LINUX_CHECK_FAILED: " + (e.message ?: "unknown") }
+                        runOnUiThread {
+                            android.app.AlertDialog.Builder(this@MainActivity)
+                                .setTitle("ผลตรวจ Linux / PRoot")
+                                .setMessage(report.take(3000))
+                                .setPositiveButton("ปิด", null).show()
+                        }
+                    }, "linux-diagnostics").start()
                 }
             }
             spacer(this, 12)
