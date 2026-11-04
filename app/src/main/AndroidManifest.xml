@@ -3,14 +3,13 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:allowBackup="false"
         android:usesCleartextTraffic="true"
-        android:label="Local AI Native"
+        android:label="Local AI Linux"
         android:icon="@drawable/ic_launcher_local_ai"
         android:roundIcon="@drawable/ic_launcher_local_ai"
         android:theme="@android:style/Theme.Material.NoActionBar"
@@ -31,17 +30,5 @@
         <service android:name=".ModelDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
-        <service android:name=".ScreenShareService"
-            android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
-        <service android:name=".AutomationAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data android:name="android.accessibilityservice"
-                android:resource="@xml/accessibility_service" />
-        </service>
     </application>
 </manifest>
