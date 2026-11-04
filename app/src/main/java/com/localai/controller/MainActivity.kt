@@ -427,8 +427,6 @@ class MainActivity : Activity() {
             val nextCategory = when {
                 !store.hasPassword() -> "privacy"
                 modelFile == null -> "ai"
-                !alpineReady -> "linux"
-                !desktopReady -> "desktop"
                 else -> "workspace"
             }
             val nextAction = when (nextCategory) {
@@ -445,13 +443,18 @@ class MainActivity : Activity() {
                 addView(label(if (completed == 4) "✓  พร้อมใช้งานแล้ว" else
                     "เริ่มต้นใช้งาน", 14f, true, if (completed == 4) linuxGreen else aiPurple))
                 spacer(this, 4)
-                addView(label(if (AiForegroundService.running)
-                    "AI กำลังทำงาน" else if (completed == 4) "ทุกอย่างพร้อมแล้ว" else
-                    "เหลืออีก " + (4 - completed) + " ขั้นตอน",
-                    12f, false, sub))
+                addView(label(when {
+                    AiForegroundService.running -> "AI กำลังทำงาน"
+                    completed == 4 -> "ทุกอย่างพร้อมแล้ว"
+                    nextCategory == "workspace" -> "AI พร้อมแชท · หน้าจอ Linux ตั้งค่าเพิ่มได้"
+                    else -> "เหลืออีก " + (4 - completed) + " ขั้นตอน"
+                }, 12f, false, sub))
                 spacer(this, 11)
-                addButton(this, if (AiForegroundService.running) "✦  เปิดแชท AI" else
-                    if (completed == 4) "▶  เปิด AI" else "ต่อไป: " + nextAction + "  ›", true) {
+                addButton(this, when {
+                    AiForegroundService.running -> "✦  เปิดแชท AI"
+                    nextCategory == "workspace" -> "▶  เปิด AI"
+                    else -> "ต่อไป: " + nextAction + "  ›"
+                }, true) {
                     if (AiForegroundService.running) showTab("workspace")
                     else if (nextCategory == "workspace") startAi()
                     else {
