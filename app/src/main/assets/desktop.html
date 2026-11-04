@@ -1,121 +1,76 @@
 <!doctype html>
-<html lang="th"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070e20">
 <title>Linux Desktop · Local AI</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif}
-*{box-sizing:border-box}body{margin:0;background:#070e20;color:#edf2ff}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;background:#101b35;border-bottom:1px solid #2b385d}
-.brand{display:flex;align-items:center;gap:10px}.mark{display:grid;place-items:center;width:36px;height:36px;border-radius:12px;background:linear-gradient(125deg,#7274ff,#59cbbb);font-size:21px}
-.brand strong{display:block;font-size:15px}.brand small{display:block;color:#95a7c9;font-size:10px;letter-spacing:.14em}
-#status{font-size:11px;border:1px solid #3c4b70;background:#172440;border-radius:99px;padding:6px 10px;color:#b9c9e8}
-main{padding:12px;max-width:1400px;margin:auto}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:12px}
-button,input{font:inherit;border-radius:10px}button{border:1px solid #5365a6;padding:9px 13px;color:#edf2ff;background:#263458;cursor:pointer}button.primary{background:linear-gradient(100deg,#6676f0,#735ec4);border:0;font-weight:700}
-input{padding:10px 11px;background:#101d34;border:1px solid #3b4d72;color:#fff;width:180px;min-width:0}
-#viewport{background:#030812;border:1px solid #2b3d65;border-radius:16px;position:relative;overflow:hidden;min-height:0}
-#screen{width:100%;height:calc(100dvh - 170px);min-height:0;touch-action:none}
-#screen canvas{max-width:100%}#hint{color:#a8bcdb;font-size:12px;margin:10px 3px 4px}
-#cover{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
-#cover .inside{background:#121f3c;border:1px solid #32436a;border-radius:20px;padding:23px;text-align:center;max-width:380px;margin:12px}
-#cover strong{display:block;font-size:19px;margin-bottom:10px}#cover p{line-height:1.6;color:#afc0dd;font-size:13px}
-@media(max-width:630px){main{padding:7px}.toolbar{gap:6px}input{flex:1;min-width:120px}button{padding:9px 11px;font-size:13px}#viewport{border-radius:9px}#screen{height:calc(100dvh - 190px)}}
-
-/* Fit the entire desktop viewer inside Android WebView at any orientation. */
-html,body{width:100%;max-width:100%;min-width:0;overflow:hidden}
-body{height:var(--viewer-height,100dvh);min-height:0;display:flex;flex-direction:column}
-header{flex:0 0 auto;min-width:0}
-.brand{min-width:0;flex:1 1 auto}
-.brand>div{min-width:0}
-.brand strong,.brand small{display:block;white-space:normal;overflow-wrap:anywhere}
-#status{min-width:0;max-width:44vw;flex:0 1 auto;overflow-wrap:anywhere;text-align:center;line-height:1.3}
-main{width:100%;max-width:1400px;min-width:0;min-height:0;flex:1 1 auto;display:flex;flex-direction:column;overflow:hidden}
-.toolbar{min-width:0;flex:0 0 auto;max-width:100%;align-items:stretch}
-.toolbar>button{white-space:normal;overflow-wrap:anywhere;min-width:0}
-.toolbar>input{min-width:0}
-#viewport{width:100%;min-width:0;min-height:0;height:auto;flex:1 1 auto;overflow:hidden}
-#screen{height:100%;min-height:0;width:100%;max-width:100%;overflow:hidden}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;width:100%;min-width:0;max-width:100%;height:var(--viewer-height,100dvh);min-height:0;overflow:hidden;background:#060b18;color:#f2f5ff}
+body{display:flex;flex-direction:column}
+header{height:38px;flex:0 0 38px;min-width:0;display:flex;align-items:center;gap:10px;padding:3px 9px;background:#101a30;border-bottom:1px solid #273958}
+.brand{min-width:0;flex:1;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#status{max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#92e2c5}
+button,input,textarea{font:inherit;font-size:13px;border-radius:10px}
+button{background:#253352;color:#f2f5ff;border:1px solid #3b4e78;padding:8px 10px;min-height:37px;cursor:pointer}
+button.primary{background:linear-gradient(110deg,#586aef,#8b55d1);border:0;font-weight:700}
+#manualOptions{flex:0 0 auto;position:relative}
+#manualOptions summary{cursor:pointer;list-style:none;background:#202d49;border-radius:9px;padding:6px 12px;font-size:17px;min-width:35px;text-align:center}
+#manualOptions summary::-webkit-details-marker{display:none}
+#manualMenu{z-index:15;position:absolute;top:39px;right:0;width:min(280px,calc(100vw - 18px));display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;padding:8px;background:#121d37;border:1px solid #445480;border-radius:13px;box-shadow:0 12px 30px #0009}
+#manualMenu button{min-width:0;font-size:12px}
+#manualMenu button[aria-pressed="true"]{background:#6659c9;border-color:#a99aff}
+main{display:flex;flex:1 1 auto;min-height:0;min-width:0;flex-direction:column;padding:4px;overflow:hidden}
+#authBar{display:flex;gap:5px;margin:2px 0 5px;flex:0 0 auto}
+#authBar input{min-width:0;flex:1;border:1px solid #3c4d74;background:#131e36;color:#fff;padding:8px 11px;font-size:16px;min-height:42px}
+#authBar button{flex:0 0 auto;min-width:95px}
+#viewport{flex:1 1 auto;position:relative;min-height:0;min-width:0;width:100%;background:#050711;border:1px solid #283852;border-radius:8px;overflow:hidden}
+#screen{min-height:0;width:100%;height:100%;touch-action:none;overflow:hidden}
 #screen canvas{max-width:100%;max-height:100%}
-#cover .inside{max-width:min(380px,calc(100vw - 42px));padding:clamp(12px,3vw,23px)}
-#hint{flex:0 0 auto;overflow-wrap:anywhere}
-[hidden]{display:none!important}
-@media(max-width:630px){
-  header{padding:7px 9px}
-  .brand{gap:7px}
-  .mark{width:30px;height:30px;flex-shrink:0}
-  .brand strong{font-size:13px}
-  .brand small{font-size:8px;letter-spacing:.7px}
-  #status{max-width:38vw;font-size:10px;padding:5px 7px}
-  main{padding:5px 6px}
-  .toolbar{gap:5px;margin-bottom:6px;display:grid;grid-template-columns:minmax(0,1fr) repeat(2,minmax(0,auto))}
-  .toolbar input{width:100%;grid-column:1/2;min-height:40px}
-  .toolbar #connect{grid-column:2/4}
-  .toolbar #disconnect,.toolbar #cad,.toolbar #full{grid-row:auto}
-  .toolbar button{min-height:37px;padding:7px 9px;font-size:11px}
-  #viewport{border-radius:8px}
-  #hint{font-size:10px;margin:5px 2px 1px}
-}
-@media(max-width:350px){
- .toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}
- .toolbar input{grid-column:1/3}
- .toolbar #connect{grid-column:1/3}
- .toolbar button{white-space:normal}
- .brand small{display:none}
-}
-@media(max-height:510px){
- header{padding-block:4px}
- main{padding:4px 7px}
- #hint{display:none}
- .toolbar{margin-bottom:4px;gap:4px}
- .toolbar button,.toolbar input{min-height:31px;padding:5px 7px}
-}
-
-@media(max-height:350px){
-  .toolbar{grid-template-columns:minmax(0,1fr) auto;gap:4px}
-  .toolbar input{grid-column:1;min-height:33px}
-  .toolbar #connect{grid-column:2;min-height:33px}
-  .toolbar #disconnect,.toolbar #cad,.toolbar #full{display:none}
-  #hint{display:none}
-  #cover .inside{padding:8px;font-size:11px}
-  #cover .inside p{font-size:10px;line-height:1.3}
-  #cover strong{font-size:13px;margin-bottom:3px}
-}
-
-/* Large, scroll-free Linux canvas and minimal mobile control strip. */
-#touchControls{display:flex;gap:5px;margin:0 0 6px;flex:0 0 auto}
-#touchControls button{flex:1 1 auto;padding:7px 5px;min-height:38px;font-size:12px;white-space:nowrap}
-#touchControls [aria-pressed="true"]{background:linear-gradient(100deg,#666cea,#7759be);border-color:#aaa8ff}
-#linuxKeyboard{display:none;flex:0 0 auto;min-height:44px;width:100%;border:1px solid #7774ce;border-radius:10px;background:#172443;color:#fff;margin:0 0 5px;padding:10px;font-size:16px;resize:none}
+#cover{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+#cover .inside{background:#111b32e8;color:#dbe5ff;border-radius:14px;border:1px solid #34456f;text-align:center;padding:17px;max-width:290px;margin:10px}
+#cover strong{font-size:16px}
+#cover p{font-size:12px;line-height:1.5;color:#abbdd9;margin:8px 0 0}
+#hint{display:none;color:#9db5d4;font-size:11px;margin:3px 2px 0}
+#linuxKeyboard{display:none;min-width:0;flex:0 0 auto;width:100%;min-height:42px;max-height:90px;resize:none;border:1px solid #6259b5;padding:9px 10px;margin-top:4px;background:#13203b;color:#fff;font-size:16px}
 #linuxKeyboard.visible{display:block}
-#touchpadArea{position:absolute;z-index:5;inset:0;display:none;touch-action:none;user-select:none;-webkit-user-select:none}
+#touchpadArea{position:absolute;inset:0;display:none;z-index:5;touch-action:none;user-select:none;-webkit-user-select:none}
 #touchpadArea.active{display:block}
-#virtualCursor{position:absolute;left:50%;top:50%;width:17px;height:17px;transform:translate(-50%,-50%);border:2px solid #fff;border-radius:50%;background:#736bdeba;pointer-events:none;box-shadow:0 0 5px #000}
-#exitFull{position:absolute;top:4px;right:4px;z-index:8;display:none;background:#202c58e8}
-body.immersive header,body.immersive .toolbar,body.immersive #hint{display:none}
-body.immersive main{padding:2px}
-body.immersive #viewport{border-radius:3px}
+#virtualCursor{position:absolute;left:50%;top:50%;width:16px;height:16px;border-radius:50%;background:#a4b0ffbb;border:2px solid #fff;transform:translate(-50%,-50%);pointer-events:none}
+#exitFull{display:none;position:absolute;right:5px;top:5px;z-index:8;min-height:30px;background:#26304de8;font-size:12px}
+body.immersive header{display:none}
+body.immersive main{padding:0}
 body.immersive #exitFull{display:block}
-@media(max-width:630px){#touchControls{gap:3px}#touchControls button{padding:7px 3px;font-size:11px;min-width:0}}
+body.immersive #viewport{border-radius:0}
+[hidden]{display:none!important}
+@media(max-height:400px){header{height:31px;flex-basis:31px}#authBar input{min-height:35px}#authBar button{min-height:35px}main{padding:2px}}
+@media(max-width:350px){#status{max-width:37%;font-size:10px}.brand{font-size:12px}}
 </style></head><body>
-<header><div class="brand"><span class="mark">✦</span><div><strong>Linux Desktop</strong><small>ALPINE · OPENBOX · LOCAL AI</small></div></div><span id="status">ไม่ได้เชื่อมต่อ</span></header>
-<main><div class="toolbar">
-<input id="password" type="password" autocomplete="off" placeholder="รหัสผ่าน VNC 8 ตัวแรก" maxlength="8" aria-label="VNC password">
-<button class="primary" id="connect">เชื่อมต่อ</button>
-<button id="disconnect">หยุดดู</button>
-<button id="cad">Ctrl+Alt+Del</button>
-<button id="full">เต็มจอ</button>
-</div>
-<div id="touchControls" role="toolbar" aria-label="ควบคุม Linux Desktop">
+<header><span class="brand">▣ Linux Desktop</span><span id="status">ยังไม่เชื่อมต่อ</span>
+<details id="manualOptions"><summary aria-label="เครื่องมือเพิ่มเติม">⋯</summary>
+<div id="manualMenu">
 <button id="trackpad" aria-pressed="false">◉ Trackpad</button>
 <button id="keyboard">⌨ คีย์บอร์ด</button>
 <button id="rightClick">คลิกขวา</button>
 <button id="dragMode" aria-pressed="false">ลาก: ปิด</button>
+<button id="cad">Ctrl+Alt+Del</button>
+<button id="disconnect">ตัดการเชื่อมต่อ</button>
+<button id="full">เต็มจอ</button>
+</div></details></header>
+<main>
+<div id="authBar">
+<input id="password" type="password" inputmode="numeric" autocomplete="off" placeholder="รหัส VNC 6–8 ตัว" maxlength="8" aria-label="รหัส VNC">
+<button class="primary" id="connect">เชื่อมต่อ</button>
 </div>
-<textarea id="linuxKeyboard" rows="1" placeholder="พิมพ์ข้อความลง Linux"
-autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="แป้นพิมพ์ Linux"></textarea>
-<div id="viewport"><button id="exitFull">ออกเต็มจอ</button>
-<div id="screen"></div><div id="touchpadArea" aria-label="พื้นที่ Trackpad"><div id="virtualCursor"></div></div><div id="cover"><div class="inside"><strong>Linux Desktop ของคุณ</strong><p>เริ่ม Linux Desktop ใน Control Center ก่อน จากนั้นใส่รหัสผ่าน VNC และเชื่อมต่อเพื่อใช้งานหน้าจอ Linux ได้จริง</p></div></div></div>
-<p id="hint">Linux ในมือถือ · แตะจอเพื่อคลิก หรือเลือก Trackpad/คีย์บอร์ด</p>
+<div id="viewport">
+<div id="screen"></div>
+<div id="touchpadArea" aria-label="พื้นที่ Trackpad"><div id="virtualCursor"></div></div>
+<button id="exitFull">ออกเต็มจอ</button>
+<div id="cover"><div class="inside"><strong>Linux Desktop</strong><p>ใส่รหัส VNC แล้วกดเชื่อมต่อ<br>AI สามารถสั่งงาน Linux ผ่านช่องคำสั่งในแอปได้</p></div></div>
+</div>
+<textarea id="linuxKeyboard" rows="1" placeholder="พิมพ์เข้า Linux" aria-label="คีย์บอร์ด Linux"
+ autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+<p id="hint">เดสก์ท็อป Linux ภายในมือถือ</p>
 </main>
 <script type="module">
 import RFB from '/novnc/core/rfb.js';
@@ -138,13 +93,22 @@ const status = text => el('status').textContent=text;
 el('connect').addEventListener('click', () => {
   if(rfb){try{rfb.disconnect();}catch(_){}rfb=null;}
   const password=el('password').value;
-  if(!password){status('กรุณากรอกรหัส VNC');return;}
+  if(!/^[A-Za-z0-9]{6,8}$/.test(password)){status('ใส่รหัส VNC 6–8 ตัว');return;}
   status('กำลังเชื่อมต่อ…');
   try {
     rfb = new RFB(el('screen'), 'ws://127.0.0.1:6080/ws', {credentials:{password}});
     rfb.scaleViewport=true; rfb.resizeSession=false; rfb.focusOnClick=true;
-    rfb.addEventListener('connect', () => {status('เชื่อมต่อ Linux แล้ว');el('cover').hidden=true;el('password').value='';});
-    rfb.addEventListener('disconnect', e => {status(e.detail.clean?'ตัดการเชื่อมต่อ':'เชื่อมต่อไม่ได้ ตรวจว่า Desktop เปิดอยู่');el('cover').hidden=false;setTrackpad(false);input.blur();input.classList.remove('visible');});
+    rfb.addEventListener('connect', () => {
+      status('● เชื่อมต่อแล้ว');
+      el('cover').hidden=true;
+      el('authBar').hidden=true;
+      el('password').value='';
+    });
+    rfb.addEventListener('disconnect', e => {
+      status(e.detail.clean?'ไม่ได้เชื่อมต่อ':'เชื่อมต่อไม่ได้');
+      el('cover').hidden=false;el('authBar').hidden=false;
+      setTrackpad(false);input.blur();input.classList.remove('visible');
+    });
     rfb.addEventListener('credentialsrequired', () => {
       const credential=el('password').value || window.prompt('ใส่รหัส VNC') || '';
       rfb.sendCredentials({password:credential});
