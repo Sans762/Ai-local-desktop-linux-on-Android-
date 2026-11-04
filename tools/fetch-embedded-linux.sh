@@ -16,5 +16,5 @@ ALPINE=alpine-minirootfs-3.23.7-aarch64.tar.gz
 MIRROR="https://dl-cdn.alpinelinux.org/alpine/v3.23/releases/aarch64"
 curl --fail --location --silent --show-error --retry 3 "$MIRROR/$ALPINE" -o "app/src/main/assets/$ALPINE"
 curl --fail --location --silent --show-error --retry 3 "$MIRROR/$ALPINE.sha256" -o "/tmp/$ALPINE.sha256"
-( cd app/src/main/assets && cp "/tmp/$ALPINE.sha256" "$ALPINE.sha256" && sha256sum -c "$ALPINE.sha256" && mv "$ALPINE" alpine-minirootfs.tar.gz )
+( cd app/src/main/assets && cp "/tmp/$ALPINE.sha256" "$ALPINE.sha256" && sha256sum -c "$ALPINE.sha256" && mv "$ALPINE" alpine-rootfs.bundle )
 rm "app/src/main/assets/$ALPINE.sha256"
