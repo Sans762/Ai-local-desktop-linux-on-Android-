@@ -42,6 +42,7 @@ class MainActivity : Activity() {
     private lateinit var mainColumn: LinearLayout
     private lateinit var screenHost: FrameLayout
     private lateinit var workspaceTab: TextView
+    private lateinit var desktopTab: TextView
     private lateinit var controlsTab: TextView
     private lateinit var serviceChip: TextView
     private var webView: WebView? = null
@@ -302,9 +303,13 @@ class MainActivity : Activity() {
         }
         mainColumn.addView(nav)
         workspaceTab = actionButton("✦  แชท") { showTab("workspace") }
+        desktopTab = actionButton("▣  Linux") { showTab("desktop") }
         controlsTab = actionButton("⚙  ตั้งค่า") { showTab("control") }
-        nav.addView(workspaceTab, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
-        nav.addView(controlsTab, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
+        nav.addView(workspaceTab, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(3) })
+        nav.addView(desktopTab, LinearLayout.LayoutParams(0, -2, 1f).apply {
+            leftMargin = dp(3); rightMargin = dp(3)
+        })
+        nav.addView(controlsTab, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(3) })
         screenHost = FrameLayout(this).apply { setBackgroundColor(bg) }
         mainColumn.addView(screenHost, LinearLayout.LayoutParams(-1, 0, 1f))
         refreshChip()
@@ -329,7 +334,9 @@ class MainActivity : Activity() {
         currentTab = target
         refreshChip()
         workspaceTab.background = if (target == "workspace") gradient(14) else panel(cardDeep, 14)
-        controlsTab.background = if (target != "workspace") gradient(14) else panel(cardDeep, 14)
+        desktopTab.background = if (target == "desktop") gradient(14) else panel(cardDeep, 14)
+        controlsTab.background = if (target != "workspace" && target != "desktop")
+            gradient(14) else panel(cardDeep, 14)
         screenHost.removeAllViews()
         terminalOutputView = null
         terminalRunButton = null
