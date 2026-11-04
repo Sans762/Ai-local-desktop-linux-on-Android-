@@ -52,6 +52,8 @@ class MainActivity : Activity() {
     private var platformBackCallback: android.window.OnBackInvokedCallback? = null
     private var settingsCategory = "start"
     private var advancedSettingsVisible = false
+    private var desktopAdvancedVisible = false
+    private var desktopRefreshToken = 0
     private val ui = Handler(Looper.getMainLooper())
 
     private val bg = Color.rgb(7, 12, 26)
@@ -311,6 +313,7 @@ class MainActivity : Activity() {
     }
 
     private fun showTab(target: String) {
+        desktopRefreshToken += 1
         if (target == "desktop" && currentTab != "desktop") {
             tabBeforeDesktop = currentTab
         }
@@ -669,129 +672,185 @@ class MainActivity : Activity() {
         }
         }
         if (settingsCategory == "desktop") {
-        categoryCard(content, desktopOrange) {
-            addView(label("▣  หน้าจอ Linux และคอมรีโมท", 14f, true, desktopOrange))
-            spacer(this, 10)
-            val desktopReady = LinuxDesktopService.installed(this@MainActivity)
-            val desktopStatus = label(
-                when {
-                    LinuxDesktopService.running -> "●  เดสก์ท็อป Linux เปิดอยู่"
-                    LinuxDesktopService.installing -> "◉  กำลังติดตั้งโปรแกรมเดสก์ท็อป"
-                    desktopReady -> "●  พร้อมเริ่ม Linux Desktop"
-                    else -> "○  ยังไม่มีโปรแกรมเดสก์ท็อป"
-                }, 15f, true, if (LinuxDesktopService.running) mint else sub
-            )
-            addView(desktopStatus)
-            spacer(this, 6)
-            addView(label("เปิดหน้าจอ Linux พร้อมหน้าต่างโปรแกรมเหมือนคอม และเชื่อมต่อจากคอมอีกเครื่องได้เมื่ออยู่ในเครือข่ายส่วนตัว", 12f, false, sub))
-            spacer(this, 12)
-            addButton(this, "↓  ดาวน์โหลดหน้าจอ Linux (ครั้งแรก)") {
-                if (LinuxDesktopService.installing) {
-                    notifyUser("มีการติดตั้งแพ็กเกจ Linux อยู่แล้ว")
-                } else if (!LinuxRuntime(this@MainActivity).available()) {
-                    notifyUser("ติดตั้ง Alpine Linux จากขั้นตอน 06 ก่อน")
-                } else {
-                    startForegroundService(Intent(this@MainActivity, LinuxDesktopService::class.java)
-                        .setAction(LinuxDesktopService.ACTION_INSTALL))
-                    desktopStatus.text = "กำลังติดตั้ง TigerVNC / Openbox / File Manager… ตรวจในแถบแจ้งเตือน"
-                    notifyUser("กำลังติดตั้งเดสก์ท็อป Linux")
-                }
-            }
-            spacer(this, 9)
-            addView(label(if (LinuxDesktopService.browserInstalled(this@MainActivity))
-                "✓ Chromium ติดตั้งแล้ว" else "Chromium สำหรับ Linux: ยังไม่ติดตั้ง (ทางเลือก)",
-                12f, false, sub))
-            spacer(this, 8)
-            addButton(this, "↓  ติดตั้ง Chromium ใน Linux (ใช้พื้นที่มาก)") {
-                if (LinuxDesktopService.installing || LinuxDesktopService.running) {
-                    notifyUser("หยุด Desktop และรอการติดตั้งเดิมให้เสร็จก่อน")
-                } else if (!LinuxRuntime(this@MainActivity).available()) {
-                    notifyUser("ติดตั้ง Alpine Linux ก่อน")
-                } else {
+            categoryCard(content, desktopOrange) {
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                val desktopReady = LinuxDesktopService.installed(this@MainActivity)
+                val busy = LinuxDesktopService.installing
+                val runningNow = LinuxDesktopService.running
+                val statusLine = label("", 14f, true, desktopOrange)
+                val progressLine = label("", 12f, false, sub)
+                val errorLink = actionButton("!  ดูสาเหตุที่ติดตั้งไม่ได้") {
                     android.app.AlertDialog.Builder(this@MainActivity)
-                        .setTitle("ติดตั้ง Chromium ภายใน Alpine?")
-                        .setMessage("ต้องใช้อินเทอร์เน็ต พื้นที่และ RAM จำนวนมาก ระบบเปิดเบราว์เซอร์ผ่าน PRoot และ AI ควบคุมเว็บยังไม่ได้ผ่านการทดสอบจริง")
-                        .setNegativeButton("ยกเลิก", null)
-                        .setPositiveButton("ติดตั้ง") { _, _ ->
-                            startForegroundService(Intent(this@MainActivity, LinuxDesktopService::class.java)
-                                .setAction(LinuxDesktopService.ACTION_INSTALL_BROWSER))
-                            notifyUser("เริ่มติดตั้ง Chromium ดูสถานะในแถบแจ้งเตือน")
-                        }.show()
+                        .setTitle("รายละเอียดการติดตั้ง Linux")
+                        .setMessage(LinuxDesktopService.error(this@MainActivity).ifBlank {
+                            "ไม่มีข้อผิดพลาดที่บันทึกไว้"
+                        }.takeLast(1800))
+                        .setPositiveButton("ปิด", null)
+                        .show()
+                }.apply {
+                    minHeight = dp(38)
+                    textSize = 11.5f
+                    setTextColor(Color.rgb(255, 174, 180))
                 }
-            }
-            spacer(this, 9)
-            addButton(this, "◎  ตรวจสอบ Linux และ PRoot") {
-                if (!LinuxRuntime(this@MainActivity).available()) {
-                    notifyUser("Alpine ยังไม่พร้อม")
-                } else {
-                    notifyUser("กำลังตรวจ Linux…")
-                    Thread({
-                        val report = try { LinuxRuntime(this@MainActivity).diagnostics() }
-                            catch (e: Exception) { "LINUX_CHECK_FAILED: " + (e.message ?: "unknown") }
-                        runOnUiThread {
-                            android.app.AlertDialog.Builder(this@MainActivity)
-                                .setTitle("ผลตรวจ Linux / PRoot")
-                                .setMessage(report.take(3000))
-                                .setPositiveButton("ปิด", null).show()
+                val updateStatusUi = {
+                    val isReady = LinuxDesktopService.installed(this@MainActivity)
+                    val isWorking = LinuxDesktopService.installing
+                    val isActive = LinuxDesktopService.running
+                    val error = LinuxDesktopService.error(this@MainActivity)
+                    statusLine.text = when {
+                        isActive -> "✓  หน้าจอ Linux เปิดอยู่"
+                        isWorking -> "◉  กำลังติดตั้ง…"
+                        isReady -> "✓  ติดตั้งแล้ว พร้อมเปิด"
+                        error.isNotBlank() -> "✕  ติดตั้งไม่สำเร็จ"
+                        else -> "○  ยังไม่ได้ติดตั้ง"
+                    }
+                    statusLine.setTextColor(when {
+                        isActive || isReady -> linuxGreen
+                        error.isNotBlank() && !isWorking -> Color.rgb(255, 174, 180)
+                        else -> desktopOrange
+                    })
+                    progressLine.text = when {
+                        isWorking -> LinuxDesktopService.status(this@MainActivity).take(125)
+                        isActive -> "แตะดูหน้าจอเพื่อเปิดโปรแกรม Linux"
+                        error.isNotBlank() && !isReady -> error.take(120)
+                        isReady -> "กรอกรหัสด้านล่างเพื่อเปิดหน้าจอ"
+                        else -> "ดาวน์โหลดครั้งแรกต้องใช้อินเทอร์เน็ต"
+                    }
+                    errorLink.visibility =
+                        if (error.isNotBlank() && !isWorking) View.VISIBLE else View.GONE
+                }
+                addView(statusLine)
+                spacer(this, 4)
+                addView(progressLine)
+                addView(errorLink)
+                updateStatusUi()
+                spacer(this, 11)
+
+                if (busy) {
+                    addButton(this, "■  ยกเลิกการติดตั้ง") {
+                        android.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("ยกเลิกการติดตั้ง?")
+                            .setMessage("การดาวน์โหลดจะหยุด คุณสามารถลองติดตั้งใหม่ภายหลังได้")
+                            .setNegativeButton("ทำต่อ", null)
+                            .setPositiveButton("หยุด") { _, _ ->
+                                stopService(Intent(this@MainActivity, LinuxDesktopService::class.java))
+                                notifyUser("กำลังหยุดการติดตั้ง")
+                            }.show()
+                    }
+                } else if (!desktopReady) {
+                    addButton(this, "↓  ติดตั้งหน้าจอ Linux", true) {
+                        if (!LinuxRuntime(this@MainActivity).available()) {
+                            settingsCategory = "linux"
+                            showTab("control")
+                            notifyUser("ติดตั้ง Linux พื้นฐานก่อน")
+                        } else {
+                            startForegroundService(Intent(this@MainActivity,
+                                LinuxDesktopService::class.java)
+                                .setAction(LinuxDesktopService.ACTION_INSTALL))
+                            showTab("control")
                         }
-                    }, "linux-diagnostics").start()
-                }
-            }
-            spacer(this, 12)
-            addView(label("รหัสผ่าน VNC (8 ตัวแรกที่ใช้ยืนยันตัวตน)", 12f, false, sub))
-            spacer(this, 7)
-            val vncPassword = field("ตั้งรหัสสำหรับคอมที่เชื่อมต่อ (ภาษาอังกฤษ/ตัวเลข)", true)
-            addView(vncPassword)
-            spacer(this, 9)
-            addButton(this, "▶  เปิดหน้าจอ Linux และอนุญาตคอมเชื่อมต่อ", true) {
-                if (!LinuxDesktopService.installed(this@MainActivity)) {
-                    notifyUser("ติดตั้งโปรแกรม Linux Desktop ก่อน")
-                } else if (!store.hasPassword()) {
-                    notifyUser("ตั้งรหัสผ่านของ AI Web ในขั้นตอน 03 ก่อน")
+                    }
+                } else if (!runningNow) {
+                    val password = field("รหัสเปิดหน้าจอ (อังกฤษ/ตัวเลข 8–16 ตัว)", true)
+                    addView(password)
+                    spacer(this, 8)
+                    addButton(this, "▶  เปิดหน้าจอ Linux", true) {
+                        val key = password.text.toString()
+                        if (!key.matches(Regex("[A-Za-z0-9]{8,16}"))) {
+                            notifyUser("กรอกรหัสภาษาอังกฤษ/ตัวเลข 8–16 ตัว")
+                        } else {
+                            startForegroundService(Intent(this@MainActivity,
+                                LinuxDesktopService::class.java)
+                                .setAction(LinuxDesktopService.ACTION_START)
+                                .putExtra(LinuxDesktopService.EXTRA_PASSWORD, key))
+                            password.text.clear()
+                            progressLine.text = "กำลังเปิดหน้าจอ Linux…"
+                        }
+                    }
                 } else {
-                    val password = vncPassword.text.toString()
-                    if (!password.matches(Regex("[A-Za-z0-9]{8,16}"))) {
-                        notifyUser("รหัส VNC ต้องมี 8–16 ตัวอักษรอังกฤษหรือตัวเลข")
-                    } else {
-                        startForegroundService(Intent(this@MainActivity, LinuxDesktopService::class.java)
-                            .setAction(LinuxDesktopService.ACTION_START)
-                            .putExtra(LinuxDesktopService.EXTRA_PASSWORD, password))
-                        vncPassword.text.clear()
-                        desktopStatus.text = "กำลังเปิด Linux Desktop…"
-                        ui.postDelayed({ if (currentTab == "control") showTab("control") }, 2600)
+                    addButton(this, "▣  ดูหน้าจอ Linux", true) { showTab("desktop") }
+                    spacer(this, 7)
+                    addButton(this, "■  ปิดหน้าจอ") {
+                        stopService(Intent(this@MainActivity, LinuxDesktopService::class.java))
+                        showTab("control")
                     }
                 }
+
+                spacer(this, 8)
+                addButton(this, if (desktopAdvancedVisible)
+                    "−  ซ่อนตัวเลือกเพิ่มเติม" else "＋  ตัวเลือกเพิ่มเติม") {
+                    desktopAdvancedVisible = !desktopAdvancedVisible
+                    showTab("control")
+                }
+                if (desktopAdvancedVisible) {
+                    spacer(this, 10)
+                    if (runningNow && LinuxDesktopService.ipAddress.isNotBlank()) {
+                        val ip = LinuxDesktopService.ipAddress
+                        addView(label("คอมเชื่อม VNC: $ip:5902", 12f, true, mint)
+                            .apply { setTextIsSelectable(true) })
+                        spacer(this, 4)
+                        addView(label("เว็บ AI: http://$ip:18789", 12f, false, sub)
+                            .apply { setTextIsSelectable(true) })
+                        spacer(this, 8)
+                        addView(label("ใช้เฉพาะ Wi-Fi หรือ VPN ส่วนตัว ไม่เปิดพอร์ตออกอินเทอร์เน็ต",
+                            11f, false, sub))
+                        spacer(this, 9)
+                    }
+                    if (!busy && !runningNow && LinuxRuntime(this@MainActivity).available()) {
+                        addButton(this, "◎  ตรวจสอบ Linux") {
+                            Thread({
+                                val result = try { LinuxRuntime(this@MainActivity).diagnostics() }
+                                    catch (e: Exception) { e.message ?: "ตรวจไม่สำเร็จ" }
+                                runOnUiThread {
+                                    if (!isFinishing && !isDestroyed) {
+                                        android.app.AlertDialog.Builder(this@MainActivity)
+                                            .setTitle("ผลตรวจ Linux")
+                                            .setMessage(result.takeLast(2500))
+                                            .setPositiveButton("ปิด", null).show()
+                                    }
+                                }
+                            }, "linux-self-check").start()
+                        }
+                        spacer(this, 7)
+                        addButton(this, if (LinuxDesktopService.browserInstalled(this@MainActivity))
+                            "✓  Chromium ติดตั้งแล้ว" else "↓  ติดตั้งเบราว์เซอร์ Chromium (เสริม)") {
+                            if (!LinuxDesktopService.browserInstalled(this@MainActivity)) {
+                                android.app.AlertDialog.Builder(this@MainActivity)
+                                    .setTitle("ติดตั้ง Chromium?")
+                                    .setMessage("ต้องใช้อินเทอร์เน็ตและพื้นที่มาก เปิดใช้งานใน Linux เท่านั้น")
+                                    .setNegativeButton("ยกเลิก", null)
+                                    .setPositiveButton("ติดตั้ง") { _, _ ->
+                                        startForegroundService(Intent(this@MainActivity,
+                                            LinuxDesktopService::class.java)
+                                            .setAction(LinuxDesktopService.ACTION_INSTALL_BROWSER))
+                                        showTab("control")
+                                    }.show()
+                            }
+                        }
+                    }
+                }
+
+                val uiToken = desktopRefreshToken
+                var previousBusy = LinuxDesktopService.installing
+                var previousRunning = LinuxDesktopService.running
+                val ticker = object : Runnable {
+                    override fun run() {
+                        if (uiToken != desktopRefreshToken ||
+                            currentTab != "control" || settingsCategory != "desktop") return
+                        val nowBusy = LinuxDesktopService.installing
+                        val nowRunning = LinuxDesktopService.running
+                        if ((previousBusy && !nowBusy) || (previousRunning != nowRunning)) {
+                            showTab("control")
+                            return
+                        }
+                        previousBusy = nowBusy
+                        previousRunning = nowRunning
+                        updateStatusUi()
+                        ui.postDelayed(this, 1100)
+                    }
+                }
+                ui.postDelayed(ticker, 650)
             }
-            spacer(this, 9)
-            addButton(this, "■  ปิดหน้าจอ Linux และหยุดการเชื่อมต่อ") {
-                stopService(Intent(this@MainActivity, LinuxDesktopService::class.java))
-                ui.postDelayed({ if (currentTab == "control") showTab("control") }, 600)
-            }
-            spacer(this, 10)
-            val ip = LinuxDesktopService.ipAddress
-            if (LinuxDesktopService.running && ip.isNotBlank()) {
-                addView(label("คอมต่อ VNC: $ip:5902", 15f, true, mint).apply { setTextIsSelectable(true) })
-                spacer(this, 7)
-                addView(label("เว็บ AI บนคอม: http://$ip:18789", 13f, true, mint).apply { setTextIsSelectable(true) })
-                spacer(this, 5)
-                addView(label("เว็บใช้รหัสผ่าน AI ที่ตั้งในขั้นตอน 03", 11f, false, sub))
-            } else {
-                addView(label(LinuxDesktopService.message.take(250), 11f, false, sub))
-            }
-            if (LinuxDesktopService.lastError.isNotBlank()) {
-                spacer(this, 6)
-                addView(label(LinuxDesktopService.lastError.take(340), 11f, false, Color.rgb(255, 177, 183)))
-            }
-            spacer(this, 11)
-            addButton(this, "▣  ดูหน้าจอ Linux บนมือถือ", true) {
-                if (LinuxDesktopService.running) showTab("desktop")
-                else notifyUser("เริ่ม Linux Desktop ก่อนเข้าใช้งาน")
-            }
-            spacer(this, 7)
-            addButton(this, "↻  อัปเดตสถานะ Desktop") { showTab("control") }
-            spacer(this, 10)
-            addView(label("ความปลอดภัย: เปิดรีโมทเมื่อใช้จริงเท่านั้น • VNC และ HTTP ไม่เข้ารหัส ต้องใช้ Wi-Fi ส่วนตัวหรือ VPN เท่านั้น ห้ามส่งพอร์ต 5902/18789 ออกอินเทอร์เน็ต", 11.5f, false, sub))
-        }
         }
         if (settingsCategory == "data") {
         categoryCard(content, dataPink) {
