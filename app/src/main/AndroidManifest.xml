@@ -27,6 +27,12 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="User-started on-device offline AI inference and localhost dashboard with a visible persistent notification" />
         </service>
+        <service android:name=".LinuxDesktopService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-started Linux graphical desktop VNC server, local Linux applications and authenticated private-LAN AI workspace" />
+        </service>
         <service android:name=".ModelDownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
