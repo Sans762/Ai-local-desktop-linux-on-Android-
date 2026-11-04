@@ -21,7 +21,7 @@
         <button type="submit" class="primary full">เข้าสู่ Workspace <span aria-hidden="true">↗</span></button>
       </form>
       <p id="loginError" class="error" role="alert"></p>
-      <div class="auth-footer"><span class="dot"></span> Private • Localhost 127.0.0.1 • Offline-ready</div>
+      <div class="auth-footer"><span class="dot"></span> Private • Local device / trusted LAN • Offline-ready</div>
     </div>
   </div>
   <div id="dashboard" class="shell" hidden>
@@ -41,7 +41,7 @@
     </aside>
     <main class="main">
       <header class="topbar">
-        <div><div class="eyebrow">LOCAL AI / WORKSPACE <span class="line-accent">02</span></div><h1>Linux Workspace<span class="heading-star">✦</span></h1><p>พูดคุย วางแผน และจัดการ Alpine Linux ในแอป</p></div>
+        <div><div class="eyebrow">LOCAL AI / LINUX WORKSPACE</div><h1>Linux Workspace<span class="heading-star">✦</span></h1><p>พูดคุย วางแผน และจัดการ Alpine Linux ในแอป</p></div>
         <div class="top-actions"><span class="status"><span class="dot"></span> <span id="onlineLabel">Local only</span></span></div>
       </header>
       <nav class="tabs" aria-label="โหมดทำงาน">
@@ -100,7 +100,7 @@
             <pre id="linuxOutput" class="linux-terminal" aria-live="polite">ผลลัพธ์ Linux จะแสดงที่นี่</pre>
           </div>
         </div>
-        <div class="notice secondary"><span>ⓘ</span><p>PRoot แชร์ kernel กับ Android จึงไม่ใช่ขอบเขตความปลอดภัยแบบ VM และยังไม่มีหน้าจอ Linux GUI/VNC ในรุ่นนี้</p></div>
+        <div class="notice secondary"><span>ⓘ</span><p>PRoot ใช้ kernel ของ Android ร่วมกัน ไม่ใช่ VM • Linux Desktop พร้อม noVNC และ VNC แยกใน Control Center หลังติดตั้งแพ็กเกจเดสก์ท็อป</p></div>
       </section>
       <section id="aboutTab" class="info-tab" hidden>
         <div class="page-heading"><div class="eyebrow">DEVICE OVERVIEW</div><h2>ระบบของฉัน</h2><p>ภาพรวมบริการ AI ออฟไลน์และความปลอดภัยบนมือถือของคุณ</p></div>
@@ -112,7 +112,7 @@
         <div class="surface about-panel"><div class="eyebrow">PRIVACY FIRST</div><h3>สร้างมาให้ทำงานแบบ Local</h3><p>ใช้ Foreground Service, เซิร์ฟเวอร์ในเครื่องที่ <code>127.0.0.1:18788</code>, โมเดล GGUF และประวัติ SQLite ภายในแอป</p>
           <div class="about-actions"><button class="subtle" type="button" data-refresh>↻ ตรวจสถานะ</button><button class="subtle" type="button" data-logout>↪ ออกจากระบบ</button></div>
         </div>
-        <div class="notice secondary"><span>ⓘ</span><p>Linux Agent สร้างคำสั่งให้อนุมัติและรันภายใน Alpine userland • ไม่มี Android Accessibility หรือ MediaProjection • ยังไม่มี GUI Linux/VNC</p></div>
+        <div class="notice secondary"><span>ⓘ</span><p>Linux Agent ต้องให้คุณอนุมัติคำสั่งก่อนรัน • Linux Desktop เปิดจาก Control Center โดยใช้ noVNC/VNC • ไม่มีการควบคุมหน้าจอ Android</p></div>
       </section>
     </main>
   </div>
