@@ -35,11 +35,23 @@ jobs:
         run: bash tools/fetch-embedded-linux.sh
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace :app:assembleDebug
+      - name: Verify package is Linux-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump xmltree "$APK" AndroidManifest.xml > /tmp/linux-only-manifest.txt
+          if grep -E 'BIND_ACCESSIBILITY_SERVICE|FOREGROUND_SERVICE_MEDIA_PROJECTION|android.accessibilityservice|ScreenShareService|AutomationAccessibilityService' /tmp/linux-only-manifest.txt; then
+            echo "Unexpected Android remote control declaration found"
+            exit 1
+          fi
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent'"
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: LocalAiNative-v0.4-Linux-AI-debug-APK
+          name: LocalAI-LinuxAgent-v0.5-debug-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
@@ -50,12 +62,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp app/build/outputs/apk/debug/app-debug.apk LocalAI-Native-v0.4-Android-ARM64.apk
-          if gh release view v0.4-linux-ai >/dev/null 2>&1; then
-            gh release upload v0.4-linux-ai LocalAI-Native-v0.4-Android-ARM64.apk --clobber
+          cp app/build/outputs/apk/debug/app-debug.apk LocalAI-LinuxAgent-v0.5-ARM64.apk
+          if gh release view v0.5-linux-only >/dev/null 2>&1; then
+            gh release upload v0.5-linux-only LocalAI-LinuxAgent-v0.5-ARM64.apk --clobber
           else
-            gh release create v0.4-linux-ai LocalAI-Native-v0.4-Android-ARM64.apk \
+            gh release create v0.5-linux-only LocalAI-LinuxAgent-v0.5-ARM64.apk \
               --target "$GITHUB_SHA" \
-              --title "Local AI Native v0.4 - Android ARM64" \
-              --notes "Standalone APK, no ZIP extraction or Termux required. Includes offline GGUF engine and Alpine Linux/PRoot payload. AI weights download separately. Runtime behavior still needs device testing."
+              --title "Local AI Linux Agent v0.5 - ARM64" \
+              --notes "Linux-only APK. No Accessibility service, no MediaProjection, no Android remote control. Offline GGUF engine, Linux AI command planner with explicit approvals, Alpine Linux/PRoot. Download AI weights separately. Device testing is still needed."
           fi
