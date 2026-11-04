@@ -22,7 +22,7 @@ assert "gh workflow run build-apk.yml" in signer
 assert '[[ ! -f "$KEYSTORE" ]]' in signer
 assert "keytool -genkeypair" in signer
 assert 'chmod 600 "$KEYSTORE"' in signer
-assert "Never publish new TEST APKs" in workflow or "Debug builds remain CI artifacts" in workflow
+assert "if: success() && env.AI_APK_KIND == 'release'" in workflow, "Do not upload debug APK as an update"
 
 assert "RestoreService" in manifest
 assert 'android:exported="false"' in manifest
