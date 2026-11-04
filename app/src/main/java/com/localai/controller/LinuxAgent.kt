@@ -195,7 +195,11 @@ class LinuxAgent(
                 break
             }
         }
-        if (completed) db.rememberLinuxSuccess(plan.summary)
+        // Exit status is not proof a GUI click hit the correct target:
+        // never train memory on unconfirmed graphical success.
+        if (completed && plan.commands.none { it.contains("xdotool") }) {
+            db.rememberLinuxSuccess(plan.summary)
+        }
         // A successful shell exit proves command completion, not visual success.
         val observedAfter = if (LinuxDesktopService.running) try {
             withContext(Dispatchers.IO) {

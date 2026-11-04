@@ -103,6 +103,23 @@ required_app = {
     "linuxRun","linuxCheck","linuxOutput","linuxReady","model","ram",
 }
 assert "desktopToggle" not in js and "refreshMonitor()" not in js, "Removed chat controls must not leave JS handlers"
+assert 'function isLinuxAction(message)' in js
+assert 'async function planChatLinuxTask(task, indicator)' in js
+assert "await request('/api/linux/plan', {task})" in js
+assert "await request('/api/linux/execute', {planId:data.planId})" in js
+assert 'อนุมัติให้ทำ' in js, "Linux commands need visible user approval"
+assert 'ai.get' not in js
+agent = (root / "java/com/localai/controller/LinuxAgent.kt").read_text()
+assistant = (root / "java/com/localai/controller/NativeAgent.kt").read_text()
+assert "xdotool getactivewindow getwindowname" in agent
+assert "xdotool getmouselocation --shell" in agent
+assert "readVisibleText()" in agent, "Visual OCR observation needs to be available"
+assert "visionInstalled(context)" in agent
+assert "guiVerified" in agent, "Do not claim pixel verification just from command exit"
+assert "db.rememberLinuxSuccess(plan.summary)" in agent
+assert 'private val han' in assistant
+assert 'han.containsMatchIn(draft)' in assistant
+assert 'replyLanguage(text)' in assistant
 required_vnc = {"status","connect","disconnect","password","viewport","screen","cover"}
 assert required_app <= app.ids, f"Missing app UI ids: {required_app - app.ids}"
 assert required_vnc <= vnc.ids, f"Missing desktop UI ids: {required_vnc - vnc.ids}"

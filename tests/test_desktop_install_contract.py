@@ -29,6 +29,7 @@ assert 'val ip = if (password.length >= 8) privateIp() else null' in service, 'S
 assert 'if (ip != null)' in service
 assert "ACTION_INSTALL_FULL" in service
 assert "ACTION_INSTALL_VISION" in service
+assert 'apk --wait 60 add --no-cache $packages' in service
 assert "scrot tesseract-ocr tesseract-ocr-data-eng tesseract-ocr-data-tha" in service
 assert "fun visionInstalled(context: Context)" in service
 assert "เพิ่มการอ่านตัวอักษรบนจอให้ AI (OCR)" in ui
