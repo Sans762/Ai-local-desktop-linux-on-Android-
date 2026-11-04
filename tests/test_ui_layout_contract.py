@@ -96,4 +96,10 @@ with tempfile.TemporaryDirectory() as tmp:
     script_file.write_text(vnc.module_script[0])
     subprocess.run(["node", "--check", str(script_file)], check=True)
 subprocess.run(["node", "--check", str(assets / "app.js")], check=True)
+
+# The four-step first-run guide must actually visit Linux + Desktop.
+assert '!alpineReady -> "linux"' in native
+assert 'modelFile == null -> "ai"' in native
+assert '!desktopReady -> "desktop"' in native
+
 print("PASS: UI HTML IDs, native responsive navigation, mobile viewport, VNC fit, JS syntax")
