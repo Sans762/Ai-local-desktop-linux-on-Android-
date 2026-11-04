@@ -738,7 +738,8 @@ class MainActivity : Activity() {
                             }.show()
                     }
                 } else if (!desktopReady) {
-                    addButton(this, "↓  ติดตั้งหน้าจอ Linux", true) {
+                    addButton(this, if (LinuxDesktopService.error(this@MainActivity).isBlank())
+                        "↓  ติดตั้งหน้าจอ Linux" else "↻  ลองติดตั้งอีกครั้ง", true) {
                         if (!LinuxRuntime(this@MainActivity).available()) {
                             settingsCategory = "linux"
                             showTab("control")
@@ -839,7 +840,7 @@ class MainActivity : Activity() {
                             currentTab != "control" || settingsCategory != "desktop") return
                         val nowBusy = LinuxDesktopService.installing
                         val nowRunning = LinuxDesktopService.running
-                        if ((previousBusy && !nowBusy) || (previousRunning != nowRunning)) {
+                        if (previousBusy != nowBusy || previousRunning != nowRunning) {
                             showTab("control")
                             return
                         }
