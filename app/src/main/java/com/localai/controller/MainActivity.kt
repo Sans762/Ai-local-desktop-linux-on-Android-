@@ -1189,8 +1189,21 @@ class MainActivity : Activity() {
                     updateStatus.text = "ระบบกำลังตรวจเมื่อเชื่อมต่อ Wi-Fi"
                 }
             } else {
-                addView(label("รุ่นทดสอบ · ยังอัปเดตทับแอปเดิมไม่ได้",
+                addView(label("รุ่น TEST · ยังอัปเดตทับรุ่นที่เซ็นต่างกันไม่ได้",
+                    13f, true, desktopOrange))
+                spacer(this, 6)
+                addView(label("ที่มีสองไอคอนเพราะ Android มองเป็นคนละแอป " +
+                    "ให้สำรองข้อมูลจากตัวที่ใช้งานอยู่ก่อน ไม่ต้องลบแอปเดิม",
                     12f, false, sub))
+                spacer(this, 9)
+                addButton(this, "⬇  สำรองข้อมูลก่อนย้าย", true) {
+                    startBackupPicker()
+                }
+                spacer(this, 7)
+                addView(label("เมื่อมี APK ที่เซ็นถาวร: ติดตั้งรุ่นใหม่ → " +
+                    "นำเข้าไฟล์สำรอง → ตรวจข้อมูล → ค่อยถอนแอป TEST เก่า " +
+                    "จากนั้นอัปเดตรุ่นถัดไปทับตัวเดิมได้",
+                    11.5f, false, sub))
             }
             spacer(this, 12)
             addButton(this, "⇄  ย้ายข้อมูลจากแอปเก่า", true) {
@@ -1234,21 +1247,7 @@ class MainActivity : Activity() {
                 spacer(this, 8)
                 addView(label(BackupService.progress.take(120), 11f, false, sub))
                 spacer(this, 8)
-                addButton(this, "⬇  สำรองข้อมูล") {
-                    if (LinuxDesktopService.running || LinuxDesktopService.installing ||
-                        AiForegroundService.running || ModelDownloadService.running ||
-                        BackupService.running || RestoreService.running) {
-                        notifyUser("ปิด AI และหน้าจอ Linux ก่อนสำรองข้อมูล")
-                    } else {
-                        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                            addCategory(Intent.CATEGORY_OPENABLE)
-                            type = "application/gzip"
-                            putExtra(Intent.EXTRA_TITLE, "LocalAI-Linux-Backup-" +
-                                java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US)
-                                    .format(java.util.Date()) + ".tar.gz")
-                        }, 44)
-                    }
-                }
+                addButton(this, "⬇  สำรองข้อมูล") { startBackupPicker() }
                 spacer(this, 10)
                 addButton(this, "เปิดแชทผ่านเบราว์เซอร์") {
                     if (!AiForegroundService.running) {
@@ -1318,6 +1317,24 @@ class MainActivity : Activity() {
             notifyUser("กำลังเริ่มบริการ AI…")
             ui.postDelayed({ awaitAiReady(20) }, 300L)
         } catch (e: Exception) { notifyUser("เริ่มบริการไม่สำเร็จ: ${e.message}") }
+    }
+
+    /** One shared entry point; do not back up a live or half-installed Linux rootfs. */
+    private fun startBackupPicker() {
+        if (LinuxDesktopService.running || LinuxDesktopService.installing ||
+            LinuxInstallService.running || AiForegroundService.running ||
+            ModelDownloadService.running || BackupService.running ||
+            RestoreService.running) {
+            notifyUser("หยุด AI, Linux และการดาวน์โหลดให้เสร็จก่อนสำรองข้อมูล")
+            return
+        }
+        startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/gzip"
+            putExtra(Intent.EXTRA_TITLE, "LocalAI-Linux-Backup-" +
+                java.text.SimpleDateFormat("yyyyMMdd-HHmm", java.util.Locale.US)
+                    .format(java.util.Date()) + ".tar.gz")
+        }, 44)
     }
 
     private fun pick(request: Int, mime: String) {

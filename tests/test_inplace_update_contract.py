@@ -30,6 +30,11 @@ assert "RestoreService.running" in activity
 assert 'Intent.ACTION_OPEN_DOCUMENT' in activity
 assert 'requestCode == 45' in activity
 assert '⇄  ย้ายข้อมูลจากแอปเก่า' in activity
+assert '⬇  สำรองข้อมูลก่อนย้าย' in activity, "TEST builds must show one-tap backup"
+assert 'private fun startBackupPicker()' in activity, "Backup picker must be shared by quick and advanced actions"
+assert 'LinuxInstallService.running || AiForegroundService.running' in activity, "Do not back up during Alpine install"
+assert activity.count("startBackupPicker()") >= 3, "Backup action must be reachable from TEST and advanced menu"
+assert 'when (settingsCategory)' in activity, "Navigation must remain available"
 assert "EXTRA_SOURCE" in restore
 assert 'manifest!!.optString("format")' in restore
 assert '"localai-linux-backup"' in restore
