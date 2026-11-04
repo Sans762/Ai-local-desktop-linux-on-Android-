@@ -59,6 +59,8 @@ class MainActivity : Activity() {
     private val mint = Color.rgb(91, 232, 187)
 
     private fun dp(n: Int): Int = (resources.displayMetrics.density * n + .5f).toInt()
+    private fun compactScreen(): Boolean =
+        resources.configuration.screenWidthDp < 410 || resources.configuration.fontScale >= 1.2f
     private fun panel(color: Int = card, radius: Int = 22, stroke: Int = line): GradientDrawable =
         GradientDrawable().apply {
             setColor(color)
@@ -82,7 +84,8 @@ class MainActivity : Activity() {
     private fun cardBlock(parent: LinearLayout, top: Int = 12, body: LinearLayout.() -> Unit): LinearLayout =
         LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(18))
+            val inset = if (compactScreen()) 12 else 18
+            setPadding(dp(inset), dp(inset), dp(inset), dp(inset))
             background = panel()
             val lp = LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(top) }
             parent.addView(this, lp)
@@ -92,7 +95,7 @@ class MainActivity : Activity() {
         parent.addView(View(this), LinearLayout.LayoutParams(1, dp(height)))
     }
     private fun actionButton(title: String, filled: Boolean = false, onClick: () -> Unit): TextView =
-        label(title, 14.5f, true).apply {
+        label(title, if (compactScreen()) 13.5f else 14.5f, true).apply {
             gravity = Gravity.CENTER
             minHeight = dp(49)
             setPadding(dp(12), dp(12), dp(12), dp(12))
@@ -135,24 +138,27 @@ class MainActivity : Activity() {
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(19), dp(14), dp(19), dp(10))
+            setPadding(dp(if (compactScreen()) 10 else 19), dp(9),
+                dp(if (compactScreen()) 10 else 19), dp(7))
         }
         mainColumn.addView(header, LinearLayout.LayoutParams(-1, -2))
-        val logo = label("✦", 25f, true).apply {
+        val logo = label("✦", if (compactScreen()) 21f else 25f, true).apply {
             gravity = Gravity.CENTER
             background = gradient(15)
         }
-        header.addView(logo, LinearLayout.LayoutParams(dp(49), dp(49)))
+        val markSize = if (compactScreen()) 40 else 49
+        header.addView(logo, LinearLayout.LayoutParams(dp(markSize), dp(markSize)))
         val titleStack = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), 0, 0, 0)
-            addView(label("LOCAL AI", 17f, true))
-            addView(label("NATIVE WORKSPACE  •  V0.4", 10f, true, sub))
+            setPadding(dp(if (compactScreen()) 8 else 12), 0, dp(3), 0)
+            addView(label("LOCAL AI · LINUX", if (compactScreen()) 14f else 17f, true))
+            addView(label(if (compactScreen()) "DESKTOP" else "DESKTOP · " +
+                AppUpdateManager(this@MainActivity).currentVersion(), 10f, true, sub))
         }
         header.addView(titleStack, LinearLayout.LayoutParams(0, -2, 1f))
         serviceChip = label("", 11f, true).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(9), dp(8), dp(9), dp(8))
+            setPadding(dp(6), dp(7), dp(6), dp(7))
             background = panel(cardDeep, 14)
         }
         header.addView(serviceChip)
@@ -162,10 +168,10 @@ class MainActivity : Activity() {
             setPadding(dp(17), dp(2), dp(17), dp(10))
         }
         mainColumn.addView(nav)
-        workspaceTab = actionButton("✦   Workspace") { showTab("workspace") }
-        controlsTab = actionButton("⚙   Control Center") { showTab("control") }
-        nav.addView(workspaceTab, LinearLayout.LayoutParams(0, dp(48), 1f).apply { rightMargin = dp(5) })
-        nav.addView(controlsTab, LinearLayout.LayoutParams(0, dp(48), 1f).apply { leftMargin = dp(5) })
+        workspaceTab = actionButton("✦  แชท AI") { showTab("workspace") }
+        controlsTab = actionButton("⚙  ตั้งค่าและ Linux") { showTab("control") }
+        nav.addView(workspaceTab, LinearLayout.LayoutParams(0, -2, 1f).apply { rightMargin = dp(4) })
+        nav.addView(controlsTab, LinearLayout.LayoutParams(0, -2, 1f).apply { leftMargin = dp(4) })
         screenHost = FrameLayout(this).apply { setBackgroundColor(bg) }
         mainColumn.addView(screenHost, LinearLayout.LayoutParams(-1, 0, 1f))
         refreshChip()
@@ -173,7 +179,12 @@ class MainActivity : Activity() {
 
     private fun refreshChip() {
         val running = AiForegroundService.running
-        serviceChip.text = if (running) "●  ACTIVE" else "●  OFFLINE"
+        serviceChip.text = if (compactScreen()) {
+            if (running) "● ON" else "● OFF"
+        } else {
+            if (running) "● ACTIVE" else "● OFFLINE"
+        }
+        serviceChip.contentDescription = if (running) "AI service working" else "AI service stopped"
         serviceChip.setTextColor(if (running) mint else sub)
     }
 
@@ -270,7 +281,8 @@ class MainActivity : Activity() {
         val scroll = ScrollView(this).apply {
             isFillViewport = true
             clipToPadding = false
-            setPadding(dp(17), 0, dp(17), dp(22))
+            val horizontal = if (compactScreen()) 10 else 17
+            setPadding(dp(horizontal), 0, dp(horizontal), dp(22))
         }
         screenHost.addView(scroll, FrameLayout.LayoutParams(-1, -1))
         val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
