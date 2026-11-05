@@ -14,6 +14,7 @@ import java.net.Socket
 import java.net.SocketException
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
+import java.util.concurrent.Semaphore
 
 /** Loopback-only web server. No remote bind, no external HTTP endpoints or AI API. */
 class LocalHttpServer(private val context: Context, private val store: AppStore,
@@ -21,6 +22,7 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
                       private val bindIp: String = "127.0.0.1",
                       private val listenPort: Int = AiForegroundService.PORT) {
     private val pool = Executors.newFixedThreadPool(4)
+    private val heavyOperation = Semaphore(1)
     private val linuxAgent = LinuxAgent(context, ImportRepository(context, store, db), db)
     private val monitor = LinuxWorkspaceMonitor(context)
     @Volatile private var alive = false
@@ -44,6 +46,7 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
 
     fun close() {
         alive = false
+        AgentWork.cancelAll()
         server?.close()
         pool.shutdownNow()
     }
@@ -122,6 +125,16 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
 
     private fun content(name: String): ByteArray = context.assets.open(name).use { it.readBytes() }
 
+    // Keep a worker available for status and stop instead of queueing many JNI calls.
+    private fun perform(socket: Socket, timeoutMs: Long = 150_000L,
+                        operation: suspend () -> JSONObject) {
+        if (!heavyOperation.tryAcquire()) { error(socket, 409, "AI_BUSY"); return }
+        try {
+            val reply = runBlocking { withTimeout(timeoutMs) { operation() } }
+            json(socket, if (reply.optBoolean("ok")) 200 else 400, reply)
+        } finally { heavyOperation.release() }
+    }
+
     private fun handleSocket(socket: Socket) {
         socket.use { sock ->
             try {
@@ -161,7 +174,8 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
                 // must NEVER gain shell execution in the Android app's Linux rootfs.
                 // Local user approval via the device's loopback UI is required.
                 if (bindIp != "127.0.0.1" && req.path in setOf(
-                        "/api/linux/execute", "/api/linux/command", "/api/linux/plan")) {
+                        "/api/linux/execute", "/api/linux/command", "/api/linux/plan",
+                        "/api/linux/continue", "/api/linux/discard", "/api/ai/stop")) {
                     error(sock, 403, "LINUX_COMMANDS_REQUIRE_ON_DEVICE_APPROVAL"); return
                 }
                 if (req.method == "POST" && req.headers["x-csrf-token"] != store.csrfToken()) {
@@ -173,25 +187,33 @@ class LocalHttpServer(private val context: Context, private val store: AppStore,
                     "GET" to "/api/history" -> json(sock, 200, JSONObject().put("ok", true).put("messages", db.recentMessages(35)))
                     "GET" to "/api/linux/status" ->
                         json(sock, 200, linuxAgent.status())
+                    "POST" to "/api/ai/stop" -> {
+                        AgentWork.cancelAll()
+                        json(sock, 200, JSONObject().put("ok", true).put("stopping", AgentWork.stopping))
+                    }
+                    "POST" to "/api/linux/continue" -> {
+                        val id = JSONObject(req.body).optString("taskId")
+                        perform(sock) { linuxAgent.continueTask(id) }
+                    }
+                    "POST" to "/api/linux/discard" -> {
+                        val id = JSONObject(req.body).optString("planId")
+                        json(sock, 200, runBlocking { linuxAgent.discard(id) })
+                    }
                     "POST" to "/api/linux/plan" -> {
                         val task = JSONObject(req.body).optString("task", "")
-                        val reply = runBlocking { withTimeout(150_000) { linuxAgent.propose(task) } }
-                        json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
+                        perform(sock) { linuxAgent.propose(task) }
                     }
                     "POST" to "/api/linux/execute" -> {
                         val id = JSONObject(req.body).optString("planId", "")
-                        val reply = runBlocking { withTimeout(150_000) { linuxAgent.execute(id) } }
-                        json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
+                        perform(sock) { linuxAgent.execute(id) }
                     }
                     "POST" to "/api/linux/command" -> {
                         val value = JSONObject(req.body).optString("command", "")
-                        val reply = runBlocking { withTimeout(50_000) { linuxAgent.command(value) } }
-                        json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
+                        perform(sock, 50_000L) { linuxAgent.command(value) }
                     }
                     "POST" to "/api/chat" -> {
                         val input = JSONObject(req.body).optString("message", "")
-                        val reply = runBlocking { withTimeout(150_000) { ai.chat(input) } }
-                        json(sock, if (reply.optBoolean("ok")) 200 else 400, reply)
+                        perform(sock) { ai.chat(input) }
                     }
                     "POST" to "/logout" -> json(sock, 200, JSONObject().put("ok", true), mapOf(
                         "Set-Cookie" to "native_ai_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"))

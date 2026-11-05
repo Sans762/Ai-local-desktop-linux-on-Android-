@@ -295,7 +295,7 @@ class LinuxDesktopService : Service() {
                 "-AlwaysShared", "-nolisten", "tcp"),
             logName = "xvnc"
         )
-        synchronized(owned) { owned.add(xvnc) }
+        own(xvnc)
         var socketReady = false
         for (attempt in 0 until 20) {
             if (!xvnc.isAlive) {
@@ -310,6 +310,11 @@ class LinuxDesktopService : Service() {
             if (socketReady) break
         }
         require(socketReady) { "VNC could not start: " + linux.desktopLog("xvnc").takeLast(600) }
+        // A TCP listener alone can still serve a blank desktop. Wait for real X11
+        // requests before launching clients in separate PRoot processes.
+        require(awaitX11(linux, xvnc, requireManager = false)) {
+            "X11 ยังไม่พร้อม: " + linux.desktopLog("xvnc").takeLast(600)
+        }
         notifyStatus("Opening Linux desktop windows…")
         val display = mapOf("DISPLAY" to ":1")
         var xfceStarted = false
@@ -330,9 +335,12 @@ class LinuxDesktopService : Service() {
                             "NO_AT_BRIDGE" to "1"
                         ), "xfce"
                     )
-                    synchronized(owned) { owned.add(session) }
-                    Thread.sleep(1700L)
-                    xfceStarted = session.isAlive
+                    own(session)
+                    xfceStarted = awaitX11(linux, session, requireManager = true)
+                    if (!xfceStarted) {
+                        session.destroy()
+                        if (!session.waitFor(2, TimeUnit.SECONDS)) session.destroyForcibly()
+                    }
                 } catch (_: Exception) {
                     xfceStarted = false
                 }
@@ -344,32 +352,53 @@ class LinuxDesktopService : Service() {
                 Triple("/usr/bin/openbox", emptyList<String>(), "openbox"),
                 Triple("/usr/bin/pcmanfm", listOf("--desktop"), "pcmanfm"),
                 Triple("/usr/bin/tint2", emptyList<String>(), "tint2"),
-                Triple("/usr/bin/xterm", listOf("-geometry", "84x26+24+34"), "xterm")
+                Triple("/usr/bin/xterm", listOf("-fa", "DejaVu Sans Mono", "-fs", "11", "-geometry", "84x26+24+34"), "xterm")
             )
+            var windowManager: Process? = null
+            var terminal: Process? = null
             for ((exe, args, log) in apps) {
                 try {
                     val process = linux.startDesktopProcess(exe, args, display, log)
-                    synchronized(owned) { owned.add(process) }
+                    own(process)
+                    if (exe.endsWith("/openbox")) windowManager = process
+                    if (exe.endsWith("/xterm")) terminal = process
                 } catch (e: Exception) {
                     if (exe.endsWith("openbox")) throw e
                 }
             }
+            require(windowManager != null && awaitX11(linux, windowManager, requireManager = true)) {
+                "Openbox ยังไม่พร้อม: " + linux.desktopLog("openbox").takeLast(600)
+            }
+            require(terminal != null && awaitVisibleTerminal(linux, terminal)) {
+                "หน้าต่าง Linux เปิดไม่ได้: " + linux.desktopLog("xterm").takeLast(600) + (if (terminal?.isAlive == false) " · launcher exit " + terminal?.exitValue() else "")
+            }
         }
-        desktopViewer = DesktopWebServer(this).also { it.start() }
-        if (ip != null) {
-            relay = DesktopTcpRelay(ip, VNC_PORT, LOCAL_VNC_PORT).also { it.start() }
+        if (xfceStarted) {
+            val terminal = linux.startDesktopProcess("/usr/bin/xterm",
+                listOf("-fa", "DejaVu Sans Mono", "-fs", "11", "-geometry", "84x26+24+34"), display, "xterm")
+            own(terminal)
+            require(awaitVisibleTerminal(linux, terminal)) {
+                "หน้าต่าง Linux เปิดไม่ได้: " + linux.desktopLog("xterm").takeLast(600) + (if (terminal?.isAlive == false) " · launcher exit " + terminal?.exitValue() else "")
+            }
         }
-        if (ip != null && AppStore(this).hasPassword()) {
-            val store = AppStore(this)
-            val db = ChatDatabase(this)
-            val imports = ImportRepository(this, store, db)
-            lanWeb = LocalHttpServer(this, store, db, NativeAgent(this, store, db, imports),
-                bindIp = ip, listenPort = WEB_PORT).also { it.start() }
+        synchronized(owned) {
+            check(!closing && xvnc.isAlive) { "ยกเลิกการเปิด Linux แล้ว" }
+            desktopViewer = DesktopWebServer(this).also { it.start() }
+            if (ip != null) {
+                relay = DesktopTcpRelay(ip, VNC_PORT, LOCAL_VNC_PORT).also { it.start() }
+            }
+            if (ip != null && AppStore(this).hasPassword()) {
+                val store = AppStore(this)
+                val db = ChatDatabase(this)
+                val imports = ImportRepository(this, store, db)
+                lanWeb = LocalHttpServer(this, store, db, NativeAgent(this, store, db, imports),
+                    bindIp = ip, listenPort = WEB_PORT).also { it.start() }
+            }
+            ipAddress = ip.orEmpty()
+            running = true
+            updateStatus(if (ip == null) "✓ หน้าจอ Linux พร้อมใช้บนมือถือ" else
+                "✓ หน้าจอ Linux พร้อมใช้ · $ip:$VNC_PORT")
         }
-        ipAddress = ip.orEmpty()
-        running = true
-        updateStatus(if (ip == null) "✓ หน้าจอ Linux พร้อมใช้บนมือถือ" else
-            "✓ หน้าจอ Linux พร้อมใช้ · $ip:$VNC_PORT")
         // If Android or Linux terminates Xvnc, do not leave the UI reporting
         // a phantom running desktop. Preserve the tail of Xvnc's log.
         healthThread = Thread({
@@ -383,6 +412,34 @@ class LinuxDesktopService : Service() {
                 }
             } catch (_: InterruptedException) { }
         }, "linux-desktop-watchdog").apply { isDaemon = true; start() }
+    }
+
+    private fun awaitX11(linux: LinuxRuntime, process: Process, requireManager: Boolean): Boolean {
+        val deadline = android.os.SystemClock.elapsedRealtime() + 20_000L
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (closing || !process.isAlive || Thread.currentThread().isInterrupted) return false
+            val probe = linux.command(if (requireManager) "DISPLAY=:1 xdotool get_desktop"
+                else "DISPLAY=:1 xdotool getdisplaygeometry", timeoutSeconds = 2)
+            if (probe.trimEnd().endsWith("[exit 0]")) return true
+            Thread.sleep(300L)
+        }
+        return false
+    }
+
+    private fun awaitVisibleTerminal(linux: LinuxRuntime, process: Process): Boolean {
+        val deadline = android.os.SystemClock.elapsedRealtime() + 25_000L
+        while (android.os.SystemClock.elapsedRealtime() < deadline) {
+            if (closing || !process.isAlive || Thread.currentThread().isInterrupted) return false
+            val probe = linux.command("DISPLAY=:1 xdotool search --onlyvisible --class XTerm", timeoutSeconds = 2)
+            if (probe.trimEnd().endsWith("[exit 0]")) return true
+            Thread.sleep(300L)
+        }
+        return false
+    }
+
+    private fun own(process: Process) = synchronized(owned) {
+        if (closing) { process.destroyForcibly(); throw InterruptedException("Desktop stopped") }
+        owned.add(process)
     }
 
     private fun completionNotification(success: Boolean, crashed: Boolean = false) {
@@ -433,13 +490,13 @@ class LinuxDesktopService : Service() {
     }
 
     private fun cleanup() {
-        try { desktopViewer?.close() } catch (_: Exception) {}
-        desktopViewer = null
-        try { lanWeb?.close() } catch (_: Exception) {}
-        lanWeb = null
-        try { relay?.close() } catch (_: Exception) {}
-        relay = null
         synchronized(owned) {
+            try { desktopViewer?.close() } catch (_: Exception) {}
+            desktopViewer = null
+            try { lanWeb?.close() } catch (_: Exception) {}
+            lanWeb = null
+            try { relay?.close() } catch (_: Exception) {}
+            relay = null
             for (p in owned.asReversed()) {
                 try {
                     p.destroy()
@@ -447,13 +504,15 @@ class LinuxDesktopService : Service() {
                 } catch (_: Exception) {}
             }
             owned.clear()
+            running = false
+            ipAddress = ""
         }
-        running = false
-        ipAddress = ""
     }
 
     override fun onDestroy() {
         closing = true
+        AgentWork.cancelAll()
+        if (running && lastError.isBlank()) updateStatus("ปิด Linux Desktop แล้ว")
         healthThread?.interrupt()
         healthThread = null
         worker?.interrupt()

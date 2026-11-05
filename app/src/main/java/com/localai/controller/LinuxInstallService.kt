@@ -14,15 +14,18 @@ import android.os.PowerManager
 /** Long-running initial Linux extraction with visible progress; never overwrites existing rootfs. */
 class LinuxInstallService : Service() {
     companion object {
+        const val ACTION_STOP = "com.localai.controller.LINUX_INSTALL_STOP"
         private const val CHANNEL = "local_ai_linux_setup"
         @Volatile var running = false
         @Volatile var progress = "Linux has not been installed"
         @Volatile var lastError = ""
     }
+    private var worker: Thread? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_STOP) { stopSelf(); return START_NOT_STICKY }
         if (running) return START_NOT_STICKY
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(NotificationChannel(
@@ -31,7 +34,7 @@ class LinuxInstallService : Service() {
         progress = "Preparing built-in Alpine Linux…"
         lastError = ""
         update(true)
-        Thread({
+        worker = Thread({
             var wakeLock: PowerManager.WakeLock? = null
             try {
                 val power = getSystemService(POWER_SERVICE) as PowerManager
@@ -53,7 +56,8 @@ class LinuxInstallService : Service() {
                 update(false)
             } catch (e: Exception) {
                 lastError = e.message?.take(250) ?: "Unknown error"
-                progress = "Linux install failed: " + lastError
+                progress = if (Thread.currentThread().isInterrupted) "ยกเลิกการติดตั้ง Linux แล้ว"
+                    else "Linux install failed: " + lastError
                 update(false)
             } finally {
                 try { if (wakeLock?.isHeld == true) wakeLock.release() }
@@ -76,6 +80,10 @@ class LinuxInstallService : Service() {
             .setContentIntent(open)
             .setOnlyAlertOnce(true)
             .setOngoing(active)
+            .addAction(android.R.drawable.ic_media_pause, "หยุดติดตั้ง",
+                PendingIntent.getService(this, 199,
+                    Intent(this, LinuxInstallService::class.java).setAction(ACTION_STOP),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
             .build()
         if (active) {
             if (Build.VERSION.SDK_INT >= 34)
@@ -84,5 +92,10 @@ class LinuxInstallService : Service() {
         } else {
             (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(198, notification)
         }
+    }
+
+    override fun onDestroy() {
+        worker?.interrupt()
+        super.onDestroy()
     }
 }

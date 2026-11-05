@@ -46,7 +46,7 @@ body.immersive #viewport{border-radius:0}
 @media(max-height:400px){header{height:31px;flex-basis:31px}#authBar input{min-height:35px}#authBar button{min-height:35px}main{padding:2px}}
 @media(max-width:350px){#status{max-width:37%;font-size:10px}.brand{font-size:12px}}
 </style></head><body>
-<header><span class="brand">▣ Linux Desktop</span><span id="status">ยังไม่เชื่อมต่อ</span>
+<header><span class="brand">▣ Linux Desktop</span><span id="status">กำลังเตรียมหน้าจอ…</span>
 <details id="manualOptions"><summary aria-label="เครื่องมือเพิ่มเติม">⋯</summary>
 <div id="manualMenu">
 <button id="trackpad" aria-pressed="false">◉ Trackpad</button>
@@ -60,7 +60,7 @@ body.immersive #viewport{border-radius:0}
 <main>
 <div id="authBar">
 <input id="password" type="password" inputmode="numeric" autocomplete="off" placeholder="รหัส VNC 6–8 ตัว" maxlength="8" aria-label="รหัส VNC">
-<button class="primary" id="connect">เชื่อมต่อ</button>
+<button class="primary" id="connect" disabled>เชื่อมต่อ</button>
 </div>
 <div id="viewport">
 <div id="screen"></div>
@@ -72,6 +72,13 @@ body.immersive #viewport{border-radius:0}
  autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
 <p id="hint">เดสก์ท็อป Linux ภายในมือถือ</p>
 </main>
+<script>
+window.addEventListener('error', event => {
+  window.localaiViewerError = event.message || 'โหลดตัวดูจอไม่สำเร็จ';
+  const status = document.getElementById('status');
+  if (status) status.textContent = 'เปิดตัวดูจอไม่สำเร็จ';
+});
+</script>
 <script type="module">
 import RFB from '/novnc/core/rfb.js';
 let rfb = null;
@@ -245,4 +252,6 @@ el('cad').addEventListener('click',()=>{if(rfb)rfb.sendCtrlAltDel();});
 el('full').addEventListener('click',()=>fullScreenMode());
 el('exitFull').addEventListener('click',()=>fullScreenMode(true));
 window.addEventListener('pagehide',()=>{if(rfb)rfb.disconnect();});
+el('connect').disabled=false;
+status('พร้อมเชื่อมต่อ');
 </script></body></html>

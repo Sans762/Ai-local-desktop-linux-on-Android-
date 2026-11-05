@@ -2,6 +2,7 @@
 const $ = id => document.getElementById(id);
 let csrf = '';
 let busy = false;
+let recoveredLinuxTask = null;
 const intro = $('messages').innerHTML;
 
 /**
@@ -55,6 +56,7 @@ async function refresh() {
     setText('aiName', s.name || 'Local AI');
     setText('model', s.model || 'ยังไม่ได้เลือกโมเดล GGUF');
     setText('ram', (s.ramAvailableMb || 0).toLocaleString() + ' MB');
+    $('aiStop').hidden = !s.working;
     setText('service', s.working ? 'กำลังประมวลผล…' : 'พร้อมใช้งาน');
     setText('onlineLabel', s.working ? 'AI is thinking' : 'Local only');
     const control = s.linuxInstalled ? 'Alpine installed' : 'Not installed';
@@ -64,6 +66,7 @@ async function refresh() {
     setText('sysRam', (s.ramAvailableMb || 0).toLocaleString() + ' MB');
     setText('sysControl', control);
     if (!busy) setText('chatHint', s.model ? 'โมเดลอยู่ในมือถือ • ใช้งานออฟไลน์' : 'นำเข้าโมเดล .gguf ผ่าน Control Center ก่อนเริ่มแชท');
+    if (!busy) await refreshRecovery();
     return s;
   } catch (e) {
     if (/LOGIN_REQUIRED/.test(e.message)) show('login');
@@ -109,45 +112,58 @@ function isLinuxAction(message) {
   return /^(?:ช่วย(?:ฉัน|ผม)?\s*)?(?:เปิด(?:โปรแกรม|แอป|เว็บ|เบราว์เซอร์|เทอร์มินัล|ไฟล์|โฟลเดอร์|หน้าต่าง)|คลิก|กด(?:ปุ่ม|ที่)|ขยับเมาส์|พิมพ์(?:ข้อความ|ใน|ลง)|สร้าง(?:โฟลเดอร์|ไฟล์)|ติดตั้ง(?:โปรแกรม|แพ็กเกจ)|สลับหน้าต่าง|ปิด(?:หน้าต่าง|โปรแกรม)|สั่ง(?:งาน)?\s*Linux|ควบคุม\s*Linux)/iu.test(input)
     || /^(?:please\s+)?(?:open|launch|click|move(?:\s+the)?\s+mouse|type|install(?:\s+a)?\s+package|create(?:\s+a)?\s+(?:file|folder)|close(?:\s+the)?\s+window)\b/i.test(input);
 }
+function planText(data) {
+  return [data.summary || 'AI เตรียมแผนแล้ว',
+    ...((data.commands || []).map((command, i) => (i + 1) + '. ' + command)),
+    ...((data.checks || []).map(c => 'ตรวจไฟล์: ' + c.path +
+      (c.contains == null ? '' : '\nข้อความที่ต้องพบ: ' + c.contains))),
+    'ตรวจแผนก่อนอนุมัติ · ยังไม่มีการรัน'].join('\n');
+}
 async function planChatLinuxTask(task, indicator) {
   const data = await request('/api/linux/plan', {task});
   indicator.remove();
-  const text = [
-    data.summary || 'AI เตรียมคำสั่ง Linux แล้ว',
-    ...((data.commands || []).map((command, i) => (i + 1) + '. ' + command)),
-    'ตรวจคำสั่งก่อนอนุมัติ · ยังไม่มีการรัน'
-  ].join('\n');
-  const bubble = addMessage('assistant', text);
+  renderChatLinuxPlan(data);
+}
+function renderChatLinuxPlan(data) {
+  if (data.needsInput) { addMessage('assistant', data.question); return; }
+  const bubble = addMessage('assistant', planText(data));
   const actions = document.createElement('div');
   actions.className = 'approval-actions';
   const approve = document.createElement('button');
   approve.textContent = 'อนุมัติให้ทำ';
   approve.type = 'button';
   const cancel = document.createElement('button');
-  cancel.textContent = 'ยกเลิก';
-  cancel.type = 'button';
-  actions.append(approve, cancel);
-  bubble.appendChild(actions);
-  cancel.addEventListener('click', () => {
+  cancel.textContent = 'ยกเลิก'; cancel.type = 'button';
+  actions.append(approve, cancel); bubble.appendChild(actions);
+  cancel.addEventListener('click', async () => {
     actions.remove();
+    try { await request('/api/linux/discard', {planId:data.planId}); }
+    catch (e) { addMessage('assistant', 'ยกเลิกแผนไม่ได้: ' + e.message); return; }
     addMessage('assistant', 'ยกเลิกแล้ว ไม่มีการรันคำสั่ง');
   });
   approve.addEventListener('click', async () => {
-    approve.disabled = true;
-    cancel.disabled = true;
-    approve.textContent = 'กำลังทำงาน…';
+    approve.disabled = true; cancel.disabled = true;
+    approve.textContent = 'กำลังทำงาน…'; $('aiStop').hidden = false;
     try {
       const result = await request('/api/linux/execute', {planId:data.planId});
       actions.remove();
-      addMessage('assistant', (result.summary || 'งาน Linux') +
-        (result.completed ?
-          '\n✓ รันคำสั่งครบแล้ว (ยังไม่ยืนยันผลจากภาพหน้าจอ)' :
-          '\n⚠ บางขั้นตอนไม่สำเร็จ') +
-        (result.desktopObservation ? '\nหน้าต่างที่ตรวจพบ: ' + result.desktopObservation.slice(0,180) : ''));
+      const resultBubble = addMessage('assistant', (result.summary || 'งาน Linux') +
+        '\n' + result.message + (result.desktopObservation ?
+          '\nหน้าต่างที่ตรวจพบ: ' + result.desktopObservation.slice(0,180) : ''));
+      if (result.canContinue) {
+        const next = document.createElement('button');
+        next.type = 'button'; next.textContent = 'ตรวจผลและทำต่อ';
+        resultBubble.appendChild(next);
+        next.addEventListener('click', async () => {
+          next.disabled = true; $('aiStop').hidden = false;
+          try { renderChatLinuxPlan(await request('/api/linux/continue', {taskId:result.taskId})); next.remove(); }
+          catch (e) { addMessage('assistant', 'ทำต่อไม่ได้: ' + e.message); next.disabled = false; }
+          finally { await refresh(); }
+        });
+      }
     } catch (e) {
-      actions.remove();
-      addMessage('assistant', 'ยังทำงานไม่ได้: ' + e.message);
-    }
+      actions.remove(); addMessage('assistant', e.message === 'TASK_CANCELLED' ? 'ยกเลิกงานแล้ว' : 'ยังทำงานไม่ได้: ' + e.message);
+    } finally { await refresh(); }
   });
 }
 
@@ -158,6 +174,7 @@ async function chat() {
   if (!content) return;
   busy = true;
   $('send').disabled = true;
+  $('aiStop').hidden = false;
   textarea.value = '';
   addMessage('user', content);
   const indicator = addMessage('assistant', 'กำลังคิดและประมวลผลในเครื่อง…', true);
@@ -237,6 +254,14 @@ for (const logoutButton of [ $('logout'), ...document.querySelectorAll('[data-lo
   logoutButton.addEventListener('click', logout);
 }
 let pendingLinuxPlan = null;
+let continuingTaskId = null;
+function showDevicePlan(data) {
+  if (data.needsInput) { linuxOutput(data.question); setText('linuxTaskResult', data.question); return; }
+  pendingLinuxPlan = data.planId;
+  setText('linuxSummary', data.summary);
+  setText('linuxPlanCommands', planText(data));
+  showLinuxPlan(true);
+}
 function linuxOutput(value) { setText('linuxOutput', value); }
 function showLinuxPlan(show) { $('linuxPlanView').hidden = !show; }
 $('linuxPlan').addEventListener('click', async () => {
@@ -248,16 +273,18 @@ $('linuxPlan').addEventListener('click', async () => {
   linuxOutput('โมเดลกำลังสร้างแผนคำสั่ง Linux…');
   try {
     const data = await request('/api/linux/plan', {task});
-    pendingLinuxPlan = data.planId;
-    setText('linuxSummary', data.summary);
-    setText('linuxPlanCommands', data.commands.map((c, i) => (i + 1) + '. $ ' + c).join('\n\n'));
-    showLinuxPlan(true);
+    showDevicePlan(data);
     linuxOutput('สร้างแผนแล้ว ยังไม่ได้รันคำสั่งใด ๆ');
   } catch (e) { linuxOutput('วางแผนไม่สำเร็จ: ' + e.message); }
   finally { $('linuxPlan').disabled = false; }
 });
-$('linuxCancel').addEventListener('click', () => {
+$('linuxCancel').addEventListener('click', async () => {
+  const planId = pendingLinuxPlan;
   pendingLinuxPlan = null;
+  if (planId) {
+    try { await request('/api/linux/discard', {planId}); }
+    catch (e) { linuxOutput('ยกเลิกไม่ได้: ' + e.message); return; }
+  }
   showLinuxPlan(false);
   linuxOutput('ยกเลิกแผนแล้ว ไม่มีการรันคำสั่ง');
 });
@@ -268,13 +295,17 @@ $('linuxExecute').addEventListener('click', async () => {
   pendingLinuxPlan = null;
   showLinuxPlan(false);
   $('linuxExecute').disabled = true;
+  $('aiStop').hidden = false;
   linuxOutput('กำลังดำเนินงานใน Alpine Linux…');
   try {
     const data = await request('/api/linux/execute', {planId});
     linuxOutput(data.results.map(x => '$ ' + x.command + '\n' + x.output).join('\n\n') +
-      '\n\n' + (data.completed ? '✓ เสร็จสิ้น' : '⚠ หยุดเมื่อคำสั่งผิดพลาด'));
+      '\n\n' + data.message);
+    setText('linuxTaskResult', data.message);
+    continuingTaskId = data.canContinue ? data.taskId : null;
+    $('linuxContinue').hidden = !continuingTaskId;
   } catch (e) { linuxOutput('Linux execution error: ' + e.message); }
-  finally { $('linuxExecute').disabled = false; }
+  finally { $('linuxExecute').disabled = false; await refresh(); }
 });
 $('linuxRun').addEventListener('click', async () => {
   const command = $('linuxCommand').value.trim();
@@ -297,3 +328,43 @@ $('linuxCheck').addEventListener('click', async () => {
 });
 refresh().then(s => { if (s) history(); });
 setInterval(() => { if (!document.hidden) refresh(); }, 12000);
+
+$('linuxContinue').addEventListener('click', async () => {
+  if (!continuingTaskId) return;
+  $('linuxContinue').disabled = true; $('aiStop').hidden = false;
+  try {
+    showDevicePlan(await request('/api/linux/continue', {taskId:continuingTaskId}));
+    continuingTaskId = null; $('linuxContinue').hidden = true;
+  } catch (e) { linuxOutput('ทำต่อไม่ได้: ' + e.message); }
+  finally { $('linuxContinue').disabled = false; await refresh(); }
+});
+$('aiStop').addEventListener('click', async () => {
+  try {
+    const result = await request('/api/ai/stop', {});
+    pendingLinuxPlan = null; continuingTaskId = null; showLinuxPlan(false);
+    $('linuxContinue').hidden = true;
+    document.querySelectorAll('.approval-actions').forEach(x => x.remove());
+    setText('chatHint', result.stopping ? 'ยกเลิกแล้ว · กำลังคืนหน่วยความจำ' : 'ยกเลิกงานแล้ว');
+  } catch (e) { setText('chatHint', 'หยุดไม่ได้: ' + e.message); }
+});
+
+async function refreshRecovery() {
+  try {
+    const status = await request('/api/linux/status');
+    recoveredLinuxTask = status.recoverable ? status.taskId : null;
+    $('linuxResume').hidden = !recoveredLinuxTask;
+    $('linuxResume').title = status.taskRequest || '';
+  } catch (_) { recoveredLinuxTask = null; $('linuxResume').hidden = true; }
+}
+$('linuxResume').addEventListener('click', async () => {
+  if (!recoveredLinuxTask) return;
+  $('linuxResume').disabled = true;
+  $('aiStop').hidden = false;
+  try {
+    const data = await request('/api/linux/continue', {taskId:recoveredLinuxTask});
+    renderChatLinuxPlan(data);
+    recoveredLinuxTask = null;
+    $('linuxResume').hidden = true;
+  } catch (e) { addMessage('assistant', 'กู้งานค้างไม่ได้: ' + e.message); }
+  finally { $('linuxResume').disabled = false; await refresh(); }
+});

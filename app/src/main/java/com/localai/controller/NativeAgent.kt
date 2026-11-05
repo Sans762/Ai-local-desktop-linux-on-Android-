@@ -2,8 +2,6 @@ package com.localai.controller
 
 import android.app.ActivityManager
 import android.content.Context
-import dev.ffmpegkit.llama.Llama
-import dev.ffmpegkit.llama.LlamaConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -38,19 +36,17 @@ class NativeAgent(
             .put("linuxInstalled", LinuxRuntime(context).installed())
             .put("accessibilityEnabled", false)
             .put("controlAllowed", false)
-            .put("working", AiForegroundService.working)
+            .put("working", AgentWork.active)
+            .put("stopping", AgentWork.stopping)
             .put("learning", db.agentLearningStats())
     }
 
-    suspend fun chat(userText: String): JSONObject = lock.withLock {
+    suspend fun chat(userText: String): JSONObject = AgentWork.run { work -> lock.withLock {
+        work.check()
         val text = userText.trim().take(3500)
         require(text.isNotBlank()) { "Empty message" }
         val model = imports.modelFile() ?: return@withLock JSONObject()
             .put("ok", false).put("error", "NO_GGUF_MODEL_IMPORTED")
-        val available = ramMb()
-        val required = maxOf(1700L, ((model.length() / 1048576L) * 1.15).toLong() + 850)
-        if (available < required) return@withLock JSONObject().put("ok", false)
-            .put("error", "LOW_RAM: $available MB available; approximately $required MB required")
         val history = db.recentMessages(12)
         val responseLanguage = replyLanguage(text)
         val prior = buildString {
@@ -83,30 +79,27 @@ class NativeAgent(
         AiForegroundService.working = true
         try {
             val answer = withContext(Dispatchers.IO) {
-                val handle = Llama.loadModel(model.absolutePath,
-                    LlamaConfig(contextSize = 3072, threads = 4))
-                try {
-                    var draft = Llama.complete(handle,
-                        prompt = prior + "\nuser: " + text +
-                            "\nassistant (" + responseLanguage + " only):",
-                        systemPrompt = system, maxTokens = 520).text.trim()
-                    if (han.containsMatchIn(draft)) {
-                        draft = Llama.complete(handle,
-                            prompt = "Discard your previous answer because it contains Chinese. " +
-                                "Respond only in " + responseLanguage +
-                                " to the user's original request: " + text,
-                            systemPrompt = system, maxTokens = 460).text.trim()
-                    }
-                    if (han.containsMatchIn(draft) || draft.isBlank()) {
-                        if (responseLanguage == "Thai")
-                            "โมเดลตอบผิดภาษา กรุณาลองใหม่หรือเปลี่ยนเป็นโมเดล Instruct ที่รองรับภาษาไทยดีกว่านี้"
-                        else "The local model replied in the wrong language. Please try again or use a stronger instruct model."
-                    } else draft
-                } finally { Llama.releaseModel(handle) }
+                var draft = LocalModel.complete(context, model, work,
+                    prompt = prior + "\nuser: " + text +
+                        "\nassistant (" + responseLanguage + " only):",
+                    system = system, maxTokens = 520)
+                if (han.containsMatchIn(draft)) {
+                    draft = LocalModel.complete(context, model, work,
+                        prompt = "Discard your previous answer because it contains Chinese. " +
+                            "Respond only in " + responseLanguage +
+                            " to the user's original request: " + text,
+                        system = system, maxTokens = 460)
+                }
+                if (han.containsMatchIn(draft) || draft.isBlank()) {
+                    if (responseLanguage == "Thai")
+                        "โมเดลตอบผิดภาษา กรุณาลองใหม่หรือเปลี่ยนเป็นโมเดล Instruct ที่รองรับภาษาไทยดีกว่านี้"
+                    else "The local model replied in the wrong language. Please try again or use a stronger instruct model."
+                } else draft
             }
+            work.check()
             db.addMessage("user", text)
             db.addMessage("assistant", answer, model.name)
             JSONObject().put("ok", true).put("reply", answer).put("model", model.name)
         } finally { AiForegroundService.working = false }
-    }
+    } }
 }

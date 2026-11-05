@@ -12,8 +12,9 @@ android {
         manifestPlaceholders["appLabel"] = "Local AI Linux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.22.0-lightweight-agent-learning"
+        testInstrumentationRunner = "com.localai.controller.RuntimeSmokeInstrumentation"
+        versionCode = 25
+        versionName = "0.25.0-desktop-lifecycle-preview"
         ndk { abiFilters += "arm64-v8a" }
     }
 
@@ -57,6 +58,7 @@ android {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation("androidx.core:core:1.16.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("dev.ffmpegkit-maintained:llama-android:0.1.1")

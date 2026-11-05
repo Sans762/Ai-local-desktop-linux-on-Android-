@@ -1,6 +1,8 @@
 name: Build Android Native APK
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
 
@@ -44,7 +46,7 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [[ -n "$SIGNING_KEYSTORE_BASE64" && -n "$SIGNING_STORE_PASSWORD" && -n "$SIGNING_KEY_ALIAS" && -n "$SIGNING_KEY_PASSWORD" ]]; then
+          if [[ "$GITHUB_EVENT_NAME" != pull_request && -n "$SIGNING_KEYSTORE_BASE64" && -n "$SIGNING_STORE_PASSWORD" && -n "$SIGNING_KEY_ALIAS" && -n "$SIGNING_KEY_PASSWORD" ]]; then
             printf '%s' "$SIGNING_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/localai-release.jks"
             chmod 600 "$RUNNER_TEMP/localai-release.jks"
             echo "AI_RELEASE_KEYSTORE=$RUNNER_TEMP/localai-release.jks" >> "$GITHUB_ENV"
@@ -81,6 +83,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          gradle --no-daemon --stacktrace :app:testDebugUnitTest
           if [[ "$AI_APK_KIND" == release ]]; then
             gradle --no-daemon --stacktrace :app:assembleRelease
             echo "AI_APK=app/build/outputs/apk/release/app-release.apk" >> "$GITHUB_ENV"
@@ -117,14 +120,6 @@ jobs:
           else
             "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging "$APK" | grep "package: name='com.localai.linuxagent.desktop.test.v014'"
           fi
-      - name: Upload owner-signed APK
-        uses: actions/upload-artifact@v4
-        if: success() && env.AI_APK_KIND == 'release'
-        with:
-          name: LocalAI-LinuxDesktop-owner-signed-APK
-          path: ${{ env.AI_APK }}
-          if-no-files-found: error
-
       - name: Reject accidental APK signing-key rotation
         if: env.AI_APK_KIND == 'release'
         shell: bash
@@ -132,27 +127,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # A new certificate would create installation failures, even if the
-          # package name and version code remain correct. Compare with the
-          # most recent *owner-signed* published APK, never old debug builds.
+          # Check the actual APK before ANY download artifact is exposed.
+          # Pin the production ID and public owner certificate, then require a
+          # versionCode increase over the most recent owner-signed release.
           PREVIOUS_URL="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq             '[.[].assets[]? | select(.name | test("^LocalAI-LinuxDesktop-v[0-9]+[.][0-9]+-signed-ARM64[.]apk$")) | .browser_download_url][0] // empty')"
           if [[ -z "$PREVIOUS_URL" ]]; then
-            echo "No earlier owner-signed APK; first signed release uses this key."
-          else
-            curl --fail --location --silent --show-error --retry 3 --max-time 120               "$PREVIOUS_URL" -o "$RUNNER_TEMP/previous-release.apk"
-            APKSIGNER="$ANDROID_HOME/build-tools/36.0.0/apksigner"
-            "$APKSIGNER" verify "$RUNNER_TEMP/previous-release.apk"
-            PREVIOUS_CERT="$("$APKSIGNER" verify --print-certs "$RUNNER_TEMP/previous-release.apk" |
-              awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}')"
-            CURRENT_CERT="$("$APKSIGNER" verify --print-certs "$AI_APK" |
-              awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ {print $2; exit}')"
-            test -n "$PREVIOUS_CERT" && test -n "$CURRENT_CERT"
-            if [[ "$PREVIOUS_CERT" != "$CURRENT_CERT" ]]; then
-              echo "::error::Signing certificate changed; publishing would break in-place Android updates."
-              exit 1
-            fi
-            echo "Verified: same signing certificate as last published signed APK."
+            echo "::error::No owner-signed baseline found; update compatibility cannot be verified."
+            exit 1
           fi
+          curl --fail --location --silent --show-error --retry 3 --max-time 120 \
+            "$PREVIOUS_URL" -o "$RUNNER_TEMP/previous-release.apk"
+          python3 tools/verify-release-update.py --sdk "$ANDROID_HOME" \
+            --previous "$RUNNER_TEMP/previous-release.apk" --candidate "$AI_APK" \
+            | tee "$RUNNER_TEMP/release-update-check.json"
+      - name: Upload owner-signed APK
+        uses: actions/upload-artifact@v4
+        if: success() && env.AI_APK_KIND == 'release'
+        with:
+          name: LocalAI-LinuxDesktop-owner-signed-APK
+          path: ${{ env.AI_APK }}
+          if-no-files-found: error
       - name: Publish direct-download standalone APK
         if: github.ref == 'refs/heads/main' && env.AI_APK_KIND == 'release'
         env:

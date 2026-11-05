@@ -71,9 +71,20 @@ class MainActivity : Activity() {
     private var terminalStopButton: TextView? = null
     private val ui = Handler(Looper.getMainLooper())
     private val desktopLinuxAgent by lazy {
-        LinuxAgent(this, imports, ChatDatabase(this))
+        LinuxAgent(this, imports, ChatDatabase(this), checkpointChannel = "desktop")
     }
     private var desktopAiBusy = false
+    private var shellHeader: View? = null
+    private var shellBottom: View? = null
+    private var stopAiButton: TextView? = null
+    private var stopLinuxButton: TextView? = null
+    private val stopStatusTicker = object : Runnable {
+        override fun run() {
+            if (isFinishing || isDestroyed) return
+            refreshChip()
+            ui.postDelayed(this, 650L)
+        }
+    }
 
     private val bg = Color.rgb(7, 12, 26)
     private val card = Color.rgb(18, 26, 49)
@@ -285,6 +296,7 @@ class MainActivity : Activity() {
             setPadding(dp(12), dp(6), dp(12), dp(6))
         }
         mainColumn.addView(header, LinearLayout.LayoutParams(-1, -2))
+        shellHeader = header
         val logo = label("✦", 19f, true).apply {
             gravity = Gravity.CENTER
             background = gradient(12)
@@ -303,6 +315,14 @@ class MainActivity : Activity() {
             background = panel(cardDeep, 12)
         }
         header.addView(serviceChip)
+        stopAiButton = actionButton("■ AI") { stopAiWork() }.apply {
+            textSize = 11f; minHeight = dp(38); setPadding(dp(8), dp(5), dp(8), dp(5))
+            contentDescription = "หยุดงานและบริการ AI"
+        }.also { header.addView(it) }
+        stopLinuxButton = actionButton("■ Linux") { stopLinuxDesktop() }.apply {
+            textSize = 11f; minHeight = dp(38); setPadding(dp(8), dp(5), dp(8), dp(5))
+            contentDescription = "หยุด Linux Desktop"
+        }.also { header.addView(it) }
 
         screenHost = FrameLayout(this).apply { setBackgroundColor(bg) }
         mainColumn.addView(screenHost, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -319,6 +339,7 @@ class MainActivity : Activity() {
             rightMargin = dp(7)
             bottomMargin = dp(4)
         })
+        shellBottom = bottom
         fun item(title: String, action: () -> Unit): TextView =
             actionButton(title, onClick = action).apply {
                 textSize = if (compactScreen()) 10.5f else 11.5f
@@ -348,6 +369,11 @@ class MainActivity : Activity() {
     }
 
     private fun refreshChip() {
+        stopAiButton?.visibility = if (AiForegroundService.running || AgentWork.active) View.VISIBLE else View.GONE
+        stopLinuxButton?.visibility = if (LinuxDesktopService.running || LinuxDesktopService.installing) View.VISIBLE else View.GONE
+        if (LinuxInstallService.running) stopLinuxButton?.visibility = View.VISIBLE
+        serviceChip.visibility = if (AiForegroundService.running || AgentWork.active ||
+            LinuxDesktopService.running || LinuxDesktopService.installing || LinuxInstallService.running) View.GONE else View.VISIBLE
         val active = AiForegroundService.running
         serviceChip.text = if (active) "● AI เปิดอยู่" else "● AI ปิดอยู่"
         serviceChip.contentDescription = if (active) "AI service active" else "AI service stopped"
@@ -365,6 +391,12 @@ class MainActivity : Activity() {
             tabBeforeDesktop = currentTab
         }
         currentTab = target
+        shellHeader?.visibility = if (target == "desktop") View.GONE else View.VISIBLE
+        shellBottom?.visibility = if (target == "desktop") View.GONE else View.VISIBLE
+        val systemBars = androidx.core.view.WindowInsetsCompat.Type.systemBars()
+        val barController = androidx.core.view.WindowCompat.getInsetsController(window, mainColumn)
+        barController.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        if (target == "desktop") barController.hide(systemBars) else barController.show(systemBars)
         refreshChip()
         homeTab.background = if (target == "home") gradient(14) else panel(cardDeep, 14)
         workspaceTab.background = if (target == "workspace") gradient(14) else panel(cardDeep, 14)
@@ -517,140 +549,172 @@ class MainActivity : Activity() {
             screenHost.addView(outer, FrameLayout.LayoutParams(-1, -1))
             return
         }
-        // Keep the Linux desktop as the main content; commands use the native
-        // on-device LinuxAgent, never an unprotected JavaScript bridge.
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(5), 0, dp(5), dp(5))
-        }
+        // The Linux viewer fills the app. AI opens only when its bubble is tapped.
+        val root = FrameLayout(this)
         screenHost.addView(root, FrameLayout.LayoutParams(-1, -1))
         val desktop = desktopWebView ?: createWebView().also { desktopWebView = it }
         (desktop.parent as? ViewGroup)?.removeView(desktop)
-        root.addView(desktop, LinearLayout.LayoutParams(-1, 0, 1f))
-
-        val aiRow = LinearLayout(this).apply {
+        root.addView(desktop, FrameLayout.LayoutParams(-1, -1))
+        val toolbar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(6), 0, 0)
+            background = panel(cardDeep, 12)
         }
-        root.addView(aiRow, LinearLayout.LayoutParams(-1, -2))
-        val taskInput = field("สั่ง AI ให้ทำอะไรใน Linux…").apply {
-            textSize = 14f
-            setSingleLine(true)
-            minHeight = dp(45)
-            setPadding(dp(11), dp(10), dp(11), dp(10))
-        }
-        aiRow.addView(taskInput, LinearLayout.LayoutParams(0, -2, 1f))
-        lateinit var send: TextView
-        send = actionButton(if (desktopAiBusy) "กำลังคิด…" else "✦ สั่ง AI", true) {
-            val task = taskInput.text.toString().trim()
-            if (task.isBlank()) {
-                notifyUser("พิมพ์งานที่ต้องการให้ AI ทำ")
-            } else if (desktopAiBusy) {
-                notifyUser("AI กำลังทำงานก่อนหน้าอยู่")
-            } else if (imports.modelFile() == null) {
-                notifyUser("ติดตั้งโมเดล AI ก่อน")
-                openSetting("ai")
-            } else {
-                val keyboardManager = getSystemService(INPUT_METHOD_SERVICE)
-                    as android.view.inputmethod.InputMethodManager
-                keyboardManager.hideSoftInputFromWindow(taskInput.windowToken, 0)
-                taskInput.clearFocus()
-                requestDesktopAiPlan(task, send)
-            }
-        }.apply {
-            textSize = 12f
-            minHeight = dp(45)
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-        }
-        aiRow.addView(send, LinearLayout.LayoutParams(-2, -2).apply {
-            leftMargin = dp(6)
+        toolbar.addView(actionButton("‹") { showTab(tabBeforeDesktop) }.apply {
+            contentDescription = "กลับหน้าแอป"; minHeight = dp(36)
         })
+        toolbar.addView(actionButton("■ AI") { stopAiWork() }.apply {
+            textSize = 11f; minHeight = dp(36); contentDescription = "หยุดงาน AI"
+        })
+        toolbar.addView(actionButton("■ Linux") { stopLinuxDesktop() }.apply {
+            textSize = 11f; minHeight = dp(36); contentDescription = "หยุด Linux Desktop"
+        })
+        root.addView(toolbar, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(43); leftMargin = dp(5)
+        })
+        val aiPanel = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = panel(card, 18)
+            setPadding(dp(10), dp(8), dp(10), dp(10))
+            visibility = View.GONE
+        }
+        val taskInput = field("ให้ AI ช่วยอะไรใน Linux…").apply {
+            textSize = 14f; minHeight = dp(45); maxLines = 3
+        }
+        aiPanel.addView(taskInput, LinearLayout.LayoutParams(-1, -2))
+        lateinit var send: TextView
+        send = actionButton(if (desktopAiBusy) "กำลังทำงาน…" else "✦ สั่ง AI", true) {
+            val request = taskInput.text.toString().trim()
+            when {
+                request.isBlank() -> notifyUser("พิมพ์งานที่ต้องการให้ AI ทำ")
+                desktopAiBusy -> notifyUser("AI กำลังทำงานก่อนหน้าอยู่")
+                imports.modelFile() == null -> openSetting("ai")
+                else -> {
+                    val keyboard = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                    keyboard.hideSoftInputFromWindow(taskInput.windowToken, 0)
+                    taskInput.clearFocus()
+                    requestDesktopAiPlan(request, send)
+                }
+            }
+        }.apply { minHeight = dp(42) }
+        aiPanel.addView(send, LinearLayout.LayoutParams(-1, -2))
+        val recoveredTask = desktopLinuxAgent.status()
+        if (recoveredTask.optBoolean("recoverable")) {
+            aiPanel.addView(label("งานค้าง: " + recoveredTask.optString("taskRequest").take(100),
+                12f, false, sub))
+            addButton(aiPanel, "ตรวจงานค้างและทำต่อ") {
+                runDesktopAi(send, "กำลังตรวจงานค้าง…", {
+                    desktopLinuxAgent.continueTask(recoveredTask.optString("taskId"))
+                }) { showDesktopProposal(it, send) }
+            }
+        }
+        root.addView(aiPanel, FrameLayout.LayoutParams(
+            minOf(dp(360), resources.displayMetrics.widthPixels - dp(20)), -2,
+            Gravity.BOTTOM or Gravity.END).apply { bottomMargin = dp(62); rightMargin = dp(8) })
+        root.addView(actionButton("✦") {
+            aiPanel.visibility = if (aiPanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }.apply { contentDescription = "เปิดหรือซ่อนผู้ช่วย AI"; textSize = 23f; background = gradient(26) },
+            FrameLayout.LayoutParams(dp(52), dp(52), Gravity.BOTTOM or Gravity.END).apply {
+                bottomMargin = dp(7); rightMargin = dp(8)
+            })
         if (desktop.url == null || !desktop.url.orEmpty().startsWith("http://127.0.0.1:6080/")) {
             desktop.loadUrl("http://127.0.0.1:6080/")
         } else desktop.reload()
     }
 
-    private fun requestDesktopAiPlan(task: String, send: TextView) {
+    private fun stopAiWork() {
+        AgentWork.cancelAll()
+        stopService(Intent(this, AiForegroundService::class.java))
+        refreshChip()
+        notifyUser(if (AgentWork.stopping) "ยกเลิกงานแล้ว · กำลังคืนหน่วยความจำ AI" else "หยุด AI แล้ว")
+    }
+
+    private fun stopLinuxDesktop() {
+        AgentWork.cancelAll()
+        terminalCommandThread?.interrupt()
+        stopService(Intent(this, LinuxDesktopService::class.java))
+        stopService(Intent(this, LinuxInstallService::class.java))
+        if (currentTab == "desktop") showTab("home") else refreshChip()
+        notifyUser("กำลังหยุด Linux")
+    }
+
+    private fun runDesktopAi(send: TextView, caption: String,
+                             operation: suspend () -> JSONObject, done: (JSONObject) -> Unit) {
         if (desktopAiBusy) return
         desktopAiBusy = true
         send.isEnabled = false
-        send.text = "กำลังคิด…"
+        send.text = caption
         Thread({
-            val proposal = try {
-                kotlinx.coroutines.runBlocking { desktopLinuxAgent.propose(task) }
-            } catch (e: Exception) {
-                JSONObject().put("ok", false).put("error",
-                    e.message?.take(250) ?: "AI ไม่สามารถวางแผนได้")
-            }
+            val result = try { kotlinx.coroutines.runBlocking { operation() } }
+            catch (e: Exception) { JSONObject().put("ok", false).put("error",
+                if (e is java.util.concurrent.CancellationException) "TASK_CANCELLED"
+                else e.message?.take(250) ?: "AI ทำงานไม่ได้") }
             ui.post {
                 desktopAiBusy = false
                 send.isEnabled = true
                 send.text = "✦ สั่ง AI"
                 if (isFinishing || isDestroyed) return@post
-                if (!proposal.optBoolean("ok", false)) {
-                    val reason = when (proposal.optString("error")) {
-                        "INSTALL_QWEN_GGUF_FIRST" -> "ยังไม่ได้ติดตั้งโมเดล GGUF"
+                if (!result.optBoolean("ok")) {
+                    val reason = when (result.optString("error")) {
+                        "TASK_CANCELLED" -> "ยกเลิกงานแล้ว"
                         "LOW_RAM_FOR_MODEL" -> "หน่วยความจำเหลือไม่พอสำหรับโมเดล"
-                        else -> proposal.optString("error", "ไม่สามารถวางแผนได้")
+                        "TASK_BUDGET_EXHAUSTED" -> "ครบขีดจำกัดของงานแล้ว กรุณาสั่งงานใหม่"
+                        else -> result.optString("error", "ไม่สามารถทำงานได้")
                     }
-                    android.app.AlertDialog.Builder(this)
-                        .setTitle("AI ยังทำงานไม่ได้")
-                        .setMessage(reason.take(350))
-                        .setPositiveButton("ปิด", null).show()
-                    return@post
-                }
-                val commands = proposal.optJSONArray("commands") ?: return@post
-                val planId = proposal.optString("planId")
-                val preview = buildString {
-                    append(proposal.optString("summary").take(250))
-                    for (i in 0 until commands.length()) {
-                        append("\n\n").append(i + 1).append(". ")
-                        append(commands.optString(i).take(700))
-                    }
-                }
-                android.app.AlertDialog.Builder(this)
-                    .setTitle("AI เสนอคำสั่ง Linux")
-                    .setMessage(preview)
-                    .setNegativeButton("ยกเลิก", null)
-                    .setPositiveButton("อนุมัติและทำ") { _, _ ->
-                        executeDesktopAiPlan(planId, send)
-                    }.show()
+                    notifyUser(reason)
+                } else done(result)
             }
-        }, "linux-ai-plan-native").apply { isDaemon = true; start() }
+        }, "linux-ai-native").apply { isDaemon = true; start() }
+    }
+
+    private fun requestDesktopAiPlan(task: String, send: TextView) {
+        runDesktopAi(send, "กำลังคิด…", { desktopLinuxAgent.propose(task) }) {
+            showDesktopProposal(it, send)
+        }
+    }
+
+    private fun showDesktopProposal(proposal: JSONObject, send: TextView) {
+        if (proposal.optBoolean("needsInput")) {
+            android.app.AlertDialog.Builder(this).setTitle("AI ขอข้อมูลเพิ่ม")
+                .setMessage(proposal.optString("question")).setPositiveButton("ปิด", null).show()
+            return
+        }
+        val planId = proposal.optString("planId")
+        val commands = proposal.optJSONArray("commands") ?: return
+        val checks = proposal.optJSONArray("checks")
+        val preview = buildString {
+            append(proposal.optString("summary").take(250))
+            for (i in 0 until commands.length()) append("\n\n${i + 1}. ").append(commands.optString(i))
+            if (checks != null) for (i in 0 until checks.length()) {
+                val item = checks.getJSONObject(i)
+                append("\n\nตรวจไฟล์: ").append(item.optString("path"))
+                if (!item.isNull("contains")) append("\nข้อความที่ต้องพบ: ").append(item.optString("contains"))
+            }
+        }
+        android.app.AlertDialog.Builder(this).setTitle("ตรวจแผนก่อนเริ่ม")
+            .setMessage(preview)
+            .setNegativeButton("ยกเลิก") { _, _ ->
+                Thread { kotlinx.coroutines.runBlocking { desktopLinuxAgent.discard(planId) } }.start()
+            }
+            .setPositiveButton("อนุมัติและทำ") { _, _ -> executeDesktopAiPlan(planId, send) }.show()
     }
 
     private fun executeDesktopAiPlan(planId: String, send: TextView) {
-        if (desktopAiBusy) return
-        desktopAiBusy = true
-        send.isEnabled = false
-        send.text = "กำลังทำ…"
-        Thread({
-            val result = try {
-                kotlinx.coroutines.runBlocking { desktopLinuxAgent.execute(planId) }
-            } catch (e: Exception) {
-                JSONObject().put("ok", false)
-                    .put("error", e.message?.take(300) ?: "รันคำสั่งไม่ได้")
+        runDesktopAi(send, "กำลังทำ…", { desktopLinuxAgent.execute(planId) }) { result ->
+            val results = result.optJSONArray("results")
+            val output = if (results != null && results.length() > 0)
+                results.optJSONObject(results.length() - 1)?.optString("output").orEmpty() else ""
+            val dialog = android.app.AlertDialog.Builder(this)
+                .setTitle(if (result.optBoolean("verified")) "ตรวจไฟล์ผ่านแล้ว" else "ผลการทำงาน")
+                .setMessage(result.optString("message") + "\n\n" + output.takeLast(950))
+                .setNegativeButton("ปิด", null)
+            if (result.optBoolean("canContinue")) dialog.setPositiveButton("ตรวจผลและทำต่อ") { _, _ ->
+                runDesktopAi(send, "กำลังตรวจผล…", {
+                    desktopLinuxAgent.continueTask(result.optString("taskId"))
+                }) { showDesktopProposal(it, send) }
             }
-            ui.post {
-                desktopAiBusy = false
-                send.isEnabled = true
-                send.text = "✦ สั่ง AI"
-                if (isFinishing || isDestroyed) return@post
-                val successful = result.optBoolean("ok", false) &&
-                    result.optBoolean("completed", false)
-                val last = result.optJSONArray("results")
-                val output = if (last != null && last.length() > 0)
-                    last.optJSONObject(last.length() - 1)?.optString("output", "").orEmpty()
-                else result.optString("error")
-                android.app.AlertDialog.Builder(this)
-                    .setTitle(if (successful) "AI ทำงานเสร็จ" else "งานยังไม่สำเร็จ")
-                    .setMessage((result.optString("summary") +
-                        if (output.isBlank()) "" else "\n\n" + output.takeLast(950)).trim())
-                    .setPositiveButton("ปิด", null)
-                    .show()
-            }
-        }, "linux-ai-execute-native").apply { isDaemon = true; start() }
+            dialog.show()
+        }
     }
 
     /** Keep a failed localhost WebView from becoming a blank browser error screen. */
@@ -1675,6 +1739,8 @@ class MainActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        ui.removeCallbacks(stopStatusTicker)
+        ui.post(stopStatusTicker)
         if (::serviceChip.isInitialized) refreshChip()
         if (!AutoUpdateScheduler.enabled(this)) return
         AutoUpdateScheduler.sync(this)
@@ -1739,7 +1805,13 @@ class MainActivity : Activity() {
         navigateBackWithinApp()
     }
 
+    override fun onPause() {
+        ui.removeCallbacks(stopStatusTicker)
+        super.onPause()
+    }
+
     override fun onDestroy() {
+        if (desktopAiBusy) AgentWork.cancelAll()
         terminalCommandThread?.interrupt()
         terminalCommandThread = null
         terminalOutputView = null

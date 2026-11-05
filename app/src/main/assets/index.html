@@ -65,7 +65,7 @@
         <div class="composer">
           <div class="composer-inner">
             <div class="input-area"><textarea id="message" rows="2" placeholder="พิมพ์ข้อความถึง AI…" maxlength="3500" aria-label="ข้อความถึง AI"></textarea><button id="send" class="send" type="button" aria-label="ส่งข้อความ"><span>➤</span></button></div>
-            <div class="composer-meta"><span id="chatHint">กำลังตรวจความพร้อม AI…</span><span>ออฟไลน์ <i class="tiny-dot"></i></span></div>
+            <div class="composer-meta"><span id="chatHint">กำลังตรวจความพร้อม AI…</span><button id="linuxResume" type="button" class="text-button" hidden>ทำงานค้างต่อ</button><button id="aiStop" type="button" class="text-button" hidden>■ หยุด AI</button><span>ออฟไลน์ <i class="tiny-dot"></i></span></div>
           </div>
         </div>
       </section>
@@ -89,6 +89,8 @@
               <div class="action-row"><button id="linuxExecute" class="primary" type="button">✓ อนุมัติและรันใน Linux</button><button id="linuxCancel" class="subtle" type="button">ยกเลิก</button></div>
             </div>
           </div>
+          <p id="linuxTaskResult" aria-live="polite"></p>
+          <button id="linuxContinue" class="subtle" type="button" hidden>ตรวจผลและทำต่อ</button>
           <details class="surface advanced-console"><summary>＋  เครื่องมือขั้นสูง (Terminal)</summary>
             <div class="advanced-console-content">
             <p id="linuxReady" class="field-label">ตรวจสถานะ Alpine…</p>

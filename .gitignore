@@ -1,0 +1,10 @@
+.gradle/
+.kotlin/
+**/build/
+local.properties
+__pycache__/
+*.pyc
+*.log
+app/src/main/assets/alpine-rootfs.bundle
+app/src/main/assets/novnc/
+app/src/main/jniLibs/

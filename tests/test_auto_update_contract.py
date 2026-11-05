@@ -23,8 +23,8 @@ assert 'TAG="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}-linux-desktop"' in workflow
 assert 'ASSET="LocalAI-LinuxDesktop-v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}-signed-ARM64.apk"' in workflow
 assert 'gh release create "$TAG" "$ASSET"' in workflow
 assert "Reject accidental APK signing-key rotation" in workflow
-assert "Signing certificate changed; publishing would break in-place Android updates." in workflow
-assert '"$PREVIOUS_CERT" != "$CURRENT_CERT"' in workflow
+assert 'python3 tools/verify-release-update.py --sdk "$ANDROID_HOME"' in workflow
+assert workflow.index("Reject accidental APK signing-key rotation") < workflow.index("Upload owner-signed APK")
 assert 'gh release create v0.18-linux-desktop' not in workflow
 
 assert 'AutoUpdateJobService' in manifest and 'android.permission.BIND_JOB_SERVICE' in manifest

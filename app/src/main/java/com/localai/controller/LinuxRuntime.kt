@@ -137,6 +137,7 @@ class LinuxRuntime(private val context: Context) {
             }
             // Create symlinks only after regular-file extraction to block symlink traversal.
             for ((target, link) in links) {
+                if (Thread.currentThread().isInterrupted) error("Linux installation interrupted")
                 if (target.exists()) continue
                 require(link.isNotBlank() && !link.contains('\u0000')) { "Bad symlink target" }
                 target.parentFile?.mkdirs()
@@ -147,6 +148,7 @@ class LinuxRuntime(private val context: Context) {
             File(staging, "tmp").mkdirs()
             val resolv = File(staging, "etc/resolv.conf")
             if (!resolv.exists()) resolv.writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\n")
+            if (Thread.currentThread().isInterrupted) error("Linux installation interrupted")
             if (rootfs.exists()) error("Existing Linux path detected; refusing to overwrite")
             require(staging.renameTo(rootfs)) { "Cannot activate Linux filesystem" }
             progress("Linux installed · Alpine 3.23 ARM64")
@@ -182,21 +184,26 @@ class LinuxRuntime(private val context: Context) {
     }
 
     /** Local-only, one-shot Linux console command, not exposed on the remote HTTP API. */
-    fun command(command: String, timeoutSeconds: Long = 35, onOutput: ((String) -> Unit)? = null): String {
+    fun command(command: String, timeoutSeconds: Long = 35, work: AgentWork.Ticket? = null,
+                onOutput: ((String) -> Unit)? = null): String {
         // Serialize local apk transactions, including commands from the
         // terminal and AI agent, while the package installer is running.
         val writesPackages = Regex("""(?m)(^|[;&|])\s*apk\s+(?:--[\w-]+\s+)*(?:add|del|fix|upgrade|update)\b""")
             .containsMatchIn(command)
-        if (!writesPackages) return runCommand(command, timeoutSeconds, onOutput)
+        work?.check()
+        if (!writesPackages) return runCommand(command, timeoutSeconds, work, onOutput)
         try {
             apkWriterLock.lockInterruptibly()
-            return runCommand(command, timeoutSeconds, onOutput)
+            work?.check()
+            return runCommand(command, timeoutSeconds, work, onOutput)
         } finally {
             if (apkWriterLock.isHeldByCurrentThread) apkWriterLock.unlock()
         }
     }
 
-    private fun runCommand(command: String, timeoutSeconds: Long, onOutput: ((String) -> Unit)?): String {
+    private fun runCommand(command: String, timeoutSeconds: Long, work: AgentWork.Ticket?,
+                           onOutput: ((String) -> Unit)?): String {
+        work?.check()
         require(installed() && binariesPresent()) { "Install Linux from Control Center first" }
         require(command.length in 1..1000) { "Command must have 1–1000 characters" }
         val cmd = listOf(proot.absolutePath, "-0", "-r", rootfs.absolutePath,
@@ -211,6 +218,7 @@ class LinuxRuntime(private val context: Context) {
             put("TERM", "xterm-256color")
         }
         val process = builder.start()
+        work?.attach(process)
         val output = StringBuilder()
         val reader = Thread {
             try {
@@ -224,21 +232,25 @@ class LinuxRuntime(private val context: Context) {
                 }
             } catch (_: Exception) { }
         }.apply { isDaemon = true; start() }
-        val finished = try {
-            process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+        try {
+            val finished = process.waitFor(timeoutSeconds, TimeUnit.SECONDS)
+            if (!finished) {
+                process.destroyForcibly()
+                process.waitFor(2, TimeUnit.SECONDS)
+            }
+            reader.join(2000)
+            work?.check()
+            val result = synchronized(output) { output.toString() }
+            return result.take(128_000) + if (finished) "\n[exit ${process.exitValue()}]" else "\n[timeout: process stopped]"
         } catch (e: InterruptedException) {
-            process.destroyForcibly()
-            reader.interrupt()
             Thread.currentThread().interrupt()
             throw IllegalStateException("Linux command cancelled", e)
+        } finally {
+            if (process.isAlive) process.destroyForcibly()
+            work?.detach(process)
+            try { process.inputStream.close() } catch (_: Exception) { }
+            reader.interrupt()
         }
-        if (!finished) {
-            process.destroyForcibly()
-            process.waitFor(2, TimeUnit.SECONDS)
-        }
-        reader.join(2000)
-        val result = synchronized(output) { output.toString() }
-        return result.take(128_000) + if (finished) "\n[exit ${process.exitValue()}]" else "\n[timeout: process stopped]"
     }
 
     /**
@@ -275,7 +287,43 @@ class LinuxRuntime(private val context: Context) {
             put("TERM", "xterm-256color")
             putAll(extraEnv)
         }
-        return builder.start()
+        // Keep each desktop launcher and its children in a private process group.
+        // Killing only the PRoot tracer can leave Xvnc listening after Stop.
+        if (Thread.currentThread().isInterrupted) throw InterruptedException("Desktop startup cancelled")
+        val pidFile = File.createTempFile("desktop-session-", ".pid", dir)
+        builder.command(listOf("/system/bin/setsid", "-w", "/system/bin/sh", "-c",
+            "printf '%s' \"\$\$\" > \"\$1\" || exit 125; shift; exec \"\$@\"", "localai-desktop",
+            pidFile.absolutePath) + argv)
+        val process = try { builder.start() } catch (failure: Throwable) {
+            pidFile.delete()
+            throw failure
+        }
+        var interrupted = Thread.interrupted()
+        try {
+            var groupId: Int? = null
+            repeat(300) {
+                if (groupId == null) {
+                    groupId = pidFile.readText().trim().toIntOrNull()
+                    if (groupId == null && process.isAlive) {
+                        try { Thread.sleep(10) }
+                        catch (_: InterruptedException) { interrupted = true }
+                    }
+                }
+            }
+            val id = groupId ?: error("Desktop launcher did not report its process group")
+            require(id > 1 && id != android.os.Process.myPid()) { "Invalid desktop process group" }
+            return DesktopSessionProcess(process, id)
+        } catch (failure: Throwable) {
+            val id = try { pidFile.readText().trim().toIntOrNull() } catch (_: Exception) { null }
+            if (id != null && id > 1 && id != android.os.Process.myPid()) {
+                try { Os.kill(-id, android.system.OsConstants.SIGKILL) } catch (_: Exception) { }
+            }
+            process.destroyForcibly()
+            throw failure
+        } finally {
+            pidFile.delete()
+            if (interrupted) Thread.currentThread().interrupt()
+        }
     }
 
     /** Read only the final 8 KiB of a process log. */
@@ -300,4 +348,33 @@ class LinuxRuntime(private val context: Context) {
         timeoutSeconds = 25
     )
 
+}
+
+/** Owns only the isolated process group created for one desktop launcher. */
+private class DesktopSessionProcess(
+    private val delegate: Process,
+    private val groupId: Int
+) : Process() {
+    override fun getInputStream(): java.io.InputStream = delegate.inputStream
+    override fun getErrorStream(): java.io.InputStream = delegate.errorStream
+    override fun getOutputStream(): java.io.OutputStream = delegate.outputStream
+    override fun waitFor(): Int = delegate.waitFor()
+    override fun waitFor(timeout: Long, unit: TimeUnit): Boolean = delegate.waitFor(timeout, unit)
+    override fun exitValue(): Int = delegate.exitValue()
+    override fun isAlive(): Boolean = delegate.isAlive
+    private fun signalGroup(signal: Int) {
+        try { Os.kill(-groupId, signal) }
+        catch (failure: android.system.ErrnoException) {
+            if (failure.errno != android.system.OsConstants.ESRCH) throw failure
+        }
+    }
+    override fun destroy() {
+        signalGroup(android.system.OsConstants.SIGTERM)
+        delegate.destroy()
+    }
+    override fun destroyForcibly(): Process {
+        signalGroup(android.system.OsConstants.SIGKILL)
+        delegate.destroyForcibly()
+        return this
+    }
 }

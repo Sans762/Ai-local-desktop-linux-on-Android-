@@ -113,7 +113,7 @@ agent = (root / "java/com/localai/controller/LinuxAgent.kt").read_text()
 assistant = (root / "java/com/localai/controller/NativeAgent.kt").read_text()
 assert "xdotool getactivewindow getwindowname" in agent
 assert "xdotool getmouselocation --shell" in agent
-assert "readVisibleText()" in agent, "Visual OCR observation needs to be available"
+assert "readVisibleText(work)" in agent, "OCR must share the task cancellation signal"
 assert "visionInstalled(context)" in agent
 assert "guiVerified" in agent, "Do not claim pixel verification just from command exit"
 assert "db.rememberLinuxSuccess(plan.summary, plan.task)" in agent

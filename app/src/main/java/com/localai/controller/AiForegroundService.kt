@@ -62,6 +62,7 @@ class AiForegroundService : Service() {
     }
 
     override fun onDestroy() {
+        AgentWork.cancelAll()
         running = false
         http?.close()
         http = null

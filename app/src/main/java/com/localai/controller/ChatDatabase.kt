@@ -66,7 +66,7 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "native-memory.
             sensitive.containsMatchIn(request) || sensitive.containsMatchIn(note)) return
         val cap = if (tag == "agent:success") MAX_SUCCEEDED else MAX_FAILED
         val value = if (tag == "agent:success")
-            "Linux command exited 0 · Task: $request · Result: $note"
+            "Linux file checks passed · Task: $request · Result: $note"
         else "Linux command failed · Task: $request · Category: $note"
         val now = System.currentTimeMillis() / 1000.0
         val db = writableDatabase
@@ -87,7 +87,7 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "native-memory.
             db.execSQL(
                 "DELETE FROM memory WHERE tags=? AND id NOT IN (" +
                     "SELECT id FROM memory WHERE tags=? ORDER BY ts DESC, id DESC LIMIT ?)",
-                arrayOf(tag, tag, cap)
+                arrayOf<Any>(tag, tag, cap)
             )
             db.setTransactionSuccessful()
         } finally {
@@ -96,8 +96,8 @@ class ChatDatabase(context: Context) : SQLiteOpenHelper(context, "native-memory.
     }
 
     @Synchronized fun rememberLinuxSuccess(summary: String, task: String = summary) {
-        // A zero exit status proves only command completion; GUI outcomes are
-        // handled separately and must never be labeled visually verified.
+        // Called only after explicit, approved file checks pass. This is not
+        // proof of a GUI outcome, and does not train or modify model weights.
         recordAgentLesson(task, summary, "agent:success")
     }
 
