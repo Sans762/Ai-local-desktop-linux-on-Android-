@@ -18,13 +18,13 @@ android {
   applicationId = "dev.mikeki.vbclassicxl"
   minSdk = 36
   targetSdk = 36
-  versionCode = 4
-  versionName = "0.5.4"
+  versionCode = 5
+  versionName = "0.5.5"
  }
 }
 """,encoding="utf-8")
 strings={
-"app_name":"VitalWear Live Game Face",
+"app_name":"VB Game Live 0.5.5",
 "accent_label":"Accent Color",
 "pet_size_label":"Partner Size",
 "stats_label":"HUD Detail",
