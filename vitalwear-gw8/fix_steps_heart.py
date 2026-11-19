@@ -184,6 +184,7 @@ class PassiveStepsService:PassiveListenerService() {
     }
 }
 ''')
+edit("app/build.gradle.kts", 'minSdk = 28', 'minSdk = 30')
 edit("app/build.gradle.kts",'    implementation(libs.androidx.lifecycle.service)',
 '    implementation(libs.androidx.lifecycle.service)\n    implementation("androidx.health:health-services-client:1.1.0")')
 edit("app/src/main/AndroidManifest.xml",
