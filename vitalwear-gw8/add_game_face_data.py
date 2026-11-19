@@ -43,7 +43,7 @@ class NAMEComplicationService:ComplicationDataSourceService() {
 }
 '''
 write(a+"complications/StepsComplicationService.kt",base.replace("NAME","Steps").replace("VALUE","app.stepService.dailySteps.value.toString()").replace("DESCRIPTION",'"Digimon daily steps"'))
-write(a+"complications/HeartComplicationService.kt",base.replace("NAME","Heart").replace("VALUE","app.heartRateService.lastHeartRate.value.let { if(it>0) it.toString() else \\"--\\" }").replace("DESCRIPTION",'"Heart BPM (most recent reading)"'))
+write(a+"complications/HeartComplicationService.kt",base.replace("NAME","Heart").replace("VALUE","app.heartRateService.lastHeartRate.value.let { if(it>0) it.toString() else \"--\" }").replace("DESCRIPTION",'"Heart BPM (most recent reading)"'))
 
 # Existing partner bitmap comes straight from active character's actual imported sprites.
 # Remove FLAG_ONE_SHOT which was preventing repeated face tap -> game.
