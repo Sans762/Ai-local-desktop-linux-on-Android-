@@ -196,7 +196,7 @@ edit("app/src/main/AndroidManifest.xml",
 '    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />',
 '    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" android:maxSdkVersion="35" />')
 edit("app/src/main/AndroidManifest.xml",
-'        <service android:name=".training.TrainingForegroundService"',
+'        <service\n            android:name=".training.TrainingForegroundService"',
 '        <service android:name=".steps.PassiveStepsService" android:exported="true" android:permission="com.google.android.wearable.healthservices.permission.PASSIVE_DATA_BINDING" />\n        <activity android:name=".heartrate.SensorDiagnosticsActivity" android:exported="false" />\n        <service android:name=".training.TrainingForegroundService"')
 
 edit(a+"main/MainActivity.kt",
