@@ -64,10 +64,10 @@ def slot(slotId,code,x,y,w,h,service,typ,desc,custom="FALSE"):
    {code}
  </ComplicationSlot>'''
 partner=slot(1,'''<Complication type="SMALL_IMAGE">
-      <PartImage x="0" y="0" width="267" height="224">
+      <PartImage x="91" y="126" width="267" height="224">
         <Image resource="[COMPLICATION.SMALL_IMAGE]"/>
       </PartImage>
-   </Complication>''',91,126,267,224,"PartnerComplicationService","SMALL_IMAGE","Partner",custom="FALSE")
+   </Complication>''',0,0,450,450,"PartnerComplicationService","SMALL_IMAGE","Partner",custom="FALSE")
 def textslot(i,x,service,typ):
  # Each complication supplies a PendingIntent that launches the actual game.
  return slot(i,f'''<Complication type="{typ}">
