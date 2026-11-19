@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: vitalwear-gw8-build
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -53,6 +56,7 @@ jobs:
           python vitalwear-gw8/confirm_nfc_before_ack.py VitalWear
           python vitalwear-gw8/add_nfc_tap_battle.py VitalWear
           python vitalwear-gw8/add_nfc_contract_tests.py VitalWear
+          python vitalwear-gw8/add_real_vb_menu.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
           python vitalwear-gw8/make_face_custom_full.py
