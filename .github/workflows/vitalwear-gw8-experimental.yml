@@ -44,6 +44,9 @@ jobs:
           python vitalwear-gw8/add_game_face_data.py VitalWear
           python vitalwear-gw8/add_live_background.py VitalWear
           python vitalwear-gw8/add_all_menu_bezel.py VitalWear
+          python vitalwear-gw8/real_game_ui.py VitalWear
+          python vitalwear-gw8/fix_vbhelper_return.py VitalWear
+          python vitalwear-gw8/confirm_nfc_before_ack.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
           python vitalwear-gw8/make_face_custom_full.py
