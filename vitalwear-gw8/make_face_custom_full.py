@@ -32,7 +32,8 @@ strings={
 "scene_label":"Scene Contrast",
 }
 for k,v in {"cyan":"VB Cyan","green":"VB Green","blue":"BE Blue","purple":"Violet","red":"Crimson","white":"Mono","gold":"Golden","mint":"Mint","orange":"Sunset","pink":"Rose"}.items():strings["color_"+k]=v
-for k,v in {"small":"Small","medium":"Medium","large":"Large","all":"All stats","fitness":"Fitness","minimal":"Clean","low":"Clear scene","medium":"Soft shade","high":"High contrast","compact":"Compact","regular":"Regular","giant":"Extra Large"}.items():strings["opt_"+k]=v
+strings["opt_soft"]="Soft shade"
+for k,v in {"small":"Small","medium":"Medium","large":"Large","all":"All stats","fitness":"Fitness","minimal":"Clean","low":"Clear scene","high":"High contrast","compact":"Compact","regular":"Regular","giant":"Extra Large"}.items():strings["opt_"+k]=v
 from xml.sax.saxutils import escape
 (values/"strings.xml").write_text("<resources>\n"+"\n".join(' <string name="'+k+'">'+escape(v)+'</string>' for k,v in strings.items())+"\n</resources>",encoding="utf-8")
 game="dev.mikeki.vitalwear.gw8/com.github.cfogrady.vitalwear.complications."
@@ -91,7 +92,7 @@ settings=f'''<UserConfigurations>
  </ListConfiguration>
  <ListConfiguration id="contrast" displayName="scene_label" defaultValue="medium">
   <ListOption id="low" displayName="opt_low"/>
-  <ListOption id="medium" displayName="opt_medium"/>
+  <ListOption id="medium" displayName="opt_soft"/>
   <ListOption id="high" displayName="opt_high"/>
  </ListConfiguration>
 </UserConfigurations>'''
