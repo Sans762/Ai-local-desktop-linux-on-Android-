@@ -122,7 +122,7 @@ object PetSfx {
         val prefs=context.getSharedPreferences("digivice_sfx", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("enabled", true)) return
         val hour=Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        if (prefs.getBoolean("quiet_hours",true) && (hour>=22 || hour<7)) return
+        if (prefs.getBoolean("quiet_hours",false) && (hour>=22 || hour<7)) return
         preload(context)
         val id=sampleIds[res] ?: return
         if (loaded.contains(id)) {
