@@ -1,0 +1,66 @@
+name: VitalWear Galaxy Watch 8 experimental APKs
+on:
+  push:
+    branches:
+      - experimental/vitalwear-gw8-build
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Android build platforms
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "platforms;android-36" "build-tools;35.0.0"
+      - name: Source checkout
+        run: |
+          git clone --depth 1 https://github.com/457R0/VitalWear.git VitalWear
+          git clone --depth 1 --branch java8 https://github.com/cfogrady/VB-DIM-Reader.git VB-DIM-Reader-2.0.0
+      - name: Prepare required VB-DIM-Reader library
+        run: |
+          cd VB-DIM-Reader-2.0.0
+          chmod +x gradlew
+          ./gradlew clean jar --no-daemon --stacktrace
+          mkdir -p build/libs
+          find build/libs -type f -name '*.jar' -print
+          cp "$(find build/libs -type f -name '*.jar' ! -name '*sources*' | head -1)" build/libs/VB-DIM-Reader.jar
+      - name: Patch standalone experiment
+        run: |
+          python vitalwear-gw8/patch_project.py VitalWear
+          python -m pip install --quiet pillow
+          python vitalwear-gw8/make_face.py
+      - name: Build watch and phone experimental APKs
+        run: |
+          cd VitalWear
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug :companion:assembleDebug --no-daemon --stacktrace
+      - name: Build WFF VB Classic XL face APK
+        run: |
+          cd VBClassicXLFace
+          ../VitalWear/gradlew assembleDebug --no-daemon --stacktrace
+      - name: Collect and inspect outputs
+        run: |
+          mkdir -p outputs
+          cp VitalWear/app/build/outputs/apk/debug/*.apk outputs/VitalWear-GW8-Watch-EXPERIMENT.apk
+          cp VitalWear/companion/build/outputs/apk/debug/*.apk outputs/VitalWear-GW8-Phone-EXPERIMENT.apk
+          cp VBClassicXLFace/build/outputs/apk/debug/*.apk outputs/VBClassicXL-Face-EXPERIMENT.apk
+          for a in outputs/*.apk; do
+            echo "$a"
+            unzip -t "$a" | tail -2
+            sha256sum "$a"
+          done
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: VitalWear-GW8-Experimental-APKs
+          path: outputs/*.apk
+          retention-days: 30
