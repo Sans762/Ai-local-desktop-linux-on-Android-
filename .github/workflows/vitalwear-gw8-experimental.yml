@@ -50,6 +50,20 @@ jobs:
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
           python vitalwear-gw8/make_face_custom_full.py
+      - name: Validate actual WFF 4 XML against Google's schema
+        run: |
+          python -m pip install --quiet lxml
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/google/watchface.git /tmp/google-watchface
+          git -C /tmp/google-watchface sparse-checkout set third_party/wff/specification/documents
+          python - <<'PY'
+          from lxml import etree
+          xsd="/tmp/google-watchface/third_party/wff/specification/documents/4/watchface.xsd"
+          path="VBClassicXLFace/src/main/res/raw/watchface.xml"
+          schema=etree.XMLSchema(etree.parse(xsd))
+          doc=etree.parse(path)
+          schema.assertValid(doc)
+          print("WFF4 XML VALIDATED:",path)
+          PY
       - name: Build WFF VB Classic XL face APK
         run: |
           cd VBClassicXLFace
