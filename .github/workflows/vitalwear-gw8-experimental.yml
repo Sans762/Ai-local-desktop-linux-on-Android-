@@ -49,7 +49,6 @@ jobs:
           cd VBClassicXLFace
           ../VitalWear/gradlew assembleDebug --no-daemon --stacktrace
       - name: Build watch and phone experimental APKs
-        continue-on-error: true
         run: |
           cd VitalWear
           chmod +x gradlew
@@ -61,6 +60,9 @@ jobs:
           if test -f VitalWear/app/build/outputs/apk/debug/app-debug.apk; then cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-GW8-Watch-EXPERIMENT.apk; fi
           if test -f VitalWear/companion/build/outputs/apk/debug/companion-debug.apk; then cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-GW8-Phone-EXPERIMENT.apk; fi
           if test -f VBClassicXLFace/build/outputs/apk/debug/VBClassicXLFace-debug.apk; then cp VBClassicXLFace/build/outputs/apk/debug/VBClassicXLFace-debug.apk outputs/VBClassicXL-Face-EXPERIMENT.apk; fi
+          test -f outputs/VitalWear-GW8-Watch-EXPERIMENT.apk
+          test -f outputs/VitalWear-GW8-Phone-EXPERIMENT.apk
+          test -f outputs/VBClassicXL-Face-EXPERIMENT.apk
           for a in outputs/*.apk; do
             test -f "$a" || continue
             echo "$a"
