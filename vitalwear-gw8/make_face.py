@@ -119,7 +119,14 @@ def frame(i):
         rect(22,136,43,151,dark);rect(83,130,105,145,dark)
     else:
         rect(22,130,43,145,dark);rect(83,136,105,151,dark)
-    return im.convert("P",palette=Image.Palette.ADAPTIVE,colors=32)
+    # Zoom the character to fill most of the central VB-style game panel,
+    # then translate horizontally inside the 246 x 230 animation canvas.
+    crop=im.crop((x-18,y-18,x+133,y+156))
+    zoom=crop.resize((190,208),Image.Resampling.NEAREST)
+    canvas=Image.new("RGBA",(W,H),(18,45,61,255))
+    offset=6+(i if i<9 else 16-i)*6
+    canvas.alpha_composite(zoom,(offset,10))
+    return canvas.convert("P",palette=Image.Palette.ADAPTIVE,colors=64)
 frames=[frame(i) for i in range(16)]
 frames[0].save(root/"src/main/res/drawable/pet_walk.gif",save_all=True,append_images=frames[1:],duration=210,loop=0,disposal=2,optimize=False)
 frames[0].convert("RGBA").save(root/"src/main/res/drawable/pet_idle.png")
