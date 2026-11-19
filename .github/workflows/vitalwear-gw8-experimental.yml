@@ -38,6 +38,8 @@ jobs:
         run: |
           python vitalwear-gw8/patch_project.py VitalWear
           python vitalwear-gw8/fix_direct_import.py VitalWear
+          python vitalwear-gw8/fix_steps_heart.py VitalWear
+          python vitalwear-gw8/add_sensor_screen.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_face.py
       - name: Build WFF VB Classic XL face APK
