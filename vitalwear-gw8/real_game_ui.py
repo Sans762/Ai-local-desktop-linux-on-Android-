@@ -55,8 +55,7 @@ replace("main/MainScreen.kt",
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.unit.dp''')
+import androidx.compose.foundation.shape.RoundedCornerShape''')
 # Change actual Partner screen: retain game scene+sprites, update layout and stat chips.
 replace("character/PartnerScreen.kt",
 '''import androidx.compose.foundation.layout.fillMaxWidth''',
