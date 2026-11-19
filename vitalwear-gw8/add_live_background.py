@@ -101,7 +101,6 @@ patch(p,
         // Character switching and evolution in CharacterManager trigger this:
         // refresh all partner-linked face data, not only its vital number.
         refreshActivePartnerComplication()
-        refreshGameBackgroundComplication()
 ''')
 # Start & return to the app updates the game scene and active partner.
 p=app+"main/MainActivity.kt"
@@ -138,4 +137,17 @@ import kotlinx.coroutines.flow.collect''')
 # Only update during active use on each sprite frame, not once per 500 ms when the face is not active.
 patch(app+"complications/ComplicationRefreshService.kt",
 '''handler.postDelayed(this, 500)''','''handler.postDelayed(this, 2200)''')
+# Refresh the real partner sprite immediately after evolution and removal.
+patch(app+"character/CharacterManagerImpl.kt",
+'''        activeCharacterFlow.value = transformedCharacter
+        vbUpdater.setupTransformationChecker(transformedCharacter)''',
+'''        activeCharacterFlow.value = transformedCharacter
+        complicationRefreshService.refreshActivePartnerComplication()
+        vbUpdater.setupTransformationChecker(transformedCharacter)''')
+patch(app+"character/CharacterManagerImpl.kt",
+'''            deleteCharacter(activeCharacter.characterStats.id)
+            activeCharacterFlow.update {''',
+'''            deleteCharacter(activeCharacter.characterStats.id)
+            complicationRefreshService.refreshActivePartnerComplication()
+            activeCharacterFlow.update {''')
 print("COMPLETE game background photo source + partner and scene update on game state changes")
