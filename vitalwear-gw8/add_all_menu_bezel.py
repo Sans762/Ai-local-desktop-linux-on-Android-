@@ -63,6 +63,8 @@ for rel,old in files.items():
  if count<1:raise RuntimeError(f"Couldn't find pager in {p}")
  # all these files already import Modifier, and have composable scope.
  s=s.replace("import androidx.compose.ui.Modifier","import androidx.compose.ui.Modifier\nimport com.github.cfogrady.vitalwear.composable.util.vbBezelPager",1)
+ if "import androidx.compose.foundation.layout.fillMaxSize" not in s:
+  s=s.replace("import androidx.compose.ui.Modifier", "import androidx.compose.foundation.layout.fillMaxSize\nimport androidx.compose.ui.Modifier", 1)
  replacement="VerticalPager(modifier = Modifier.fillMaxSize().vbBezelPager(pagerState), state = pagerState)"
  s=s.replace(old,replacement)
  p.write_text(s,encoding="utf-8")
