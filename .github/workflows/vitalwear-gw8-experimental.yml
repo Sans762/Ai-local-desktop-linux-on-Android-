@@ -42,8 +42,11 @@ jobs:
           python vitalwear-gw8/add_sensor_screen.py VitalWear
           python vitalwear-gw8/add_vb_ux_sound.py VitalWear
           python vitalwear-gw8/add_game_face_data.py VitalWear
+          python vitalwear-gw8/add_live_background.py VitalWear
+          python vitalwear-gw8/add_all_menu_bezel.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
+          python vitalwear-gw8/make_face_custom_full.py
       - name: Build WFF VB Classic XL face APK
         run: |
           cd VBClassicXLFace
