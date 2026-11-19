@@ -135,9 +135,18 @@ xml=f'''<?xml version="1.0" encoding="utf-8"?>
   {stat(21,52,350,110,42,"VitalsComplicationService","RANGED_VALUE")}
   {stat(22,166,350,110,42,"StepsComplicationService","SHORT_TEXT")}
   {stat(23,285,350,108,42,"HeartComplicationService","SHORT_TEXT")}
-  <PartText x="52" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">VITALS</Font></Text></PartText>
-  <PartText x="166" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">STEPS</Font></Text></PartText>
-  <PartText x="285" y="397" width="108" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">BPM</Font></Text></PartText>
+  <ListConfiguration id="stats">
+    <ListOption id="all">
+      <PartText x="52" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">VITALS</Font></Text></PartText>
+      <PartText x="166" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">STEPS</Font></Text></PartText>
+      <PartText x="285" y="397" width="108" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">BPM</Font></Text></PartText>
+    </ListOption>
+    <ListOption id="fitness">
+      <PartText x="52" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">VITALS</Font></Text></PartText>
+      <PartText x="166" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">STEPS</Font></Text></PartText>
+    </ListOption>
+    <ListOption id="minimal"></ListOption>
+  </ListConfiguration>
 </Scene>
 </WatchFace>'''
 ET.fromstring(xml)
