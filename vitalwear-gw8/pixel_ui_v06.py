@@ -428,7 +428,7 @@ fun SelectSendOrReceive(onSelect:(SendOrReceive)->Unit={}) {
 }
 '''+s[end:]
 if 'import androidx.compose.foundation.layout.Spacer' not in s:
-    s=s.replace('import androidx.compose.foundation.layout.offset','import androidx.compose.foundation.layout.offset\nimport androidx.compose.foundation.layout.Spacer\nimport androidx.compose.foundation.layout.padding\nimport androidx.compose.foundation.layout.fillMaxWidth')
+    s=s.replace('import androidx.compose.foundation.layout.offset','import androidx.compose.foundation.layout.offset\nimport androidx.compose.foundation.layout.Spacer\nimport androidx.compose.foundation.layout.height\nimport androidx.compose.foundation.layout.padding\nimport androidx.compose.foundation.layout.fillMaxWidth')
 if 'import androidx.compose.ui.unit.dp' not in s:s=s.replace('import androidx.compose.ui.unit.Dp','import androidx.compose.ui.unit.Dp\nimport androidx.compose.ui.unit.dp')
 p.write_text(s,encoding="utf-8");print("PIXEL TRANSFER MENU",transfer)
 print("PIXEL HOME / MENU / CONNECT COMPLETE")
