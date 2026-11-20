@@ -17,7 +17,9 @@ for module in ("app", "companion"):
     new='''compileOnly(files("libs/VB-DIM-Reader.jar"))
     // The original java8 DIM jar calls org.slf4j.LoggerFactory in its static
     // initializer. Missing runtime dependency crashed the Watch immediately.
-    implementation("org.slf4j:slf4j-api:1.7.36")'''
+    implementation("org.slf4j:slf4j-api:1.7.36")
+    implementation("at.favre.lib:bytes:1.5.0")
+    implementation("commons-io:commons-io:2.11.0")'''
     if src.count(old)!=1: raise RuntimeError(f"{module}: missing DIM reader compileOnly")
     src=src.replace(old,new)
     for a,b in [("versionCode = 82","versionCode = 83"),
