@@ -7,6 +7,6 @@ for module in ("app","companion"):
     s=p.read_text(encoding="utf-8-sig")
     if s.count("versionCode = 56")!=1:raise RuntimeError("version code changed for "+module)
     if s.count('versionName = "0.5.6-NFCBattle"')!=1:raise RuntimeError("version name changed for "+module)
-    p.write_text(s.replace("versionCode = 56","versionCode = 60").replace(
-        'versionName = "0.5.6-NFCBattle"','versionName = "0.6.0-Pixel"'),encoding="utf-8")
-print("Game and phone version 0.6.0 / versionCode 60")
+    p.write_text(s.replace("versionCode = 56","versionCode = 61").replace(
+        'versionName = "0.5.6-NFCBattle"','versionName = "0.6.1-Compact"'),encoding="utf-8")
+print("Game and phone version 0.6.1 / versionCode 61")
