@@ -51,7 +51,7 @@ s=s.replace(needle,'''                // No finish(): user can still play with g
         }
     }''')
 main.write_text(s,encoding="utf-8")
-manifest=main.parents[3]/"AndroidManifest.xml"
+manifest=Path(sys.argv[1] if len(sys.argv)>1 else "VitalWear")/"app/src/main/AndroidManifest.xml"
 m=manifest.read_text(encoding="utf-8")
 needle='''    <uses-permission android:name="android.permission.BODY_SENSORS_BACKGROUND" />'''
 if m.count(needle)!=1:raise RuntimeError("Body Sensors Background manifest changed")
