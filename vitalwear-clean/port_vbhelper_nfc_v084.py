@@ -102,6 +102,38 @@ edit(transfer,
         super.onDestroy()
     }''')
 
+# Foreground VitalWear main game also needs explicit NFC AID ownership.
+# Multiple installed VitalWear variants advertise the same AID. Without this,
+# Android can route VBHelper's NFC transfer to an older/incorrect game instance
+# even when the user is looking at the clean game. Only set while visible.
+main_activity=f"{app}/main/MainActivity.kt"
+edit(main_activity, "import android.os.Bundle\n",
+    "import android.os.Bundle\nimport android.content.ComponentName\nimport android.nfc.NfcAdapter\nimport android.nfc.cardemulation.CardEmulation\nimport com.github.cfogrady.vitalwear.transfer.hce.VitalWearHostApduService\n")
+edit(main_activity, '''    override fun onStart() {
+''', '''    override fun onResume() {
+        super.onResume()
+        runCatching {
+            val adapter=NfcAdapter.getDefaultAdapter(this) ?: return@runCatching
+            val component=ComponentName(this,VitalWearHostApduService::class.java)
+            if(!CardEmulation.getInstance(adapter).setPreferredService(this,component)) {
+                Timber.w("VitalWear NFC HCE preference was not granted")
+            }
+        }.onFailure {
+            Timber.w(it,"Unable to prefer VitalWear NFC service")
+        }
+    }
+
+    override fun onPause() {
+        runCatching {
+            val adapter=NfcAdapter.getDefaultAdapter(this) ?: return@runCatching
+            CardEmulation.getInstance(adapter).unsetPreferredService(this)
+        }
+        super.onPause()
+    }
+
+    override fun onStart() {
+''')
+
 # Original clean HeartRateService StateFlow<Int?> (null before first reading).
 # Fork TransferActivity expected Int, so avoid displaying/storing fake BPM.
 edit(transfer,
