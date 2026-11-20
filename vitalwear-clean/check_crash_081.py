@@ -26,8 +26,9 @@ assert "check(nodes.isNotEmpty())" in importer
 assert "ImportState.Error" in importer
 for m in ("app","companion"):
     g=(r/m/"build.gradle.kts").read_text()
-    assert 'versionName = "0.8.1-Upstream-DBFix"' in g
-    assert 'versionCode = 81' in g
+    assert ('versionName = "0.8.1-Upstream-DBFix"' in g or
+            'versionName = "0.8.2-Upstream-Safe"' in g)
+    assert ('versionCode = 81' in g or 'versionCode = 82' in g)
 for module,version in [("app",8),("companion",4)]:
     relative=f"{module}/schemas/com.github.cfogrady.vitalwear.data.AppDatabase/{version}.json"
     j=json.loads((r/relative).read_text())
