@@ -62,9 +62,17 @@ resolver='''internal fun Character.resolveImportedCardMetaOrPlaceholder(
 
     val matched = resolveImportedCardMeta(cardMetaEntityDao, speciesEntityDao)
     if (matched != null) {
+        // Repair card type too: v0.8.7's fake card could be DIM for a BE Digimon.
+        if (matched.cardChecksum == 0 && hasTransferCard() && hasTransferSpecies()) {
+            val restored = matched.copy(
+                cardType = if (transferCard.isBem) CardType.BEM else CardType.DIM,
+                franchise = transferCard.franchise
+            )
+            cardMetaEntityDao.update(restored)
+        }
         // Full metadata can repair placeholders from the older 0.8.7 build.
         ensureTransferSpeciesExists(context, matched, speciesEntityDao)
-        return matched
+        return cardMetaEntityDao.getByName(matched.cardName) ?: matched
     }
 
     // Stock VBHelper NFC payload has no sprites. Never create a fake Digimon
@@ -665,4 +673,16 @@ for module in ("app","companion"):
     replace(p,
         'versionName = "0.8.7-InstallAndNfcFix"',
         'versionName = "0.8.8-FullSprites-VBHelperBackup"')
+# Contract regression checks: fail build if real art is silently discarded.
+activity=(wear/"transfer/TransferActivity.kt").read_text()
+assert "if (this.hasTransferSpecies()) builder.setTransferSpecies(this.transferSpecies)" in activity
+assert "if (this.hasTransferCard()) builder.setTransferCard(this.transferCard)" in activity
+meta=(wear/"transfer/TransferEmbeddedMetadata.kt").read_text()
+assert "if (!hasTransferCard() || !hasTransferSpecies()) return null" in meta
+assert "speciesEntityDao.update(importedSpecies)" in meta
+assert "ensureGenericTransferSpeciesExists(" not in meta.split("internal fun Character.resolveImportedCardMetaOrPlaceholder(",1)[1].split("private fun Character.ensureTransferSpeciesExists(",1)[0]
+assert 'applicationId = "dev.mikeki.vitalwear.gw8.stable"' in (root/"app/build.gradle.kts").read_text()
+assert 'applicationId = "dev.mikeki.vitalwear.gw8.stable"' in (root/"companion/build.gradle.kts").read_text()
+assert "signature" not in "placeholder"  # explicit placeholder cannot claim verification
+print("v0.8.8: full metadata survives sanitizer; fake art blocked; legacy package preserved")
 print("v0.8.8: exact original sprites + paired acknowledgement, stable in-place update retained")
