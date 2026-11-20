@@ -34,8 +34,11 @@ edit("companion/build.gradle.kts", 'applicationIdSuffix = ".debug"',
 # Upstream uses a third-party DIM reader. Bundle compiled local Java8-branch
 # library in build rather than requiring an unavailable Maven publication.
 for module in ("app","common","companion"):
+    # Common owns runtime packaging. App & phone require compile symbols only;
+    # packing the same local jar in all three creates a duplicate dex class.
+    dependency=("implementation" if module=="common" else "compileOnly")
     edit(f"{module}/build.gradle.kts",'implementation(libs.dim.reader)',
-         'implementation(files("libs/VB-DIM-Reader.jar"))')
+         f'{dependency}(files("libs/VB-DIM-Reader.jar"))')
     
 # Remove all physical-bracelet NFC validation from import route. We import
 # user-supplied, parsable DIM/BEM image data directly to the paired watch.
