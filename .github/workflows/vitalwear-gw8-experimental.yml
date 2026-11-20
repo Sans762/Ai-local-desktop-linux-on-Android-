@@ -64,8 +64,8 @@ jobs:
           python vitalwear-gw8/bump_pixel_v06.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
-          python vitalwear-gw8/make_face_custom_full.py
           python vitalwear-gw8/prepare_face_pixel_v06.py
+          python vitalwear-gw8/make_face_custom_full.py
       - name: Validate WFF4 with official Google validator
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/google/watchface.git /tmp/google-watchface
@@ -73,7 +73,12 @@ jobs:
           cd /tmp/google-watchface/third_party/wff
           chmod +x gradlew
           ./gradlew :specification:validator:executable-jar --no-daemon
-          java -jar specification/validator/build/libs/wff-validator.jar 4 "$GITHUB_WORKSPACE/VBClassicXLFace/src/main/res/raw/watchface.xml"
+          set -o pipefail
+          java -jar specification/validator/build/libs/wff-validator.jar 4 "$GITHUB_WORKSPACE/VBClassicXLFace/src/main/res/raw/watchface.xml" 2>&1 | tee /tmp/wff-validation.log
+          if grep -E "SEVERE|ERROR:" /tmp/wff-validation.log; then
+            echo "Watch Face Format schema validation failed"
+            exit 1
+          fi
       - name: Build WFF VB Classic XL face APK
         run: |
           cd VBClassicXLFace
