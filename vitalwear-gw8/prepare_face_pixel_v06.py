@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+"""Add pixel-stat HUD panels to the real evolving Digimon watch face.
+Values remain sourced from game's Complications (never sample values).
+"""
+from pathlib import Path
+p=Path("vitalwear-gw8/make_face_custom_full.py")
+s=p.read_text(encoding="utf-8-sig")
+s=s.replace("versionCode = 6","versionCode = 7").replace('versionName = "0.5.6"','versionName = "0.6.0"')
+needle='''  <!-- These are sourced from the game. No fake static numbers. -->
+  {stat(21,52,350,110,42,"VitalsComplicationService","RANGED_VALUE")}'''
+box='''  <!-- Pixel HUD chips; transparent live game scenery underneath. -->
+  <PartDraw x="0" y="0" width="450" height="450">
+    <Rectangle x="45" y="344" width="118" height="80"><Fill color="#D9091930"/></Rectangle>
+    <Rectangle x="166" y="344" width="112" height="80"><Fill color="#D9091930"/></Rectangle>
+    <Rectangle x="282" y="344" width="112" height="80"><Fill color="#D9091930"/></Rectangle>
+    <Rectangle x="45" y="344" width="118" height="4"><Fill color="[CONFIGURATION.accent.0]"/></Rectangle>
+    <Rectangle x="166" y="344" width="112" height="4"><Fill color="[CONFIGURATION.accent.0]"/></Rectangle>
+    <Rectangle x="282" y="344" width="112" height="4"><Fill color="[CONFIGURATION.accent.0]"/></Rectangle>
+  </PartDraw>
+  <!-- These are sourced from the game. No fake static numbers. -->
+  {stat(21,52,350,110,42,"VitalsComplicationService","RANGED_VALUE")}'''
+if s.count(needle)!=1:raise RuntimeError("face scene marker not found")
+s=s.replace(needle,box)
+# correct already-dynamic photo and partner source; avoid fake data.
+p.write_text(s,encoding="utf-8")
+print("Updated WFF watch face 0.6.0 pixel HUD")
