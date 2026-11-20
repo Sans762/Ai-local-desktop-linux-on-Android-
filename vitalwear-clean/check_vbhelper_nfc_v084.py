@@ -44,6 +44,9 @@ aid=root/"app/src/main/res/xml/vitalwear_hce_service.xml"
 assert "F0564954414C57454152" in aid.read_text()
 ET.fromstring(aid.read_text())
 ui=(root/"app/src/main/java/com/github/cfogrady/vitalwear/main/MainScreen.kt").read_text()
+main=(src/"main/MainActivity.kt").read_text()
+assert "CardEmulation.getInstance(adapter).setPreferredService" in main
+assert "CardEmulation.getInstance(adapter).unsetPreferredService(this)" in main
 assert "VerticalPager" in ui
 assert "VbMenuScreen" not in ui
 assert "VbPixelArt" not in ui
