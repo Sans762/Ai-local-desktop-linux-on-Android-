@@ -3,11 +3,12 @@ on:
   push:
     branches:
       - experimental/vitalwear-clean-upstream
+      - experimental/vitalwear-gw8-build
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: clean-vitalwear-original-${{ github.sha }}
+  group: clean-vitalwear-original-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 jobs:
   build:
@@ -23,6 +24,17 @@ jobs:
         with:
           path: ~/.android/debug.keystore
           key: vitalwear-gw8-experimental-signing-v1
+      - name: Ensure release signing key matches v0.6.7 certificate
+        if: github.ref_name == 'experimental/vitalwear-gw8-build'
+        run: |
+          test -f ~/.android/debug.keystore || { echo "Missing original signing key: cannot safely overwrite existing app"; exit 1; }
+          SHA=$(keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | sed -n 's/^.*SHA256: //p' | head -1 | tr -d ':[[:space:]]')
+          EXPECTED=5B9E77D81D9F5A5BBFA53558AFDC216F9D16EC1B81EB1631357EF75B2CEB9A8D
+          echo "Stored signing cert: $SHA"
+          if [ "$SHA" != "$EXPECTED" ]; then
+            echo "FAIL: different signing key; do not ship uninstall-and-reinstall APK"
+            exit 1
+          fi
       - name: Install Android build SDK
         run: |
           export ANDROID_HOME=/usr/local/lib/android/sdk
