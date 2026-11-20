@@ -37,6 +37,7 @@ provider=(r/"companion/src/main/res/xml/provider_paths.xml").read_text()
 assert 'name="vbhelper-export" path="vbhelper_export/"' in provider
 gradle=(r/"companion/build.gradle.kts").read_text()
 assert 'implementation(project(":protos"))' in gradle
+assert 'implementation(libs.protobuf.javalite)' in gradle
 for mod in ("app","companion"):
     src=(r/mod/"build.gradle.kts").read_text()
     assert 'versionCode = 85' in src
