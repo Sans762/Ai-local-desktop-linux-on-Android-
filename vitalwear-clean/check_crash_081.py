@@ -32,8 +32,9 @@ for m in ("app","companion"):
             'versionName = "0.8.4-Clean-VBHelper-NFC"' in g or
             'versionName = "0.8.5-Clean-VBHelper-SafeExport"' in g or
             'versionName = "0.8.6-Clean-VBHelper-ReceiveFix"' in g or
-            'versionName = "0.8.7-InstallAndNfcFix"' in g)
-    assert any(f'versionCode = {n}' in g for n in (81,82,83,84,85,86,87))
+            'versionName = "0.8.7-InstallAndNfcFix"' in g or
+            'versionName = "0.8.8-FullSprites-VBHelperBackup"' in g)
+    assert any(f'versionCode = {n}' in g for n in (81,82,83,84,85,86,87,88))
     if 'versionCode = 83' in g:
         assert 'implementation("org.slf4j:slf4j-api:1.7.36")' in g
 for module,version in [("app",8),("companion",4)]:
