@@ -1,0 +1,110 @@
+name: VitalWear 0.8.3 runtime smoke Ubuntu24
+on:
+  push:
+    branches:
+      - experimental/vitalwear-clean-upstream
+    paths:
+      - '.github/workflows/vitalwear-v083-smoke-ubuntu24.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  phone-boot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: VitalWear-v083-Clean-Paired-APKs
+          run-id: 44709631965
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: outputs
+      - name: Confirm APK exists
+        run: |
+          test -s outputs/VitalWear-Phone-Clean-v0.8.3.apk
+          unzip -t outputs/VitalWear-Phone-Clean-v0.8.3.apk | tail -2
+      - name: Enable KVM
+        run: |
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+      - name: Android 14 phone launch smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 900
+          script: |
+            set -eu
+            adb devices
+            adb install -r outputs/VitalWear-Phone-Clean-v0.8.3.apk
+            adb logcat -c
+            adb shell am start -W -n dev.mikeki.vitalwear.gw8.clean/com.github.cfogrady.vitalwear.main.MainActivity
+            sleep 10
+            adb logcat -d -v time > /tmp/vitalwear-phone-v083.log
+            if ! adb shell pidof dev.mikeki.vitalwear.gw8.clean; then
+              grep -A 60 -B 3 -E 'FATAL EXCEPTION|AndroidRuntime' /tmp/vitalwear-phone-v083.log | tail -160 || true
+              exit 1
+            fi
+            if grep -A 50 'FATAL EXCEPTION' /tmp/vitalwear-phone-v083.log | grep -q dev.mikeki.vitalwear.gw8.clean; then
+              grep -A 60 'FATAL EXCEPTION' /tmp/vitalwear-phone-v083.log | tail -160
+              exit 1
+            fi
+            echo "PASS: Phone process running for 10 seconds"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vitalwear-phone-launch-log-v083
+          path: /tmp/vitalwear-phone-v083.log
+          if-no-files-found: ignore
+  wear-boot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: VitalWear-v083-Clean-Paired-APKs
+          run-id: 44709631965
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: outputs
+      - name: Enable KVM
+        run: |
+          sudo chmod 666 /dev/kvm
+          ls -l /dev/kvm
+      - name: Wear OS launch smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: android-wear
+          arch: x86_64
+          profile: wearos_large_round
+          disable-animations: true
+          emulator-boot-timeout: 900
+          script: |
+            set -eu
+            adb devices
+            adb install -r outputs/VitalWear-Watch-Clean-v0.8.3.apk
+            adb logcat -c
+            adb shell am start -W -n dev.mikeki.vitalwear.gw8.clean/com.github.cfogrady.vitalwear.main.MainActivity
+            sleep 10
+            adb logcat -d -v time > /tmp/vitalwear-watch-v083.log
+            if ! adb shell pidof dev.mikeki.vitalwear.gw8.clean; then
+              grep -A 60 -B 3 -E 'FATAL EXCEPTION|AndroidRuntime' /tmp/vitalwear-watch-v083.log | tail -160 || true
+              exit 1
+            fi
+            if grep -A 50 'FATAL EXCEPTION' /tmp/vitalwear-watch-v083.log | grep -q dev.mikeki.vitalwear.gw8.clean; then
+              grep -A 60 'FATAL EXCEPTION' /tmp/vitalwear-watch-v083.log | tail -160
+              exit 1
+            fi
+            echo "PASS: Watch process running for 10 seconds"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vitalwear-watch-launch-log-v083
+          path: /tmp/vitalwear-watch-v083.log
+          if-no-files-found: ignore
