@@ -21,6 +21,19 @@ box='''  <!-- Pixel HUD chips; transparent live game scenery underneath. -->
   {stat(21,52,350,110,42,"VitalsComplicationService","RANGED_VALUE")}'''
 if s.count(needle)!=1:raise RuntimeError("face scene marker not found")
 s=s.replace(needle,box)
+# Correct WFF4-only syntax: list-option complicationSlotIds is WFF5-only.
+# A SINGLE partner image avoids simultaneous overlapping sprites.
+import re
+start=s.index(' <ListConfiguration id="pet_size"')
+end=s.index('</ListConfiguration>',start)+len('</ListConfiguration>')
+s=s[:start]+s[end:]
+s=re.sub(r' complicationSlotIds="[^"]*"', '', s)
+s=s.replace('  {partner(11,159,197,132,143)}\n', '')
+s=s.replace('  {partner(13,91,151,270,254)}\n', '')
+s=s.replace('"stats_label":"HUD Detail"','"stats_label":"HUD Labels"')
+s=s.replace('"all":"All stats","fitness":"Fitness","minimal":"Clean"',
+            '"all":"All Labels","fitness":"Fitness Labels","minimal":"No Labels"')
+
 # correct already-dynamic photo and partner source; avoid fake data.
 p.write_text(s,encoding="utf-8")
 print("Updated WFF watch face 0.6.0 pixel HUD")
