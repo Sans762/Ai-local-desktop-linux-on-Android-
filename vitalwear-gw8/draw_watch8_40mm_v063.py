@@ -407,4 +407,13 @@ fun PixelHome(controller:PartnerScreenController,scene:Bitmap) {
     }
 }
 ''')
-print("PIXEL-ACCURATE 438 WATCH UI SOURCE READY")
+for module in ("app", "companion"):
+    gradle=root/module/"build.gradle.kts"
+    data=gradle.read_text(encoding="utf-8-sig")
+    if data.count("versionCode = 62")!=1 or data.count('versionName = "0.6.2-Readable"')!=1:
+        raise RuntimeError("Unexpected version in "+module)
+    gradle.write_text(
+        data.replace("versionCode = 62","versionCode = 63")
+            .replace('versionName = "0.6.2-Readable"','versionName = "0.6.3-Watch8-40mm"'),
+        encoding="utf-8")
+print("PIXEL-ACCURATE 438 WATCH UI AND VERSION 0.6.3 READY")
