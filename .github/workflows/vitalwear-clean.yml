@@ -102,6 +102,7 @@ jobs:
           python3 vitalwear-clean/check_vbhelper_export_v085.py VitalWear
           python3 vitalwear-clean/fix_vbhelper_receive_v086.py VitalWear
           python3 vitalwear-clean/fix_install_signing_v087.py VitalWear
+          python3 vitalwear-clean/full_vbhelper_backup_v088.py VitalWear
       - name: Assemble original-source Wear + companion APKs
         run: |
           cd VitalWear
@@ -139,6 +140,9 @@ jobs:
       - name: Verify compiled Room schema compatibility with installed 0.6.x
         run: |
           python3 vitalwear-clean/check_crash_081.py VitalWear VitalWearForkSchema
+      - name: Verify real VBHelper backups use exact sprites, no fake substitute
+        run: |
+          python3 vitalwear-clean/check_real_vbhelper_v088.py VitalWear
       - name: Test project unit tests
         run: |
           cd VitalWear
@@ -148,23 +152,23 @@ jobs:
         run: |
           mkdir -p outputs
           if test -f VitalWear/app/build/outputs/apk/debug/app-debug.apk; then
-            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Stable-v0.8.7.apk
+            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Stable-v0.8.8.apk
           fi
           if test -f VitalWear/companion/build/outputs/apk/debug/companion-debug.apk; then
-            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Stable-v0.8.7.apk
+            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Stable-v0.8.8.apk
           fi
-          if test -f outputs/VitalWear-Watch-Stable-v0.8.7.apk; then
-            unzip -t outputs/VitalWear-Watch-Stable-v0.8.7.apk | tail -2
-            sha256sum outputs/VitalWear-Watch-Stable-v0.8.7.apk
+          if test -f outputs/VitalWear-Watch-Stable-v0.8.8.apk; then
+            unzip -t outputs/VitalWear-Watch-Stable-v0.8.8.apk | tail -2
+            sha256sum outputs/VitalWear-Watch-Stable-v0.8.8.apk
           fi
-          if test -f outputs/VitalWear-Phone-Stable-v0.8.7.apk; then
-            unzip -t outputs/VitalWear-Phone-Stable-v0.8.7.apk | tail -2
-            sha256sum outputs/VitalWear-Phone-Stable-v0.8.7.apk
+          if test -f outputs/VitalWear-Phone-Stable-v0.8.8.apk; then
+            unzip -t outputs/VitalWear-Phone-Stable-v0.8.8.apk | tail -2
+            sha256sum outputs/VitalWear-Phone-Stable-v0.8.8.apk
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: VitalWear-v087-StableInstall-NFC-APKs
+          name: VitalWear-v088-FullSprites-Stable-APKs
           path: outputs/*.apk
           retention-days: 30
 
