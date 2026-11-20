@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 p=Path(sys.argv[1] if len(sys.argv)>1 else "VitalWear")/"app/src/main/java/com/github/cfogrady/vitalwear/main/InitialScreen.kt"
 s=p.read_text(encoding="utf-8-sig")
+s=s.replace("import androidx.compose.runtime.Composable", "import androidx.compose.runtime.Composable\nimport androidx.compose.runtime.LaunchedEffect", 1)
 old='''    if(firmwareState == FirmwareManager.FirmwareState.Missing) {
         controller.activityLaunchers.firmwareLoadingLauncher.invoke()
     } else if(!characterLoadingDone || firmwareState == FirmwareManager.FirmwareState.Loading || !backgroundLoaded) {'''
