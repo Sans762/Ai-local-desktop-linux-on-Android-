@@ -66,10 +66,16 @@ jobs:
           python vitalwear-gw8/refine_vb_ui_v062.py VitalWear
           python vitalwear-gw8/draw_watch8_40mm_v063.py VitalWear
           python vitalwear-gw8/home_background_picker_v064.py VitalWear
+          python vitalwear-gw8/unified_navigation_v065.py VitalWear
+          python vitalwear-gw8/unified_hub_v065.py VitalWear
+          python vitalwear-gw8/unified_deep_v065.py VitalWear
+          python vitalwear-gw8/unified_character_v065.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
           python vitalwear-gw8/prepare_face_pixel_v06.py
           python vitalwear-gw8/make_face_custom_full.py
+          python vitalwear-gw8/face_forest_v065.py
+          python vitalwear-gw8/check_ui_unified_v065.py VitalWear VBClassicXLFace
       - name: Validate WFF4 with official Google validator
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/google/watchface.git /tmp/google-watchface
