@@ -70,6 +70,38 @@ end=s.index("        // Keep COMMIT fast on HCE:",begin)
 s=s[:begin]+s[end:]
 p.write_text(s,encoding="utf-8")
 
+# If a previous VitalWear instance is installed, both apps may advertise the
+# SAME NFC AID. While this TransferActivity is foreground, ask Android to route
+# the transfer to this clean service. Failure is non-fatal on non-NFC devices.
+edit(transfer, "import android.content.Context\n",
+    "import android.content.Context\nimport android.content.ComponentName\nimport android.nfc.NfcAdapter\nimport android.nfc.cardemulation.CardEmulation\nimport com.github.cfogrady.vitalwear.transfer.hce.VitalWearHostApduService\n")
+edit(transfer,
+'''    override fun onDestroy() {
+        VitalWearHceSessionManager.clear()
+        super.onDestroy()
+    }''',
+'''    override fun onResume() {
+        super.onResume()
+        runCatching {
+            val adapter=NfcAdapter.getDefaultAdapter(this) ?: return@runCatching
+            CardEmulation.getInstance(adapter).setPreferredService(
+                this,ComponentName(this,VitalWearHostApduService::class.java))
+        }
+    }
+
+    override fun onPause() {
+        runCatching {
+            val adapter=NfcAdapter.getDefaultAdapter(this) ?: return@runCatching
+            CardEmulation.getInstance(adapter).unsetPreferredService(this)
+        }
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        VitalWearHceSessionManager.clear()
+        super.onDestroy()
+    }''')
+
 # Original clean HeartRateService StateFlow<Int?> (null before first reading).
 # Fork TransferActivity expected Int, so avoid displaying/storing fake BPM.
 edit(transfer,
@@ -135,4 +167,70 @@ for module in ("app","companion"):
     if 'applicationId = "dev.mikeki.vitalwear.gw8.clean"' not in s:
         raise RuntimeError(f"{module}: original clean package ID not preserved")
     p.write_text(s,encoding="utf-8")
+# Deterministic, local NFC APDU contract tests (no physical VB required).
+test=root/"app/src/test/java/com/github/cfogrady/vitalwear/transfer/hce/VitalWearHceProtocolPortTest.kt"
+test.parent.mkdir(parents=True,exist_ok=True)
+test.write_text(r'''package com.github.cfogrady.vitalwear.transfer.hce
+
+import org.junit.After
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class VitalWearHceProtocolPortTest {
+    @After fun reset()=VitalWearHceSessionManager.clear()
+
+    @Test fun vbhSelectAidRecognized() {
+        val command=byteArrayOf(0x00,0xA4.toByte(),0x04,0x00,
+            VitalWearHceProtocol.AID.size.toByte())+VitalWearHceProtocol.AID
+        assertTrue(VitalWearHceProtocol.isSelectAidApdu(command))
+        assertFalse(VitalWearHceProtocol.isSelectAidApdu(
+            byteArrayOf(0x00,0xA4.toByte(),0x04,0x00,0x01,0x00)))
+    }
+
+    @Test fun vbhNegotiatesWatchToPhoneAndReadsChunks() {
+        val payload="DigimonTransfer".toByteArray()
+        VitalWearHceSessionManager.armSend(payload)
+        val info=VitalWearHceSessionManager.negotiate(
+            VitalWearHceProtocol.MODE_WATCH_TO_PHONE,4)
+        assertNotNull(info)
+        assertEquals(payload.size,info!!.payloadLength)
+        assertEquals(4,info.maxChunkSize)
+        assertArrayEquals("Digi".toByteArray(),
+            VitalWearHceSessionManager.readChunk(0,4))
+        assertArrayEquals("monT".toByteArray(),
+            VitalWearHceSessionManager.readChunk(4,4))
+    }
+
+    @Test fun vbhReceivesInOrderAndCommitsSerializedPayload() {
+        VitalWearHceSessionManager.armReceive()
+        val info=VitalWearHceSessionManager.negotiate(
+            VitalWearHceProtocol.MODE_PHONE_TO_WATCH,64)
+        assertNotNull(info)
+        assertTrue(VitalWearHceSessionManager.writeChunk(0,byteArrayOf(1,2,3)))
+        assertFalse(VitalWearHceSessionManager.writeChunk(0,byteArrayOf(9)))
+        assertTrue(VitalWearHceSessionManager.writeChunk(3,byteArrayOf(4,5)))
+        assertArrayEquals(byteArrayOf(1,2,3,4,5),
+            VitalWearHceSessionManager.takeReceivedPayload())
+    }
+
+    @Test fun shortAndExtendedApduBodiesMatch() {
+        val short=byteArrayOf(0x80.toByte(),0x30,0x00,0x00,0x03,
+            0x11,0x22,0x33)
+        val extended=byteArrayOf(0x80.toByte(),0x30,0x00,0x00,0x00,
+            0x00,0x03,0x11,0x22,0x33)
+        assertArrayEquals(byteArrayOf(0x11,0x22,0x33),
+            VitalWearHceProtocol.parseCommandData(short))
+        assertArrayEquals(VitalWearHceProtocol.parseCommandData(short),
+            VitalWearHceProtocol.parseCommandData(extended))
+        assertArrayEquals(byteArrayOf(0x90.toByte(),0x00),
+            VitalWearHceProtocol.buildResponse())
+    }
+}
+''',encoding="utf-8")
+print("PORT HCE PROTOCOL TESTS ADDED")
+
 print("PORT DONE: VBHELPER APDU + PROTO + EMBEDDED SPRITES, NO OLD UI PATCHES")
