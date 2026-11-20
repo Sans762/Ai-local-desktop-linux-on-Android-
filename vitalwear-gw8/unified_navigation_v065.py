@@ -73,6 +73,17 @@ pairs=[
 for old,new in pairs:
     if st.count(old)!=1: raise RuntimeError("MainScreen changed "+old)
     st=st.replace(old,new)
+# Hardware Back from the main menu should return Home, not exit the app.
+if "import androidx.activity.compose.BackHandler" not in st:
+    st=st.replace("import androidx.compose.foundation.focusable",
+                  "import androidx.activity.compose.BackHandler\nimport androidx.compose.foundation.focusable")
+needle="    val scope=rememberCoroutineScope()"
+if st.count(needle)!=1:raise RuntimeError("MainScreen scope changed")
+st=st.replace(needle,needle+"""
+    BackHandler(enabled=pager.currentPage>0) {
+        scope.launch { pager.animateScrollToPage(0) }
+    }
+""")
 main.write_text(st,encoding="utf-8")
 # Main menu: match approved 7 rows on first page, with additional real entries on scroll.
 men=src/"main/VbMenuScreen.kt"
