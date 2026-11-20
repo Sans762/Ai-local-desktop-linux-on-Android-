@@ -34,6 +34,8 @@ s=s.replace('"stats_label":"HUD Detail"','"stats_label":"HUD Labels"')
 s=s.replace('"all":"All stats","fitness":"Fitness","minimal":"Clean"',
             '"all":"All Labels","fitness":"Fitness Labels","minimal":"No Labels"')
 
+# WFF4 enum values are upper-case booleans for isCustomizable.
+s=s.replace('custom="false"', 'custom="FALSE"').replace('custom="true"', 'custom="TRUE"')
 # correct already-dynamic photo and partner source; avoid fake data.
 p.write_text(s,encoding="utf-8")
 print("Updated WFF watch face 0.6.0 pixel HUD")
