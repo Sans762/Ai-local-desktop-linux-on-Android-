@@ -1,0 +1,86 @@
+name: VitalWear original-source clean rebuild
+on:
+  push:
+    branches:
+      - experimental/vitalwear-clean-upstream
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: clean-vitalwear-original
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: vitalwear-gw8-experimental-signing-v1
+      - name: Install Android build SDK
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+      - name: Clone the actual upstream originals
+        run: |
+          git clone --depth 1 https://github.com/cfogrady/VitalWear.git VitalWear
+          git clone --depth 1 --branch java8 https://github.com/cfogrady/VB-DIM-Reader.git VB-DIM-Reader
+          git -C VitalWear rev-parse HEAD
+          git -C VB-DIM-Reader rev-parse HEAD
+      - name: Build DIM reader dependency
+        run: |
+          cd VB-DIM-Reader
+          chmod +x gradlew
+          ./gradlew clean jar --no-daemon
+          find build/libs -name '*.jar' -type f -print
+          mkdir -p ../VitalWear/{app,common,companion}/libs
+          JAR="$(find build/libs -type f -name '*.jar' ! -name '*sources*' | head -1)"
+          test -n "$JAR"
+          for module in app common companion; do
+            cp "$JAR" "../VitalWear/$module/libs/VB-DIM-Reader.jar"
+          done
+      - name: Patch only physical VB requirements and watch sensors
+        run: |
+          python3 vitalwear-clean/patch_original.py VitalWear
+          python3 vitalwear-clean/check_original.py VitalWear
+      - name: Assemble original-source Wear + companion APKs
+        run: |
+          cd VitalWear
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug :companion:assembleDebug --no-daemon --stacktrace
+      - name: Test project unit tests
+        run: |
+          cd VitalWear
+          ./gradlew :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Collect APKs and verify archive contents
+        if: always()
+        run: |
+          mkdir -p outputs
+          if test -f VitalWear/app/build/outputs/apk/debug/app-debug.apk; then
+            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Original-Clean.apk
+          fi
+          if test -f VitalWear/companion/build/outputs/apk/debug/companion-debug.apk; then
+            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Original-Clean.apk
+          fi
+          if test -f outputs/VitalWear-Watch-Original-Clean.apk; then
+            unzip -t outputs/VitalWear-Watch-Original-Clean.apk | tail -2
+            sha256sum outputs/VitalWear-Watch-Original-Clean.apk
+          fi
+          if test -f outputs/VitalWear-Phone-Original-Clean.apk; then
+            unzip -t outputs/VitalWear-Phone-Original-Clean.apk | tail -2
+            sha256sum outputs/VitalWear-Phone-Original-Clean.apk
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: VitalWear-original-clean-watch-phone
+          path: outputs/*.apk
+          retention-days: 30
