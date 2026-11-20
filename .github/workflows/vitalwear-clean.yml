@@ -91,6 +91,7 @@ jobs:
           python3 vitalwear-clean/fix_crash_081.py VitalWear VitalWearForkSchema
           python3 vitalwear-clean/check_crash_081.py VitalWear VitalWearForkSchema
           python3 vitalwear-clean/package_safe_v082.py VitalWear
+          python3 vitalwear-clean/fix_startup_082.py VitalWear
       - name: Assemble original-source Wear + companion APKs
         run: |
           cd VitalWear
