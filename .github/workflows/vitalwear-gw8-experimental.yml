@@ -75,6 +75,7 @@ jobs:
           python vitalwear-gw8/prepare_face_pixel_v06.py
           python vitalwear-gw8/make_face_custom_full.py
           python vitalwear-gw8/face_forest_v065.py
+          python vitalwear-gw8/video_feedback_v066.py VitalWear VBClassicXLFace
           python vitalwear-gw8/check_ui_unified_v065.py VitalWear VBClassicXLFace
       - name: Validate WFF4 with official Google validator
         run: |
