@@ -100,17 +100,21 @@ s=s[:start]+'''    /** One data page; long values switch to a second baseline, n
         centered(c,footer.take(24),349f,1.45f,MUTED)
     }
 '''+s[end:]
-# Native backdrops are drawn in the enlarged portrait area, not the old narrow clip.
-old='''        c.clipRect(113f,51f,326f,385f)
-        c.drawBitmap(scene,
-            Rect(0,0,scene.width,scene.height),
-            RectF(113f,51f,326f,385f),p)'''
-new='''        c.clipRect(85f,72f,353f,366f)
-        c.drawBitmap(scene,
-            Rect(0,0,scene.width,scene.height),
-            RectF(85f,72f,353f,366f),p)'''
-if s.count(old)!=1:raise RuntimeError("background clip changed")
-s=s.replace(old,new)
+# Reintroduce the original firmware/card-scene painter after the shared
+# details geometry rewrite; selectedBackground lived between details and battery.
+scene='''    fun selectedBackground(c:Canvas, scene:Bitmap) {
+        shell(c)
+        val p=Paint().apply {isAntiAlias=false;isFilterBitmap=false}
+        c.save()
+        c.clipRect(85f,72f,353f,366f)
+        c.drawBitmap(scene,Rect(0,0,scene.width,scene.height),
+            RectF(85f,72f,353f,366f),p)
+        c.restore()
+    }
+'''
+needle="    fun battery(c:Canvas) {"
+if s.count(needle)!=1:raise RuntimeError("battery source changed")
+s=s.replace(needle,scene+needle,1)
 p.write_text(s,encoding="utf-8")
 # When the user selects a background in Settings, use it and never draw City.
 rewrite("character/PixelHome.kt",
