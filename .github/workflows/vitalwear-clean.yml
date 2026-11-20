@@ -92,11 +92,24 @@ jobs:
           python3 vitalwear-clean/check_crash_081.py VitalWear VitalWearForkSchema
           python3 vitalwear-clean/package_safe_v082.py VitalWear
           python3 vitalwear-clean/fix_startup_082.py VitalWear
+          python3 vitalwear-clean/fix_runtime_v083.py VitalWear
       - name: Assemble original-source Wear + companion APKs
         run: |
           cd VitalWear
           chmod +x gradlew
           ./gradlew :app:assembleDebug :companion:assembleDebug --no-daemon --stacktrace
+      - name: Assert both APKs contain required SLF4J runtime classes
+        run: |
+          python3 - <<'PY'
+          import zipfile
+          for module in ("app","companion"):
+              path=f"VitalWear/{module}/build/outputs/apk/debug/{module}-debug.apk"
+              with zipfile.ZipFile(path) as z:
+                  dex=b"".join(z.read(n) for n in z.namelist() if n.endswith(".dex"))
+                  assert b"Lorg/slf4j/LoggerFactory;" in dex, f"Missing SLF4J in {path}"
+                  assert b"Lorg/slf4j/Logger;" in dex, f"Missing SLF4J Logger in {path}"
+                  print("PASS contains SLF4J classes",path)
+          PY
       - name: Verify compiled Room schema compatibility with installed 0.6.x
         run: |
           python3 vitalwear-clean/check_crash_081.py VitalWear VitalWearForkSchema
@@ -109,23 +122,23 @@ jobs:
         run: |
           mkdir -p outputs
           if test -f VitalWear/app/build/outputs/apk/debug/app-debug.apk; then
-            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Clean-v0.8.2.apk
+            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Clean-v0.8.3.apk
           fi
           if test -f VitalWear/companion/build/outputs/apk/debug/companion-debug.apk; then
-            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Clean-v0.8.2.apk
+            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Clean-v0.8.3.apk
           fi
-          if test -f outputs/VitalWear-Watch-Clean-v0.8.2.apk; then
-            unzip -t outputs/VitalWear-Watch-Clean-v0.8.2.apk | tail -2
-            sha256sum outputs/VitalWear-Watch-Clean-v0.8.2.apk
+          if test -f outputs/VitalWear-Watch-Clean-v0.8.3.apk; then
+            unzip -t outputs/VitalWear-Watch-Clean-v0.8.3.apk | tail -2
+            sha256sum outputs/VitalWear-Watch-Clean-v0.8.3.apk
           fi
-          if test -f outputs/VitalWear-Phone-Clean-v0.8.2.apk; then
-            unzip -t outputs/VitalWear-Phone-Clean-v0.8.2.apk | tail -2
-            sha256sum outputs/VitalWear-Phone-Clean-v0.8.2.apk
+          if test -f outputs/VitalWear-Phone-Clean-v0.8.3.apk; then
+            unzip -t outputs/VitalWear-Phone-Clean-v0.8.3.apk | tail -2
+            sha256sum outputs/VitalWear-Phone-Clean-v0.8.3.apk
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: VitalWear-v082-Clean-Paired-APKs
+          name: VitalWear-v083-Clean-Paired-APKs
           path: outputs/*.apk
           retention-days: 30
 
@@ -137,7 +150,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: VitalWear-v082-Clean-Paired-APKs
+          name: VitalWear-v083-Clean-Paired-APKs
           path: outputs
       - name: Enable emulator hardware acceleration
         run: |
@@ -154,7 +167,7 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            APP="$(find outputs -name 'VitalWear-Phone-Clean-v0.8.2.apk' -print -quit)"
+            APP="$(find outputs -name 'VitalWear-Phone-Clean-v0.8.3.apk' -print -quit)"
             test -s "$APP"
             adb install -r "$APP"
             adb logcat -c
@@ -181,7 +194,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: VitalWear-v082-Clean-Paired-APKs
+          name: VitalWear-v083-Clean-Paired-APKs
           path: outputs
       - name: Enable emulator hardware acceleration
         run: |
@@ -198,7 +211,7 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            APP="$(find outputs -name 'VitalWear-Watch-Clean-v0.8.2.apk' -print -quit)"
+            APP="$(find outputs -name 'VitalWear-Watch-Clean-v0.8.3.apk' -print -quit)"
             test -s "$APP"
             adb install -r "$APP"
             adb logcat -c
