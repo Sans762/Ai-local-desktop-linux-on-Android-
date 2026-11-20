@@ -62,5 +62,8 @@ fun CharacterSelection(controller:CharacterSelectionController) {
 }
 '''
 s=s[:begin]+new+s[end:]
+if "import androidx.compose.runtime.LaunchedEffect" not in s:
+    s=s.replace("import androidx.compose.runtime.Composable",
+                "import androidx.compose.runtime.Composable\\nimport androidx.compose.runtime.LaunchedEffect")
 p.write_text(s,encoding="utf-8")
 print("WORKING DIGIMON COLLECTION SELECT/SUPPORT/DELETE MENU REPLACED")
