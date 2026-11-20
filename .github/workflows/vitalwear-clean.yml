@@ -64,6 +64,8 @@ jobs:
           a=s.index("\nversioner {")
           b=s.index("\ntest {",a)
           s=s[:a]+"\n"+s[b:]
+          s=s.replace("repositories {\n    mavenCentral()\n}",
+            "repositories {\n    mavenCentral()\n    maven { url 'https://repo1.maven.org/maven2/' }\n    maven { url 'https://maven-central.storage-download.googleapis.com/maven2/' }\n}")
           p.write_text(s)
           PY
           chmod +x gradlew
