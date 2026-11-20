@@ -77,6 +77,9 @@ jobs:
           python vitalwear-gw8/face_forest_v065.py
           python vitalwear-gw8/video_feedback_v066.py VitalWear VBClassicXLFace
           python vitalwear-gw8/check_ui_unified_v065.py VitalWear VBClassicXLFace
+          python vitalwear-gw8/vb_classic_ui_v067.py VitalWear
+          python vitalwear-gw8/status_swipe_v067.py VitalWear
+          python vitalwear-gw8/check_vb_classic_v067.py VitalWear
       - name: Validate WFF4 with official Google validator
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/google/watchface.git /tmp/google-watchface
