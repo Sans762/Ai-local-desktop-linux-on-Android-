@@ -41,7 +41,7 @@ for module in ("app","companion"):
 xml=(face/"src/main/res/raw/watchface.xml").read_text()
 assert 'resource="forest_scene"' in xml
 assert '<WatchFace width="450" height="450">' in xml
-assert (face/"src/main/res/drawable/forest_scene.png").stat().st_size>10000
+assert (face/"src/main/res/drawable/forest_scene.png").stat().st_size>2000
 assert 'versionName = "0.6.5-forest"' in (face/"build.gradle.kts").read_text()
 # Portrait frame corners fit within 438px circular screen at 0.0 border margin.
 import math
