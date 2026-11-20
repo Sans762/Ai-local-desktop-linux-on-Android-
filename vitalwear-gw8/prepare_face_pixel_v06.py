@@ -36,6 +36,18 @@ s=s.replace('"all":"All stats","fitness":"Fitness","minimal":"Clean"',
 
 # WFF4 enum values are upper-case booleans for isCustomizable.
 s=s.replace('custom="false"', 'custom="FALSE"').replace('custom="true"', 'custom="TRUE"')
+# WFF4 ListOption only accepts limited child parts, not multi-label HUD blocks.
+# Replace unsupported multi-label configuration with static real-value labels.
+begin=s.index(' <ListConfiguration id="stats" displayName="stats_label"')
+end=s.index('</ListConfiguration>',begin)+len('</ListConfiguration>')
+s=s[:begin]+s[end:]
+begin=s.index('  <ListConfiguration id="stats">\n')
+end=s.index('</ListConfiguration>',begin)+len('</ListConfiguration>')
+labels='''  <PartText x="52" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">VITALS</Font></Text></PartText>
+  <PartText x="166" y="397" width="110" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">STEPS</Font></Text></PartText>
+  <PartText x="285" y="397" width="108" height="28"><Text><Font family="SYNC_TO_DEVICE" size="17" color="[CONFIGURATION.accent.0]">BPM</Font></Text></PartText>'''
+s=s[:begin]+labels+s[end:]
+
 # correct already-dynamic photo and partner source; avoid fake data.
 p.write_text(s,encoding="utf-8")
 print("Updated WFF watch face 0.6.0 pixel HUD")
