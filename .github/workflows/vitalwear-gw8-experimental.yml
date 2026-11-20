@@ -57,9 +57,13 @@ jobs:
           python vitalwear-gw8/add_nfc_tap_battle.py VitalWear
           python vitalwear-gw8/add_nfc_contract_tests.py VitalWear
           python vitalwear-gw8/add_real_vb_menu.py VitalWear
+          python vitalwear-gw8/pixel_ui_v06.py VitalWear
+          python vitalwear-gw8/fix_vbhelper_roundtrip_v06.py VitalWear
+          python vitalwear-gw8/bump_pixel_v06.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
           python vitalwear-gw8/make_face_custom_full.py
+          python vitalwear-gw8/prepare_face_pixel_v06.py
       - name: Validate WFF4 with official Google validator
         run: |
           git clone --depth 1 --filter=blob:none --sparse https://github.com/google/watchface.git /tmp/google-watchface
@@ -80,7 +84,7 @@ jobs:
       - name: Validate NFC APDU command contract
         run: |
           cd VitalWear
-          ./gradlew :app:testDebugUnitTest --tests '*NfcTapBattleProtocolTest' --no-daemon --stacktrace
+          ./gradlew :app:testDebugUnitTest --tests '*NfcTapBattleProtocolTest' --tests '*TransferImportResolutionTest' --no-daemon --stacktrace
       - name: Collect and inspect outputs
         if: always()
         run: |
