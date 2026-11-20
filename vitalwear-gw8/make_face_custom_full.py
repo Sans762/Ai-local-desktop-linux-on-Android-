@@ -64,7 +64,7 @@ def stat(id,x,y,w,h,name,kind):
   <Text><Font family="SYNC_TO_DEVICE" size="25" color="#FFFFFFFF">
    <Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template>
   </Font></Text>
- </PartText>''',"true")
+ </PartText>''',"TRUE")
 theme=[
 ("cyan","#FF58DDE3","#FFF0FCFF"),("green","#FFA8E324","#FFFFFFFF"),
 ("blue","#FF4D8BFF","#FFEAF2FF"),("purple","#FFAC80FF","#FFFCF4FF"),
