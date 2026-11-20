@@ -62,6 +62,7 @@ jobs:
           python vitalwear-gw8/fix_vbhelper_roundtrip_v06.py VitalWear
           python vitalwear-gw8/add_safe_nfc_vault_v06.py VitalWear
           python vitalwear-gw8/bump_pixel_v06.py VitalWear
+          python vitalwear-gw8/compact_inner_menus_v061.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
           python vitalwear-gw8/prepare_face_pixel_v06.py
