@@ -65,6 +65,7 @@ jobs:
           python vitalwear-gw8/compact_inner_menus_v061.py VitalWear
           python vitalwear-gw8/refine_vb_ui_v062.py VitalWear
           python vitalwear-gw8/draw_watch8_40mm_v063.py VitalWear
+          python vitalwear-gw8/home_background_picker_v064.py VitalWear
           python -m pip install --quiet pillow
           python vitalwear-gw8/make_real_face.py
           python vitalwear-gw8/prepare_face_pixel_v06.py
