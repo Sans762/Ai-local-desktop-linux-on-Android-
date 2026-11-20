@@ -58,6 +58,7 @@ jobs:
           python vitalwear-gw8/add_nfc_contract_tests.py VitalWear
           python vitalwear-gw8/add_real_vb_menu.py VitalWear
           python vitalwear-gw8/pixel_ui_v06.py VitalWear
+          python vitalwear-gw8/pixel_submenus_v06.py VitalWear
           python vitalwear-gw8/fix_vbhelper_roundtrip_v06.py VitalWear
           python vitalwear-gw8/bump_pixel_v06.py VitalWear
           python -m pip install --quiet pillow
