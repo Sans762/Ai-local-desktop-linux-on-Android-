@@ -33,6 +33,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/cfogrady/VitalWear.git VitalWear
           git clone --depth 1 --branch java8 https://github.com/cfogrady/VB-DIM-Reader.git VB-DIM-Reader
+          git clone --depth 1 https://github.com/cfogrady/nearby-connections-p2p.git NearbyP2P
           git -C VitalWear rev-parse HEAD
           git -C VB-DIM-Reader rev-parse HEAD
       - name: Build DIM reader dependency
@@ -47,6 +48,13 @@ jobs:
           for module in app common companion; do
             cp "$JAR" "../VitalWear/$module/libs/VB-DIM-Reader.jar"
           done
+      - name: Publish upstream Nearby P2P libraries locally
+        run: |
+          cd NearbyP2P
+          chmod +x gradlew
+          ./gradlew :connections:publishToMavenLocal :wear-ui:publishToMavenLocal --no-daemon --stacktrace
+          test -f ~/.m2/repository/com/github/cfogrady/nearby/connections/p2p/connections/0.1.0/connections-0.1.0.aar
+          test -f ~/.m2/repository/com/github/cfogrady/nearby/connections/p2p/wear-ui/0.1.0/wear-ui-0.1.0.aar
       - name: Patch only physical VB requirements and watch sensors
         run: |
           python3 vitalwear-clean/patch_original.py VitalWear
