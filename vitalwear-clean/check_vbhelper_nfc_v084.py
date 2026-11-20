@@ -54,9 +54,11 @@ for mod in ("app","companion"):
     g=(root/mod/"build.gradle.kts").read_text()
     assert ('versionName = "0.8.4-Clean-VBHelper-NFC"' in g or
             'versionName = "0.8.5-Clean-VBHelper-SafeExport"' in g or
-            'versionName = "0.8.6-Clean-VBHelper-ReceiveFix"' in g)
-    assert ('versionCode = 84' in g or 'versionCode = 85' in g or 'versionCode = 86' in g)
-    assert 'applicationId = "dev.mikeki.vitalwear.gw8.clean"' in g
+            'versionName = "0.8.6-Clean-VBHelper-ReceiveFix"' in g or
+            'versionName = "0.8.7-InstallAndNfcFix"' in g)
+    assert ('versionCode = 84' in g or 'versionCode = 85' in g or 'versionCode = 86' in g or 'versionCode = 87' in g)
+    assert ('applicationId = "dev.mikeki.vitalwear.gw8.clean"' in g or
+            'applicationId = "dev.mikeki.vitalwear.gw8.stable"' in g)
 assert "sharedTransferSeenDao" not in (src/"transfer/hce/VitalWearHceTransferRepository.kt").read_text()
 assert "sharedTransferSeenDao" not in (src/"transfer/TransferActivity.kt").read_text()
 print("OK VB HELPER HCE PORT CONTRACT, app data untouched")
