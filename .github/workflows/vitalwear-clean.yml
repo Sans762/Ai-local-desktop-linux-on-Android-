@@ -34,6 +34,9 @@ jobs:
           fi
           keytool -list -v -keystore "$HOME/.android/debug.keystore" \
             -storepass android -alias androiddebugkey | grep SHA256
+          # Fail closed if CI cache disappears and generates a new key.
+          keytool -list -v -keystore "$HOME/.android/debug.keystore" \
+            -storepass android -alias androiddebugkey | grep -q '5C:FF:24:65:1F:F0:64:E6:81:33:C4:85:77:C9:FB:5F:C6:21:45:C7:F8:73:CB:60:5C:9E:2F:CE:30:56:31:7E'
       - name: Install Android build SDK
         run: |
           export ANDROID_HOME=/usr/local/lib/android/sdk
@@ -98,11 +101,24 @@ jobs:
           python3 vitalwear-clean/vbhelper_export_fix_v085.py VitalWear
           python3 vitalwear-clean/check_vbhelper_export_v085.py VitalWear
           python3 vitalwear-clean/fix_vbhelper_receive_v086.py VitalWear
+          python3 vitalwear-clean/fix_install_signing_v087.py VitalWear
       - name: Assemble original-source Wear + companion APKs
         run: |
           cd VitalWear
           chmod +x gradlew
           ./gradlew :app:assembleDebug :companion:assembleDebug --no-daemon --stacktrace
+      - name: Verify BOTH APK certificates use the permanent cached signer
+        run: |
+          set -eu
+          EXPECTED=5cff24651ff064e68133c48577c9fb5fc62145c7f873cb605c9e2fce3056317e
+          for module in app companion; do
+            APK="VitalWear/$module/build/outputs/apk/debug/$module-debug.apk"
+            /usr/local/lib/android/sdk/build-tools/35.0.0/apksigner verify --verbose --print-certs "$APK" | tee /tmp/"$module"-sign.txt
+            grep -qi "$EXPECTED" /tmp/"$module"-sign.txt || {
+              echo "REFUSE RELEASE: signer changed; this would break future in-place updates"
+              exit 1
+            }
+          done
       - name: Assert both APKs contain required SLF4J runtime classes
         run: |
           python3 - <<'PY'
@@ -132,23 +148,23 @@ jobs:
         run: |
           mkdir -p outputs
           if test -f VitalWear/app/build/outputs/apk/debug/app-debug.apk; then
-            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Clean-v0.8.6.apk
+            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Stable-v0.8.7.apk
           fi
           if test -f VitalWear/companion/build/outputs/apk/debug/companion-debug.apk; then
-            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Clean-v0.8.6.apk
+            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Stable-v0.8.7.apk
           fi
-          if test -f outputs/VitalWear-Watch-Clean-v0.8.6.apk; then
-            unzip -t outputs/VitalWear-Watch-Clean-v0.8.6.apk | tail -2
-            sha256sum outputs/VitalWear-Watch-Clean-v0.8.6.apk
+          if test -f outputs/VitalWear-Watch-Stable-v0.8.7.apk; then
+            unzip -t outputs/VitalWear-Watch-Stable-v0.8.7.apk | tail -2
+            sha256sum outputs/VitalWear-Watch-Stable-v0.8.7.apk
           fi
-          if test -f outputs/VitalWear-Phone-Clean-v0.8.6.apk; then
-            unzip -t outputs/VitalWear-Phone-Clean-v0.8.6.apk | tail -2
-            sha256sum outputs/VitalWear-Phone-Clean-v0.8.6.apk
+          if test -f outputs/VitalWear-Phone-Stable-v0.8.7.apk; then
+            unzip -t outputs/VitalWear-Phone-Stable-v0.8.7.apk | tail -2
+            sha256sum outputs/VitalWear-Phone-Stable-v0.8.7.apk
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: VitalWear-v086-Clean-VBHelper-ReceiveFix-APKs
+          name: VitalWear-v087-StableInstall-NFC-APKs
           path: outputs/*.apk
           retention-days: 30
 
