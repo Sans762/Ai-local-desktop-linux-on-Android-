@@ -7,8 +7,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: clean-vitalwear-original
-  cancel-in-progress: true
+  group: clean-vitalwear-original-${{ github.sha }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -100,3 +100,47 @@ jobs:
           name: VitalWear-original-clean-watch-phone
           path: outputs/*.apk
           retention-days: 30
+
+  phone-launch-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: VitalWear-original-clean-watch-phone
+          path: outputs
+      - name: Enable emulator hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Launch Phone APK and check for AndroidRuntime crashes
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            set -euo pipefail
+            APP="$(find outputs -name 'VitalWear-Phone-Original-Clean.apk' -print -quit)"
+            test -s "$APP"
+            adb install -r "$APP"
+            adb logcat -c
+            adb shell am start -W -n dev.mikeki.vitalwear.gw8/com.github.cfogrady.vitalwear.main.MainActivity
+            sleep 8
+            adb logcat -d -v time > /tmp/vitalwear-phone-startup.log
+            if ! adb shell pidof dev.mikeki.vitalwear.gw8; then
+              grep -A 40 -B 2 -E 'FATAL EXCEPTION|AndroidRuntime' /tmp/vitalwear-phone-startup.log | tail -100 || true
+              echo "FAIL: Phone process exited after opening"
+              exit 1
+            fi
+            if grep -A 30 'FATAL EXCEPTION' /tmp/vitalwear-phone-startup.log | grep -q dev.mikeki.vitalwear.gw8; then
+              grep -A 40 'FATAL EXCEPTION' /tmp/vitalwear-phone-startup.log | tail -100
+              echo "FAIL: Phone AndroidRuntime FATAL EXCEPTION"
+              exit 1
+            fi
+            echo "PASS: Phone main activity remains running after launch"
