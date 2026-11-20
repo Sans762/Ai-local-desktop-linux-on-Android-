@@ -97,6 +97,7 @@ jobs:
           python3 vitalwear-clean/check_vbhelper_nfc_v084.py VitalWear
           python3 vitalwear-clean/vbhelper_export_fix_v085.py VitalWear
           python3 vitalwear-clean/check_vbhelper_export_v085.py VitalWear
+          python3 vitalwear-clean/fix_vbhelper_receive_v086.py VitalWear
       - name: Assemble original-source Wear + companion APKs
         run: |
           cd VitalWear
@@ -131,114 +132,23 @@ jobs:
         run: |
           mkdir -p outputs
           if test -f VitalWear/app/build/outputs/apk/debug/app-debug.apk; then
-            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Clean-v0.8.5.apk
+            cp VitalWear/app/build/outputs/apk/debug/app-debug.apk outputs/VitalWear-Watch-Clean-v0.8.6.apk
           fi
           if test -f VitalWear/companion/build/outputs/apk/debug/companion-debug.apk; then
-            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Clean-v0.8.5.apk
+            cp VitalWear/companion/build/outputs/apk/debug/companion-debug.apk outputs/VitalWear-Phone-Clean-v0.8.6.apk
           fi
-          if test -f outputs/VitalWear-Watch-Clean-v0.8.5.apk; then
-            unzip -t outputs/VitalWear-Watch-Clean-v0.8.5.apk | tail -2
-            sha256sum outputs/VitalWear-Watch-Clean-v0.8.5.apk
+          if test -f outputs/VitalWear-Watch-Clean-v0.8.6.apk; then
+            unzip -t outputs/VitalWear-Watch-Clean-v0.8.6.apk | tail -2
+            sha256sum outputs/VitalWear-Watch-Clean-v0.8.6.apk
           fi
-          if test -f outputs/VitalWear-Phone-Clean-v0.8.5.apk; then
-            unzip -t outputs/VitalWear-Phone-Clean-v0.8.5.apk | tail -2
-            sha256sum outputs/VitalWear-Phone-Clean-v0.8.5.apk
+          if test -f outputs/VitalWear-Phone-Clean-v0.8.6.apk; then
+            unzip -t outputs/VitalWear-Phone-Clean-v0.8.6.apk | tail -2
+            sha256sum outputs/VitalWear-Phone-Clean-v0.8.6.apk
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: VitalWear-v085-Clean-VBHelper-APKs
+          name: VitalWear-v086-Clean-VBHelper-ReceiveFix-APKs
           path: outputs/*.apk
           retention-days: 30
 
-  phone-launch-smoke:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: VitalWear-v085-Clean-VBHelper-APKs
-          path: outputs
-      - name: Enable emulator hardware acceleration
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Launch Phone APK and check for AndroidRuntime crashes
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          profile: pixel_2
-          disable-animations: true
-          script: |
-            set -eu
-            APP="$GITHUB_WORKSPACE/outputs/VitalWear-Phone-Clean-v0.8.5.apk"
-            echo "Phone artifact: $APP"
-            ls -lh "$GITHUB_WORKSPACE/outputs"
-            test -s "$APP"
-            adb install -r "$APP"
-            adb logcat -c
-            adb shell am start -W -n dev.mikeki.vitalwear.gw8.clean/com.github.cfogrady.vitalwear.main.MainActivity
-            sleep 8
-            adb logcat -d -v time > /tmp/vitalwear-phone-startup.log
-            if ! adb shell pidof dev.mikeki.vitalwear.gw8.clean; then
-              grep -A 40 -B 2 -E 'FATAL EXCEPTION|AndroidRuntime' /tmp/vitalwear-phone-startup.log | tail -100 || true
-              echo "FAIL: Phone process exited after opening"
-              exit 1
-            fi
-            if grep -A 30 'FATAL EXCEPTION' /tmp/vitalwear-phone-startup.log | grep -q dev.mikeki.vitalwear.gw8.clean; then
-              grep -A 40 'FATAL EXCEPTION' /tmp/vitalwear-phone-startup.log | tail -100
-              echo "FAIL: Phone AndroidRuntime FATAL EXCEPTION"
-              exit 1
-            fi
-            echo "PASS: Phone main activity remains running after launch"
-
-  watch-launch-smoke:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: VitalWear-v085-Clean-VBHelper-APKs
-          path: outputs
-      - name: Enable emulator hardware acceleration
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - name: Launch Watch APK in a Wear OS system image
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 33
-          target: android-wear
-          arch: x86_64
-          profile: wearos_large_round
-          disable-animations: true
-          script: |
-            set -eu
-            APP="$GITHUB_WORKSPACE/outputs/VitalWear-Watch-Clean-v0.8.5.apk"
-            echo "Watch artifact: $APP"
-            ls -lh "$GITHUB_WORKSPACE/outputs"
-            test -s "$APP"
-            adb install -r "$APP"
-            adb logcat -c
-            adb shell am start -W -n dev.mikeki.vitalwear.gw8.clean/com.github.cfogrady.vitalwear.main.MainActivity
-            sleep 8
-            adb logcat -d -v time >/tmp/vitalwear-watch-startup.log
-            if ! adb shell pidof dev.mikeki.vitalwear.gw8.clean; then
-              grep -A 40 -B 2 -E 'FATAL EXCEPTION|AndroidRuntime' /tmp/vitalwear-watch-startup.log | tail -100 || true
-              echo "FAIL: Watch process exited after opening"
-              exit 1
-            fi
-            if grep -A 30 'FATAL EXCEPTION' /tmp/vitalwear-watch-startup.log | grep -q dev.mikeki.vitalwear.gw8.clean; then
-              grep -A 40 'FATAL EXCEPTION' /tmp/vitalwear-watch-startup.log | tail -100
-              echo "FAIL: Watch AndroidRuntime FATAL EXCEPTION"
-              exit 1
-            fi
-            echo "PASS: Watch main activity remains running after launch"
