@@ -42,6 +42,19 @@ jobs:
       - name: Build DIM reader dependency
         run: |
           cd VB-DIM-Reader
+          # Git version plugin is only for jar naming; plugin portal no longer
+          # reliably resolves its ancient JGit/jsch transitive dependencies.
+          # Keep upstream Java 8 reader functionality unchanged.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path("build.gradle")
+          s=p.read_text()
+          s=s.replace('    id "io.toolebox.git-versioner" version "1.6.5"\n','')
+          a=s.index("\nversioner {")
+          b=s.index("\ntest {",a)
+          s=s[:a]+"\n"+s[b:]
+          p.write_text(s)
+          PY
           chmod +x gradlew
           ./gradlew clean jar --no-daemon
           find build/libs -name '*.jar' -type f -print
