@@ -176,7 +176,9 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            APP="$(find outputs -name 'VitalWear-Phone-Clean-v0.8.5.apk' -print -quit)"
+            APP="$GITHUB_WORKSPACE/outputs/VitalWear-Phone-Clean-v0.8.5.apk"
+            echo "Phone artifact: $APP"
+            ls -lh "$GITHUB_WORKSPACE/outputs"
             test -s "$APP"
             adb install -r "$APP"
             adb logcat -c
@@ -220,7 +222,9 @@ jobs:
           disable-animations: true
           script: |
             set -eu
-            APP="$(find outputs -name 'VitalWear-Watch-Clean-v0.8.5.apk' -print -quit)"
+            APP="$GITHUB_WORKSPACE/outputs/VitalWear-Watch-Clean-v0.8.5.apk"
+            echo "Watch artifact: $APP"
+            ls -lh "$GITHUB_WORKSPACE/outputs"
             test -s "$APP"
             adb install -r "$APP"
             adb logcat -c
