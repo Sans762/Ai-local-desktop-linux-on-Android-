@@ -40,8 +40,10 @@ assert 'implementation(project(":protos"))' in gradle
 assert 'implementation(libs.protobuf.javalite)' in gradle
 for mod in ("app","companion"):
     src=(r/mod/"build.gradle.kts").read_text()
-    assert ('versionCode = 85' in src or 'versionCode = 86' in src)
+    assert ('versionCode = 85' in src or 'versionCode = 86' in src or 'versionCode = 87' in src)
     assert ('versionName = "0.8.5-Clean-VBHelper-SafeExport"' in src or
-            'versionName = "0.8.6-Clean-VBHelper-ReceiveFix"' in src)
-    assert 'applicationId = "dev.mikeki.vitalwear.gw8.clean"' in src
+            'versionName = "0.8.6-Clean-VBHelper-ReceiveFix"' in src or
+            'versionName = "0.8.7-InstallAndNfcFix"' in src)
+    assert ('applicationId = "dev.mikeki.vitalwear.gw8.clean"' in src or
+            'applicationId = "dev.mikeki.vitalwear.gw8.stable"' in src)
 print("PASS v085: HCE nondestructive, watch-pairing channel, phone share, protobuf and ID")
