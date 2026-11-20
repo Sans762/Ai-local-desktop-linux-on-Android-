@@ -225,6 +225,7 @@ change("companion/build.gradle.kts",
     '    implementation(project(":common"))\n',
     '''    implementation(project(":common"))
     implementation(project(":protos"))
+    implementation(libs.protobuf.javalite)
 ''')
 for m in ("app","companion"):
     change(f"{m}/build.gradle.kts","versionCode = 84","versionCode = 85")
